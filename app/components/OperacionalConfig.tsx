@@ -1,11 +1,13 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { toast } from '@/lib/toast'
+import { useT } from '@/app/components/Idioma'
 
 type Op = { slaAprovacaoHoras: number; lixeiraDias: number; saudeDias: number; prioridadePadrao: 'baixa' | 'media' | 'alta' }
 const PADRAO: Op = { slaAprovacaoHoras: 24, lixeiraDias: 30, saudeDias: 60, prioridadePadrao: 'media' }
 
 export default function OperacionalConfig() {
+  const tr = useT()
   const [op, setOp] = useState<Op>(PADRAO)
   const [salvando, setSalvando] = useState(false)
   const [carregado, setCarregado] = useState(false)
@@ -31,7 +33,7 @@ export default function OperacionalConfig() {
     </div>
   )
 
-  if (!carregado) return <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>Carregando...</p>
+  if (!carregado) return <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('conta.carregando')}</p>
   return (
     <div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
@@ -39,12 +41,12 @@ export default function OperacionalConfig() {
         {num('lixeiraDias', 'Prazo da lixeira', 'dias', 'Quanto tempo itens excluídos ficam disponíveis para restaurar.')}
         {num('saudeDias', 'Meta da Saúde do Caixa', 'dias', 'Reserva-alvo em dias de operação (o termômetro usa isto como 100%).')}
         <div>
-          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>Prioridade padrão de tarefa</label>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>{tr('cfg.prioridade-padrao')}</label>
           <select value={op.prioridadePadrao} onChange={e => setOp(o => ({ ...o, prioridadePadrao: e.target.value as any }))}
             style={{ width: '100%', maxWidth: 160, padding: '9px 11px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-            <option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option>
+            <option value="baixa">{tr('prioridade.baixa')}</option><option value="media">{tr('prioridade.media')}</option><option value="alta">{tr('prioridade.alta')}</option>
           </select>
-          <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Aplicada a tarefas criadas sem prioridade (quick-add, automações).</p>
+          <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('cfg.prioridade-ajuda')}</p>
         </div>
       </div>
       <button onClick={salvar} disabled={salvando} style={{ marginTop: 16, padding: '10px 20px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{salvando ? 'Salvando...' : 'Salvar operacional'}</button>

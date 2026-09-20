@@ -6,7 +6,7 @@ import UploadProgress from './UploadProgress'
 import NotificacoesConfig from './NotificacoesConfig'
 import { ortografiaLigada, definirOrtografia } from '@/lib/ortografia'
 import { idiomasDisponiveis, t, type Idioma } from '@/lib/i18n'
-import { useIdioma } from '@/app/components/Idioma'
+import { useIdioma, useT } from '@/app/components/Idioma'
 
 const FUSOS = [
   { value: 'America/Sao_Paulo', label: '(GMT-03:00) Brasilia' },
@@ -24,6 +24,7 @@ export default function MinhaConta() {
   // outro precisa da escolha em cada um. Ver lib/ortografia.
   // Idioma DESTA pessoa (lib/i18n): fica no perfil e vale só para ela.
   const { idioma, definirIdioma } = useIdioma()
+  const tr = useT()
   const [corretor, setCorretor] = useState(true)
   useEffect(() => { setCorretor(ortografiaLigada()) }, [])
   const [perfil, setPerfil] = useState<any>(null)
@@ -119,38 +120,38 @@ export default function MinhaConta() {
     } catch {} finally { setEnviandoFoto(false); setProgFoto(null) }
   }
 
-  if (!perfil) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--v2-ink3)' }}>Carregando...</div>
+  if (!perfil) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--v2-ink3)' }}>{tr('conta.carregando')}</div>
 
   // Cliente ve uma conta enxuta (sem campos internos da equipe: cargo, bio, nivel de acesso).
   const ehCliente = perfil.role === 'cliente'
 
   return (
     <div style={{ maxWidth: 760 }}>
-      <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Configurações da conta</p>
-      <h2 style={{ margin: '0 0 24px', fontSize: 20, color: 'var(--v2-ink)' }}>Minha Conta</h2>
+      <p style={{ margin: '0 0 4px', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{tr('conta.secao')}</p>
+      <h2 style={{ margin: '0 0 24px', fontSize: 20, color: 'var(--v2-ink)' }}>{tr('conta.titulo')}</h2>
 
       {/* PERFIL */}
       <div style={{ display: 'flex', gap: 24, marginBottom: 32, flexWrap: 'wrap' }}>
         <div style={{ flex: '0 0 220px' }}>
-          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Meu perfil</h3>
+          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('conta.perfil')}</h3>
           <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>{ehCliente ? 'Seus dados de acesso ao portal.' : 'Informações visíveis para sua equipe e clientes.'}</p>
         </div>
         <div style={{ flex: 1, minWidth: 300, background: 'var(--v2-surface)', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', marginBottom: 6 }}>Nome completo</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('conta.nome')}</label>
                 <input value={perfil.nome || ''} onChange={e => setPerfil((p: any) => ({ ...p, nome: e.target.value }))}
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', marginBottom: 6 }}>Telefone</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('conta.telefone')}</label>
                 <input value={perfil.telefone || ''} onChange={e => setPerfil((p: any) => ({ ...p, telefone: e.target.value }))} placeholder="+55 99 99999-9999"
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', marginBottom: 2 }}>Avatar</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', marginBottom: 2 }}>{tr('conta.avatar')}</label>
               <label style={{ cursor: 'pointer', position: 'relative' }}>
                 <div style={{ width: 72, height: 72, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--v2-rule)' }}>
                   {perfil.foto ? <img src={perfil.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: 24, fontWeight: 800, color: 'var(--v2-ink3)' }}>{perfil.nome?.[0]?.toUpperCase()}</span>}
@@ -200,15 +201,15 @@ export default function MinhaConta() {
             style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
             {idiomasDisponiveis().map(i => <option key={i.chave} value={i.chave}>{i.label}</option>)}
           </select>
-          <p style={{ margin: '8px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Salva sozinho. Espanhol entra quando a tradução estiver completa.</p>
+          <p style={{ margin: '8px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>{tr('conta.idioma-salva')}</p>
         </div>
       </div>
 
       {/* FUSO HORARIO */}
       <div style={{ display: 'flex', gap: 24, marginBottom: 32, flexWrap: 'wrap' }}>
         <div style={{ flex: '0 0 220px' }}>
-          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Fuso horario</h3>
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>Ajuste a data e hora da plataforma conforme sua regiao.</p>
+          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('conta.fuso')}</h3>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>{tr('conta.fuso-ajuda')}</p>
         </div>
         <div style={{ flex: 1, minWidth: 300, background: 'var(--v2-surface)', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <select value={perfil.fusoHorario || 'America/Sao_Paulo'} onChange={e => { setPerfil((p: any) => ({ ...p, fusoHorario: e.target.value })); fetch('/api/meu-perfil', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fusoHorario: e.target.value }) }) }}
@@ -223,30 +224,30 @@ export default function MinhaConta() {
       {/* ALTERAR SENHA */}
       <div style={{ display: 'flex', gap: 24, marginBottom: 32, flexWrap: 'wrap' }}>
         <div style={{ flex: '0 0 220px' }}>
-          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Alterar senha</h3>
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>Deixe em branco caso não queira alterá-la.</p>
+          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('conta.senha')}</h3>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>{tr('conta.senha-ajuda')}</p>
         </div>
         <div style={{ flex: 1, minWidth: 300, background: 'var(--v2-surface)', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', marginBottom: 6 }}>Senha atual</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('conta.senha-atual')}</label>
               <input type="password" value={senhaAtual} onChange={e => setSenhaAtual(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', marginBottom: 6 }}>Nova senha</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('conta.senha-nova')}</label>
               <input type="password" value={novaSenha} onChange={e => setNovaSenha(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', marginBottom: 6 }}>Confirme sua nova senha</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('conta.senha-confirmar')}</label>
               <input type="password" value={confirmarSenha} onChange={e => setConfirmarSenha(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button onClick={salvarSenha} disabled={salvandoSenha || !senhaAtual || !novaSenha} style={{ padding: '10px 24px', background: (senhaAtual && novaSenha) ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: (senhaAtual && novaSenha) ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: (senhaAtual && novaSenha) ? 'pointer' : 'not-allowed' }}>
-              {salvandoSenha ? 'Alterando...' : 'Alterar senha'}
+              {tr(salvandoSenha ? 'conta.senha-alterando' : 'conta.senha')}
             </button>
             {senhaMsg && <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--v2-ok)' }}>{senhaMsg}</span>}
             {senhaErro && <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--v2-hot)' }}>{senhaErro}</span>}
@@ -259,47 +260,47 @@ export default function MinhaConta() {
       {/* VERIFICAÇÃO EM 2 FATORES */}
       <div style={{ display: 'flex', gap: 24, marginBottom: 32, flexWrap: 'wrap' }}>
         <div style={{ flex: '0 0 220px' }}>
-          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Verificação em 2 fatores</h3>
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>Camada extra de segurança: além da senha, pede um código ao entrar — por <b>e-mail</b> (sem app) ou por <b>app autenticador</b>.</p>
+          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('conta.2fa')}</h3>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>{tr('conta.2fa-ajuda')}</p>
         </div>
         <div style={{ flex: 1, minWidth: 300, background: 'var(--v2-surface)', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           {tfaAtivo ? (
             <>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#eafaf0', color: '#1a7d4b', padding: '6px 12px', borderRadius: 999, fontWeight: 800, fontSize: 12.5 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#27ae60' }} /> Ativado{tfaMetodoAtivo === 'email' ? ' · por e-mail' : tfaMetodoAtivo === 'app' ? ' · por app' : ''}
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#27ae60' }} /> {tr('conta.2fa-ativado')}{tfaMetodoAtivo === 'email' ? tr('conta.2fa-por-email') : tfaMetodoAtivo === 'app' ? tr('conta.2fa-por-app') : ''}
               </span>
-              <button onClick={desativar2FA} disabled={tfaBusy} style={{ padding: '9px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1.5px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Desativar</button>
+              <button onClick={desativar2FA} disabled={tfaBusy} style={{ padding: '9px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1.5px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('conta.2fa-desativar')}</button>
             </div>
-            {!tfaGlobalAtivo && <p style={{ margin: '10px 0 0', fontSize: 11.5, color: 'var(--v2-amber)', lineHeight: 1.5 }}>Preparado, mas o login ainda <b>não exige</b> o código — a exigência é ligada globalmente pelo admin (Configurações → Saúde do sistema), previsto para <b>depois da liberação da Meta/Facebook</b>.</p>}
+            {!tfaGlobalAtivo && <p style={{ margin: '10px 0 0', fontSize: 11.5, color: 'var(--v2-amber)', lineHeight: 1.5 }}>{tr('conta.2fa-preparado')}</p>}
             </>
           ) : tfaConfig ? (
             <div>
               {tfaConfig === 'app' && (
                 <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start', marginBottom: 12 }}>
-                  <img src={tfaQr} alt="QR Code 2FA" className="soma10-no-invert" style={{ width: 150, height: 150, borderRadius: 10, border: '1px solid var(--v2-rule)' }} />
+                  <img src={tfaQr} alt={tr('conta.qr-alt')} className="soma10-no-invert" style={{ width: 150, height: 150, borderRadius: 10, border: '1px solid var(--v2-rule)' }} />
                   <div style={{ flex: 1, minWidth: 200 }}>
-                    <p style={{ margin: '0 0 8px', fontSize: 12.5, color: 'var(--v2-ink2)', lineHeight: 1.5 }}>Escaneie o QR no seu app (Google Authenticator, Authy, 1Password, ou o gerenciador de senhas do seu celular) — ou digite a chave:</p>
+                    <p style={{ margin: '0 0 8px', fontSize: 12.5, color: 'var(--v2-ink2)', lineHeight: 1.5 }}>{tr('conta.2fa-qr')}</p>
                     <code style={{ display: 'inline-block', fontSize: 12, background: 'var(--v2-surface1)', padding: '6px 10px', borderRadius: 8, color: 'var(--v2-ink)', wordBreak: 'break-all' }}>{tfaSegredo}</code>
                   </div>
                 </div>
               )}
               {tfaConfig === 'email' && (
                 <p style={{ margin: '0 0 10px', fontSize: 12.5, color: 'var(--v2-ink2)', lineHeight: 1.5 }}>
-                  Enviamos um código de 6 dígitos para <b>{perfil.email}</b>. Digite abaixo para confirmar.{' '}
-                  <button type="button" onClick={reenviarEmail2FA} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', cursor: 'pointer', padding: 0, fontSize: 12.5, fontWeight: 700 }}>Reenviar</button>
+                  {tr('conta.2fa-email-enviado')} <b>{perfil.email}</b>{tr('conta.2fa-email-digite')}{' '}
+                  <button type="button" onClick={reenviarEmail2FA} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', cursor: 'pointer', padding: 0, fontSize: 12.5, fontWeight: 700 }}>{tr('conta.2fa-reenviar')}</button>
                 </p>
               )}
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                 <input value={tfaCodigo} onChange={e => setTfaCodigo(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" placeholder="000000" autoFocus style={{ width: 120, padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 16, letterSpacing: 4, textAlign: 'center', fontFamily: 'inherit' }} />
                 <button onClick={ativar2FA} disabled={tfaBusy || tfaCodigo.length < 6} style={{ padding: '9px 18px', background: tfaCodigo.length >= 6 ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: tfaCodigo.length >= 6 ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: tfaCodigo.length >= 6 ? 'pointer' : 'not-allowed' }}>{tfaBusy ? 'Ativando…' : 'Confirmar e ativar'}</button>
-                <button onClick={cancelar2FA} style={{ padding: '9px 14px', background: 'none', color: 'var(--v2-ink3)', border: 'none', fontWeight: 600, fontSize: 12.5, cursor: 'pointer' }}>Cancelar</button>
+                <button onClick={cancelar2FA} style={{ padding: '9px 14px', background: 'none', color: 'var(--v2-ink3)', border: 'none', fontWeight: 600, fontSize: 12.5, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
               </div>
             </div>
           ) : (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button onClick={() => iniciar2FA('email')} disabled={tfaBusy} style={{ padding: '10px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tfaBusy ? 'Preparando…' : 'Ativar por e-mail (sem app)'}</button>
-              <button onClick={() => iniciar2FA('app')} disabled={tfaBusy} style={{ padding: '10px 18px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Por app autenticador</button>
+              <button onClick={() => iniciar2FA('app')} disabled={tfaBusy} style={{ padding: '10px 18px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('conta.2fa-por-app-botao')}</button>
             </div>
           )}
           {tfaMsg && <p style={{ margin: '12px 0 0', fontSize: 12.5, fontWeight: 600, color: 'var(--v2-ok)' }}>{tfaMsg}</p>}
@@ -312,17 +313,17 @@ export default function MinhaConta() {
       {/* INFO DA CONTA */}
       <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
         <div style={{ flex: '0 0 220px' }}>
-          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Informações da conta</h3>
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>Dados gerenciados pelo administrador.</p>
+          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('conta.info')}</h3>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>{tr('conta.info-ajuda')}</p>
         </div>
         <div style={{ flex: 1, minWidth: 300, background: 'var(--v2-surface)', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', width: 100 }}>Email</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', width: 100 }}>{tr('conta.email')}</span>
             <span style={{ fontSize: 13, color: 'var(--v2-ink)' }}>{perfil.email}</span>
           </div>
           {!ehCliente && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', width: 100 }}>Nivel de acesso</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', width: 100 }}>{tr('conta.nivel')}</span>
               <span style={{ fontSize: 12, fontWeight: 700, background: 'var(--v2-surface2)', borderRadius: 999, padding: '2px 10px', color: 'var(--v2-ink)' }}>{perfil.role}</span>
             </div>
           )}
@@ -332,21 +333,16 @@ export default function MinhaConta() {
       {/* CORRETOR ORTOGRAFICO (deste navegador) */}
       <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginTop: 24 }}>
         <div style={{ flex: '0 0 220px' }}>
-          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Corretor ortográfico</h3>
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>Vale só neste navegador.</p>
+          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('conta.corretor')}</h3>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>{tr('conta.corretor-ajuda')}</p>
         </div>
         <div style={{ flex: 1, minWidth: 300, background: 'var(--v2-surface)', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
             <input type="checkbox" checked={corretor} onChange={e => { setCorretor(e.target.checked); definirOrtografia(e.target.checked) }} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Sublinhar palavras que o navegador acha erradas</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{tr('conta.corretor-opcao')}</span>
           </label>
           <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.6 }}>
-            O sistema já declara <b>português do Brasil</b> em todos os campos de texto. Quem corrige, porém, é o
-            navegador — e ele só corrige nos idiomas que você habilitou nele. Se as palavras certas aparecem
-            sublinhadas de vermelho, é sinal de que ele está corrigindo pelo dicionário de <b>inglês</b>:
-            adicione <b>Português (Brasil)</b> em <code style={{ fontSize: 11.5 }}>chrome://settings/languages</code> e
-            ligue a verificação ortográfica nesse idioma. Extensões de escrita (Grammarly e parecidas) também
-            sublinham por conta própria, só em inglês.
+            {tr('conta.corretor-explicacao')}
           </p>
           <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.6 }}>
             Enquanto isso não estiver resolvido, desmarque a caixa acima: melhor sem correção do que com um mar de
@@ -358,7 +354,7 @@ export default function MinhaConta() {
       {/* MINHAS NOTIFICACOES */}
       <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginTop: 24 }}>
         <div style={{ flex: '0 0 220px' }}>
-          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>Minhas notificações</h3>
+          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('conta.notificacoes')}</h3>
           <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>Escolha o que você quer receber. Ligado = você recebe.</p>
         </div>
         <div style={{ flex: 1, minWidth: 300, background: 'var(--v2-surface)', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>

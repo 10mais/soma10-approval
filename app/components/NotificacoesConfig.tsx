@@ -1,10 +1,12 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { NOTIF_TIPOS, NOTIF_OBRIGATORIOS } from '@/lib/notificacoesCatalogo'
+import { useT } from '@/app/components/Idioma'
 
 // modo 'admin' = liga/desliga tipos p/ TODO o sistema (config:notificacoes.desabilitados)
 // modo 'usuario' = cada um silencia os SEUS tipos + canal push (notif:prefs:{email})
 export default function NotificacoesConfig({ modo }: { modo: 'admin' | 'usuario' }) {
+  const tr = useT()
   const [off, setOff] = useState<string[]>([]) // desligados/silenciados
   const [pushOff, setPushOff] = useState(false)
   const [carregado, setCarregado] = useState(false)
@@ -41,14 +43,14 @@ export default function NotificacoesConfig({ modo }: { modo: 'admin' | 'usuario'
     </button>
   )
 
-  if (!carregado) return <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>Carregando...</p>
+  if (!carregado) return <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('conta.carregando')}</p>
   return (
     <div>
       {modo === 'usuario' && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--v2-rule)', marginBottom: 8 }}>
           <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: 'var(--v2-ink)' }}>Notificações push (celular/navegador)</p>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>Você continua vendo tudo no Inbox; isto liga/desliga só o push. Se várias chegarem juntas, você é avisado <strong>uma vez só</strong>.</p>
+            <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: 'var(--v2-ink)' }}>{tr('cfg.push-titulo')}</p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('cfg.push-ajuda')}</p>
           </div>
           <Switch on={!pushOff} onClick={togglePush} />
         </div>
@@ -64,7 +66,7 @@ export default function NotificacoesConfig({ modo }: { modo: 'admin' | 'usuario'
                 <div key={t.tipo} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0' }}>
                   <span style={{ flex: 1, fontSize: 13, color: on ? 'var(--v2-ink)' : 'var(--v2-ink3)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     {t.label}
-                    {obrig && <span title="Sempre ativa — não pode ser desligada" style={{ fontSize: 9.5, fontWeight: 800, color: 'var(--v2-ink3)', background: '#f1f1f3', borderRadius: 999, padding: '2px 7px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>obrigatória</span>}
+                    {obrig && <span title={tr('cfg.push-obrigatoria')} style={{ fontSize: 9.5, fontWeight: 800, color: 'var(--v2-ink3)', background: '#f1f1f3', borderRadius: 999, padding: '2px 7px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{tr('cfg.push-etiqueta-obrigatoria')}</span>}
                   </span>
                   <Switch on={on} disabled={obrig} onClick={() => toggleTipo(t.tipo)} />
                 </div>

@@ -67,10 +67,28 @@ function textoValido(t) {
   return true
 }
 
+// Pedaços de texto dentro de uma template string: `${n} etapas · ${x} fases` → "etapas ·",
+// "fases". CSS entra por engano se não filtrar: bloco de estilo tem `;`, `:` e `{`.
+function pedacosDeCrase(src) {
+  const saida = []
+  for (const m of src.matchAll(/`([^`]*)`/g)) {
+    const corpo = m[1]
+    if (/[{};]/.test(corpo.replace(/\$\{[^}]*\}/g, ''))) continue // é CSS ou código
+    for (const pedaco of corpo.replace(/\$\{[^}]*\}/g, '\u0000').split('\u0000')) {
+      const t = pedaco.trim()
+      if (t.length < 3 || !TEM_LETRA.test(t) || SUSPEITO.test(t)) continue
+      if (/^[a-z-]+$/.test(t) && t.length < 5) continue // 'px', 'auto', nome de classe
+      if (!/\s/.test(t) && /[/_]/.test(t)) continue // caminho de arquivo/chave ('perfis/', 'ads_conta')
+      saida.push({ tipo: 'crase', texto: t, indice: m.index })
+    }
+  }
+  return saida
+}
+
 export function textosDoArquivo(caminho) {
   const src = readFileSync(caminho, 'utf8')
   const m = mascarar(src)
-  const achados = []
+  const achados = pedacosDeCrase(src)
   // texto entre tags
   for (const achado of m.matchAll(/>([^<>{}]+)</g)) {
     const bruto = achado[1]
