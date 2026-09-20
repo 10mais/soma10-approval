@@ -1,3 +1,4 @@
+import { t as traduz, TEXTOS, type Idioma } from './i18n'
 // MÉTRICAS DE CAMPANHA (mídia paga) — dono, 09/09/2026: "o gestor de tráfego preenche as
 // informações das contas de anúncio e as métricas viram dashboard", com a exigência que
 // define o desenho inteiro:
@@ -141,20 +142,34 @@ export function derivados(s: SomaMetricas): Derivados {
 
 /** O NÚMERO QUE IMPORTA para o objetivo, já com o nome certo (o pedido do dono).
  *  Reconhecimento não tem "resultado" contado: a entrega é o alcance. */
-export function resultadoDoObjetivo(objetivo: string | undefined, s: SomaMetricas): {
+// O nome do resultado e do custo saem do dicionário quando existe a chave ('obj.<objetivo>.*'),
+// para a tela falar o idioma de quem lê. Objetivo fora do catálogo continua com o texto daqui.
+export function rotulosObjetivo(chave: string | undefined, idioma: Idioma = 'pt') {
+  const o = objetivoDe(chave)
+  const k = (sufixo: string) => `obj.${o.chave}.${sufixo}`
+  return {
+    label: TEXTOS[k('label')] ? traduz(k('label'), idioma) : o.label,
+    singular: TEXTOS[k('sing')] ? traduz(k('sing'), idioma) : o.resultado.singular,
+    plural: TEXTOS[k('plur')] ? traduz(k('plur'), idioma) : o.resultado.plural,
+    custoLabel: TEXTOS[k('custo')] ? traduz(k('custo'), idioma) : o.custoLabel,
+  }
+}
+
+export function resultadoDoObjetivo(objetivo: string | undefined, s: SomaMetricas, idioma: Idioma = 'pt'): {
   valor: number
   rotulo: string // "12 mensagens" -> aqui só o rótulo: "conversas iniciadas"
   custo: number | null
   custoLabel: string
 } {
   const o = objetivoDe(objetivo)
+  const r = rotulosObjetivo(objetivo, idioma)
   const valor = o.semResultado ? s.alcance : s.resultados
   const d = derivados(s)
   return {
     valor,
-    rotulo: valor === 1 ? o.resultado.singular : o.resultado.plural,
+    rotulo: valor === 1 ? r.singular : r.plural,
     custo: o.semResultado ? d.cpm : d.custoPorResultado,
-    custoLabel: o.custoLabel,
+    custoLabel: r.custoLabel,
   }
 }
 
@@ -324,6 +339,10 @@ export type FunilVendas = {
   taxaCliqueCompra: number | null
 }
 
+export function rotuloFunil(chave: string, idioma: Idioma = 'pt', reserva = ''): string {
+  return TEXTOS[`funil.${chave}`] ? traduz(`funil.${chave}`, idioma) : reserva
+}
+
 export const ETAPAS_FUNIL: { chave: CampoNumerico; label: string }[] = [
   { chave: 'visualizacoesPagina', label: 'Visualizações da página' },
   { chave: 'adicoesCarrinho', label: 'Adições ao carrinho' },
@@ -333,13 +352,13 @@ export const ETAPAS_FUNIL: { chave: CampoNumerico; label: string }[] = [
 
 /** Funil da soma: cada etapa com a taxa de passagem da etapa anterior que tem número.
  *  Etapa vazia não vira "0%": fica sem taxa, e a seguinte compara com a última preenchida. */
-export function funilDeVendas(s: SomaMetricas): FunilVendas {
+export function funilDeVendas(s: SomaMetricas, idioma: Idioma = 'pt'): FunilVendas {
   let anterior = 0
   const etapas = ETAPAS_FUNIL.map(e => {
     const valor = s[e.chave]
     const taxaDaAnterior = pct(valor, anterior)
     if (valor > 0) anterior = valor
-    return { ...e, valor, taxaDaAnterior }
+    return { ...e, label: rotuloFunil(e.chave, idioma, e.label), valor, taxaDaAnterior }
   })
   return {
     temDados: etapas.some(e => e.valor > 0) || s.receita > 0,
@@ -364,23 +383,24 @@ export type CampoLancamento = { k: CampoNumerico; label: string; tipo: 'moeda' |
 
 const maiuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
 
-export function camposDoLancamento(objetivo?: string): { principais: CampoLancamento[]; funil: CampoLancamento[] } {
+export function camposDoLancamento(objetivo?: string, idioma: Idioma = 'pt'): { principais: CampoLancamento[]; funil: CampoLancamento[] } {
   const o = objetivoDe(objetivo)
+  const rot = rotulosObjetivo(objetivo, idioma)
   const vendas = o.chave === 'vendas'
   const principais: CampoLancamento[] = [
-    { k: 'investimento', label: 'Investimento', tipo: 'moeda' },
-    ...(o.semResultado ? [] : [{ k: 'resultados' as CampoNumerico, label: maiuscula(o.resultado.plural), tipo: 'inteiro' as const }]),
-    { k: 'impressoes', label: 'Impressões', tipo: 'inteiro' },
-    { k: 'alcance', label: 'Alcance', tipo: 'inteiro' },
-    { k: 'cliques', label: 'Cliques', tipo: 'inteiro' },
+    { k: 'investimento', label: traduz('campo.investimento', idioma), tipo: 'moeda' },
+    ...(o.semResultado ? [] : [{ k: 'resultados' as CampoNumerico, label: maiuscula(rot.plural), tipo: 'inteiro' as const }]),
+    { k: 'impressoes', label: traduz('kpi.impressoes', idioma), tipo: 'inteiro' },
+    { k: 'alcance', label: traduz('kpi.alcance', idioma), tipo: 'inteiro' },
+    { k: 'cliques', label: traduz('kpi.cliques', idioma), tipo: 'inteiro' },
   ]
   const funil: CampoLancamento[] = [
-    { k: 'visualizacoesPagina', label: 'Visualizações da página', tipo: 'inteiro' },
-    { k: 'adicoesCarrinho', label: 'Adições ao carrinho', tipo: 'inteiro' },
-    { k: 'checkouts', label: 'Checkouts iniciados', tipo: 'inteiro' },
+    { k: 'visualizacoesPagina', label: traduz('funil.visualizacoesPagina', idioma), tipo: 'inteiro' },
+    { k: 'adicoesCarrinho', label: traduz('funil.adicoesCarrinho', idioma), tipo: 'inteiro' },
+    { k: 'checkouts', label: traduz('funil.checkouts', idioma), tipo: 'inteiro' },
     // Em campanha de vendas a compra é o próprio resultado (campo de cima).
-    ...(vendas ? [] : [{ k: 'compras' as CampoNumerico, label: 'Compras', tipo: 'inteiro' as const }]),
-    { k: 'receita', label: 'Receita (valor das vendas)', tipo: 'moeda' },
+    ...(vendas ? [] : [{ k: 'compras' as CampoNumerico, label: traduz('funil.compras', idioma), tipo: 'inteiro' as const }]),
+    { k: 'receita', label: traduz('campo.receita', idioma), tipo: 'moeda' },
   ]
   return { principais, funil }
 }
@@ -418,12 +438,13 @@ export function numeroParaCampo(tipo: 'moeda' | 'inteiro', v: number | null | un
   return `${inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${dec}`
 }
 
-/** "01/09/2026 a 30/09/2026" — o período de análise escrito no painel e no PDF. */
-export function rotuloIntervalo(de: string, ate: string): string {
+/** "01/09/2026 a 30/09/2026" — o período de análise escrito no painel e no PDF.
+ *  A palavra do meio muda de idioma ("a", "to", "al"); o formato do número segue o locale. */
+export function rotuloIntervalo(de: string, ate: string, idioma: Idioma = 'pt'): string {
   const f = (d: string) => (RE_YMD.test(d || '') ? `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}` : '')
   const a = f(de), b = f(ate)
   if (!a) return ''
-  return !b || a === b ? a : `${a} a ${b}`
+  return !b || a === b ? a : `${a} ${traduz('periodo.ate', idioma)} ${b}`
 }
 
 /** Lançamentos que entram no FUNIL: só os das campanhas que têm funil no conjunto. O gasto de
