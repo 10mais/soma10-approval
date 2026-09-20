@@ -140,7 +140,108 @@ o resultado aparecendo **dentro do Instagram** — não só dentro do nosso pain
 > quem tem papel no app (você, como admin/testador) chega normalmente. Use um Instagram
 > pessoal como se fosse o cliente escrevendo. É exatamente o que o revisor precisa ver.
 
-### 3.1 Roteiro A — publicação (v2, refeito após a reprovação de 20/08)
+### 3.1 Roteiro v3 (setembro/2026) — UM VÍDEO POR GRUPO, sem corte, interface em INGLÊS
+
+> **Por que a v2 foi reprovada (14/09, envio de 04/09):** as mesmas 5 permissões, com o mesmo
+> texto genérico da Política 1.6. O que o revisor listou desta vez, item por item: **(1)** o
+> fluxo de login da Meta completo; **(2)** o usuário **concedendo** a permissão; **(3)** a
+> experiência completa do caso de uso; **(4)** boas práticas de gravação — **interface em
+> INGLÊS**, legendas e dicas de ferramenta explicando cada botão; **(5)** declarar se é
+> servidor-a-servidor.
+>
+> Duas reprovações com texto idêntico dizem que o problema é o FORMATO do vídeo, não o
+> produto. O item (4) nunca foi atendido: os dois vídeos anteriores tinham a interface em
+> português com legenda em inglês por cima. A v3 muda três coisas: **interface em inglês de
+> verdade**, **um vídeo por grupo de permissão** (o revisor avalia permissão por permissão) e
+> **narração dizendo o nome da permissão** no momento em que ela é concedida e no momento em
+> que é usada.
+
+#### Regras dos dois vídeos (o que reprovou antes)
+
+- **Tudo em inglês na tela.** Três ajustes, feitos ANTES de gravar:
+  1. Chrome com idioma **English** (Configurações → Idiomas → English no topo → reiniciar).
+  2. No painel do Soma10, botão direito → **"Translate to English"**. A interface é pt-BR por
+     decisão de produto; traduzida pelo navegador, o revisor lê cada botão.
+  3. **A conta de teste do Instagram e do Facebook em inglês** (Instagram: Settings → Language
+     → English; Facebook: Settings → Language). É isso que faz a **tela de consentimento** sair
+     em inglês — é a tela que o revisor mais olha, e ela segue o idioma da CONTA, não o do app.
+- **Um take só, sem corte nenhum.** Do login até a prova na rede. Corte = "não alinhado".
+- **Comece deslogado de tudo** em janela anônima: deslogado da Meta E do Soma10.
+- **Passe o mouse sobre o botão antes de clicar** e espere a dica aparecer. O feedback pede
+  "dicas de ferramenta explicando os botões" — é literalmente isso.
+- **Fale/legende o nome da permissão** duas vezes: quando ela aparece na tela de consentimento
+  e quando o resultado dela aparece na tela. Ex.: *"the client is granting
+  instagram_business_content_publish"* … *"this post was published using
+  instagram_business_content_publish"*.
+- **Segure a tela de consentimento 4 segundos**, com zoom se a lista estiver pequena.
+- **Mostre a barra de endereço** (`approval.soma10.com.br`) no começo.
+- **Termine dentro da rede social**: o post no feed do Instagram / na Página do Facebook.
+- **Cliente de teste** ("Soma10 Demo" + Instagram profissional do próprio 10+). Nenhum cliente
+  de produção é tocado.
+- 2 a 4 minutos cada, `.mp4` H.264, menos de 1 GB, subido em **janela anônima** (o uploader do
+  painel dá "Ocorreu um erro" em janela normal — ver CONTEXTO-TECNICO.md:392).
+
+#### VÍDEO 1 — Instagram: publicar e medir
+*(sobe em `instagram_business_content_publish` e `instagram_business_manage_insights`)*
+
+| # | O que aparece na tela | O que a narração/legenda diz |
+|---|---|---|
+| 1 | Janela anônima, `approval.soma10.com.br`, tela de login do Soma10 | "Soma10 is a social media management tool used by marketing agencies to run their clients' accounts." |
+| 2 | Login da agência | "The agency signs in to its own Soma10 account." |
+| 3 | Lista de clientes → cliente "Soma10 Demo" **sem conta conectada** | "Each client of the agency is a separate profile. This client has no Instagram account connected yet." |
+| 4 | Mouse parado sobre **"Connect Instagram"**, dica visível, clique | "The agency clicks Connect Instagram to start the Instagram Login flow." |
+| 5 | **Login do Instagram** (usuário e senha digitados) | "This is the Instagram login. The client signs in with their own credentials." |
+| 6 | **Tela de consentimento, parada 4s, com zoom** | "The client is now granting the permissions: instagram_business_basic, instagram_business_content_publish and instagram_business_manage_insights." |
+| 7 | Volta ao painel: conta conectada, @ e foto | "The account is connected. The username and picture come from instagram_business_basic." |
+| 8 | Novo post: imagem + legenda, **Instagram** marcado | "The agency creates a post for this client: image and caption." |
+| 9 | Mouse sobre **"Publish now"**, dica visível, clique | "Publish now sends the post to the Instagram Graph API using instagram_business_content_publish." |
+| 10 | Status **Published** | "The post is published." |
+| 11 | **Instagram da conta**, post no feed, mesma legenda | "Here is the same post live on the client's Instagram feed. This is what instagram_business_content_publish does." |
+| 12 | Volta ao painel → **Analytics** do cliente | "The agency opens the client's report." |
+| 13 | Alcance, visitas ao perfil, demografia carregando | "Reach, profile views and audience demographics are read with instagram_business_manage_insights, so the agency can report results to the client." |
+| 14 | Tela do cliente conectado com o botão de desconectar | "The client authorizes the connection and can disconnect it at any time." |
+
+#### VÍDEO 2 — Facebook: escolher a Página, publicar e ler o engajamento
+*(sobe em `pages_show_list`, `pages_manage_posts` e `pages_read_engagement`)*
+
+| # | O que aparece na tela | O que a narração/legenda diz |
+|---|---|---|
+| 1 | Janela anônima, `approval.soma10.com.br`, login do Soma10 | "Soma10 also publishes the approved content to the client's Facebook Page." |
+| 2 | Cliente de teste **sem Página conectada** | "This client has no Facebook Page connected yet." |
+| 3 | Mouse sobre **"Connect Facebook"**, dica visível, clique | "The agency clicks Connect Facebook to start the Facebook Login flow." |
+| 4 | **Login do Facebook** | "This is the Facebook login. The client signs in with their own credentials." |
+| 5 | **"Quais Páginas você quer usar?" / "Which Pages do you want to use?"**, parada 4s | "The client chooses which Page the agency may manage. Listing the Pages of the account requires pages_show_list." |
+| 6 | **Tela de permissões**, parada 4s, com zoom | "The client is now granting pages_manage_posts, to publish on the Page, and pages_read_engagement, to read that Page's metrics." |
+| 7 | Volta ao painel: Página conectada pelo nome | "The Page is connected to this client's profile." |
+| 8 | Novo post: imagem + legenda, **Facebook** marcado | "The agency creates a post and selects the Facebook Page as the destination." |
+| 9 | Mouse sobre **"Publish now"**, clique, status **Published** | "Publish now posts to the Page using pages_manage_posts." |
+| 10 | **Página no Facebook**, publicação no feed dela | "Here is the post live on the client's Facebook Page." |
+| 11 | Painel → **Analytics** → números da Página | "The Page's reach and engagement are read with pages_read_engagement for the client's report." |
+| 12 | Botão de desconectar a Página | "The client authorizes the Page and can disconnect it at any time." |
+
+> **Confira antes de gravar o vídeo 2:** o login do Facebook do Soma10 pede, além do trio
+> `pages_*`, também `instagram_basic`, `instagram_content_publish` e `business_management`
+> (`app/api/meta/oauth/route.ts`) — o callback usa `instagram_basic` para achar o
+> `instagram_business_account` da Página. Essas três **não estão na análise**, então vão
+> aparecer na tela de consentimento sem estarem no envio. Se o revisor reclamar disso, a saída
+> é tirá-las do `scope` do login do Facebook (a conexão do Instagram já acontece pelo login do
+> Instagram) — decisão do dono, porque mexe em autenticação de produção.
+
+#### Antes de apertar REC (checklist)
+
+1. App **Live** no painel da Meta e 2FA global do Soma10 **desligado** (Config → Saúde do
+   sistema) — o revisor entra a qualquer momento.
+2. Login do revisor testado: `revisor.meta@grupo10mais.com.br`.
+3. Cliente **"Soma10 Demo"** criado e **desconectado** de Instagram e Facebook (o vídeo precisa
+   começar sem conexão).
+4. Conta de Instagram **profissional**, vinculada à Página do Facebook do teste, e **as duas em
+   inglês**.
+5. Chrome em inglês, janela anônima, notificações do sistema desligadas.
+6. Uma imagem e uma legenda prontas para o post (nada de arrastar arquivo procurando pasta).
+
+---
+
+### 3.1-b Roteiro A — publicação (v2, HISTÓRICO — reprovado em 14/09; ficou aqui pelo que ele já acertava)
 
 > **Por que a v1 foi reprovada:** o feedback da Meta em todas as 5 permissões foi o mesmo —
 > *"screencast não alinhado com detalhes do caso de uso"* — pedindo três coisas que o vídeo
@@ -253,6 +354,52 @@ com o caso de uso descrito no envio:
 20 Page engagement metrics are read with pages_read_engagement.
 21 Every account is connected by its owner and can be disconnected at any time.
 ```
+
+### 3.4-v3 Instruções do envio (v3) — cole no campo de cada grupo
+
+**Grupo Instagram** (`instagram_business_content_publish`, `instagram_business_manage_insights`):
+
+> Soma10 is a social media management tool for marketing agencies. Each agency client is a
+> separate profile inside the panel, and each client connects their own Instagram professional
+> account through Instagram Login.
+>
+> The screencast is a single take, with no cuts, recorded in an incognito window and starting
+> logged out of Instagram. It shows: the agency signing in to Soma10; the client profile with
+> no account connected; the full Instagram Login flow; the consent screen where the client
+> grants instagram_business_basic, instagram_business_content_publish and
+> instagram_business_manage_insights; the agency creating a post with an image and a caption;
+> the post being published with instagram_business_content_publish; the same post live on the
+> Instagram feed; and the client's report reading reach, profile views and audience
+> demographics with instagram_business_manage_insights.
+>
+> Soma10 is not a server-to-server integration and does not use a System User token. Every
+> account is authorized by its owner in the front-end Meta login flow shown in the video.
+> Publishing may also run on a schedule chosen by the agency, always with the user access token
+> obtained at that consent, and the connection can be revoked in the panel at any time.
+>
+> Test account: [login do revisor]. There is no paywall and no geographic restriction.
+
+**Grupo Páginas do Facebook** (`pages_show_list`, `pages_manage_posts`, `pages_read_engagement`):
+
+> Clients who also publish on Facebook connect their Page to the same client profile through
+> Facebook Login.
+>
+> The screencast is a single take, with no cuts, recorded in an incognito window and starting
+> logged out of Facebook. It shows: the client profile with no Page connected; the full Facebook
+> Login flow; the Page picker, which is what pages_show_list provides; the consent screen where
+> the client grants pages_manage_posts and pages_read_engagement; the agency publishing the
+> approved content to the Page with pages_manage_posts; the post live on the Facebook Page; and
+> the Page's reach and engagement being read with pages_read_engagement for the client's report.
+>
+> Soma10 is not a server-to-server integration and does not use a System User token. The Page
+> token comes from the front-end consent shown in the video and can be revoked by disconnecting
+> the Page in the panel.
+>
+> Test account: [login do revisor]. There is no paywall and no geographic restriction.
+
+**Legendas/narração:** as frases prontas estão nas duas tabelas do §3.1 (uma por cena). A
+interface aparece em inglês (Chrome traduzindo o painel) e a tela de consentimento também,
+porque a conta de teste da Meta está com idioma English.
 
 ### 3.4 Observação para o campo de instruções do envio
 
