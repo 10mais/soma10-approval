@@ -5,6 +5,8 @@ import { v4 as uuid } from 'uuid'
 import UploadProgress from './UploadProgress'
 import NotificacoesConfig from './NotificacoesConfig'
 import { ortografiaLigada, definirOrtografia } from '@/lib/ortografia'
+import { idiomasDisponiveis, t, type Idioma } from '@/lib/i18n'
+import { useIdioma } from '@/app/components/Idioma'
 
 const FUSOS = [
   { value: 'America/Sao_Paulo', label: '(GMT-03:00) Brasilia' },
@@ -20,6 +22,8 @@ export default function MinhaConta() {
   // Corretor do navegador: preferência DESTE navegador (localStorage), não do
   // usuário no banco — quem tem o dicionário pt-BR num computador e não no
   // outro precisa da escolha em cada um. Ver lib/ortografia.
+  // Idioma DESTA pessoa (lib/i18n): fica no perfil e vale só para ela.
+  const { idioma, definirIdioma } = useIdioma()
   const [corretor, setCorretor] = useState(true)
   useEffect(() => { setCorretor(ortografiaLigada()) }, [])
   const [perfil, setPerfil] = useState<any>(null)
@@ -184,6 +188,21 @@ export default function MinhaConta() {
       </div>
 
       <div style={{ height: 1, background: 'var(--v2-surface2)', marginBottom: 32 }} />
+
+      {/* IDIOMA — dono, 20/09: cada pessoa escolhe o seu */}
+      <div style={{ display: 'flex', gap: 24, marginBottom: 32, flexWrap: 'wrap' }}>
+        <div style={{ flex: '0 0 220px' }}>
+          <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--v2-ink)' }}>{t('termo.idioma', idioma)}</h3>
+          <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>{t('termo.idioma.ajuda', idioma)}</p>
+        </div>
+        <div style={{ flex: 1, minWidth: 300, background: 'var(--v2-surface)', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <select value={idioma} onChange={e => definirIdioma(e.target.value as Idioma)} aria-label={t('termo.idioma', idioma)}
+            style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
+            {idiomasDisponiveis().map(i => <option key={i.chave} value={i.chave}>{i.label}</option>)}
+          </select>
+          <p style={{ margin: '8px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Salva sozinho. Espanhol entra quando a tradução estiver completa.</p>
+        </div>
+      </div>
 
       {/* FUSO HORARIO */}
       <div style={{ display: 'flex', gap: 24, marginBottom: 32, flexWrap: 'wrap' }}>

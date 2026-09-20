@@ -1,8 +1,10 @@
 'use client'
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { useArea } from '@/app/components/Idioma'
 
 export default function ListeningPage() {
+  const area = useArea()
   const { clienteId } = useParams()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
@@ -17,7 +19,7 @@ export default function ListeningPage() {
     <div>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Social Listening</h2>
+          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{area('listening')}</h2>
           <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>O que está em alta no seu nicho agora — ideias e referências para o seu conteúdo.</p>
         </div>
         <button onClick={carregar} disabled={loading} style={{ flexShrink: 0, padding: '8px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: loading ? 0.6 : 1 }}>

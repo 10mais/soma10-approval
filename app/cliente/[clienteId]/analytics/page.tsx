@@ -1,8 +1,10 @@
 'use client'
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { useArea } from '@/app/components/Idioma'
 
 export default function AnalyticsPage() {
+  const area = useArea()
   const { clienteId } = useParams()
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
@@ -18,7 +20,7 @@ export default function AnalyticsPage() {
   return (
     <div>
       <div style={{ marginBottom: 4 }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Analytics</h2>
+        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{area('analytics')}</h2>
         <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Os números reais das suas redes (Instagram e Facebook) no período escolhido.</p>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', margin: '14px 0 18px' }}>

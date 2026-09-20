@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { v4 as uuid } from 'uuid'
 import RichText from './RichText'
 import { confirmar, toast } from '@/lib/toast'
+import { useArea, useT } from '@/app/components/Idioma'
 
 type Item = { id: string; texto: string; feito: boolean }
 type Notepad = { id: string; titulo: string; conteudo: string; criadoEm?: string; atualizadoEm?: string; fixado?: boolean }
@@ -13,6 +14,8 @@ function textoDe(html: string) {
 }
 
 export default function PersonalList({ compacto = false, onOcultar, foco }: { compacto?: boolean; onOcultar?: () => void; foco?: number } = {}) {
+  const area = useArea()
+  const tr = useT()
   const [notepads, setNotepads] = useState<Notepad[]>([])
   const [itens, setItens] = useState<Item[]>([])
   const [arquivadas, setArquivadas] = useState<Item[]>([]) // microtarefas concluídas (arquivadas)
@@ -110,7 +113,7 @@ export default function PersonalList({ compacto = false, onOcultar, foco }: { co
       {/* Compacto (perfil): sem cabeçalho — "já é suficiente o Notepads e informações abaixo" (dono, 07/09). */}
       {!compacto && <div style={{ marginBottom: 18 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Personal list</h2>
+          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{area('lista-pessoal')}</h2>
           {salvo === 'salvando' && <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>salvando…</span>}
           {salvo === 'ok' && <span style={{ fontSize: 11.5, color: 'var(--v2-ok)', fontWeight: 600 }}>salvo</span>}
         </div>
@@ -122,7 +125,7 @@ export default function PersonalList({ compacto = false, onOcultar, foco }: { co
           {/* NOTEPADS */}
           <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: notepads.length ? '1px solid var(--v2-rule)' : 'none' }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Notepads{compacto && salvo === 'salvando' && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 400, color: 'var(--v2-ink3)' }}>salvando…</span>}{compacto && salvo === 'ok' && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: 'var(--v2-ok)' }}>salvo</span>}</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('termo.notepads')}{compacto && salvo === 'salvando' && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 400, color: 'var(--v2-ink3)' }}>salvando…</span>}{compacto && salvo === 'ok' && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, color: 'var(--v2-ok)' }}>salvo</span>}</span>
               <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               {onOcultar && <button type="button" onClick={onOcultar} title="Ocultar o bloco de notas (Alt+N reabre)" aria-label="Ocultar o bloco de notas" style={{ width: 30, height: 30, borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 17, lineHeight: 1, display: 'grid', placeItems: 'center' }}>×</button>}
               <button onClick={novaNota} style={{ padding: '8px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>+ Nova nota</button>
@@ -156,7 +159,7 @@ export default function PersonalList({ compacto = false, onOcultar, foco }: { co
           {/* Microtarefas */}
           <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Microtarefas</span>
+              <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('termo.microtarefas')}</span>
               {itens.length > 0 && <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>{itens.length} pendente{itens.length > 1 ? 's' : ''}</span>}
             </div>
             <div style={{ display: 'flex', gap: 8, marginBottom: itens.length ? 12 : 0 }}>

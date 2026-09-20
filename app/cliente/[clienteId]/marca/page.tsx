@@ -6,6 +6,7 @@ import { isViewAsClient } from '@/lib/modoCliente'
 import { confirmar } from '@/lib/toast'
 import ReferenciasVisuais from '../../../components/ReferenciasVisuais'
 import FontesMarca from '../../../components/FontesMarca'
+import { useArea } from '@/app/components/Idioma'
 
 const CAMPOS: { key: string; label: string; placeholder: string; area?: boolean }[] = [
   { key: 'segmento', label: 'Segmento / Nicho', placeholder: 'Ex.: Clínica de fisioterapia' },
@@ -17,6 +18,7 @@ const CAMPOS: { key: string; label: string; placeholder: string; area?: boolean 
 ]
 
 export default function MarcaPage() {
+  const area = useArea()
   const { clienteId } = useParams()
   const { data: session } = useSession()
   const role = (session?.user as any)?.role
@@ -98,7 +100,7 @@ export default function MarcaPage() {
   return (
     <div style={{ maxWidth: 820 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 4, flexWrap: 'wrap' }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Marca — Brand Board</h2>
+        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{area('marca')}</h2>
         {ehEquipe && !editando && (
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => setEditando(true)} style={{ padding: '9px 16px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 9, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>

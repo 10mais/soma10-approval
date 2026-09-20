@@ -32,6 +32,8 @@ export type Usuario = {
   telefone?: string
   bio?: string
   fusoHorario?: string
+  // Idioma da interface DESTA pessoa (lib/i18n). Ausente = português.
+  idioma?: 'pt' | 'en' | 'es'
   // CARD DO COLABORADOR (/equipe/[email], lib/hubPessoa): o que a pessoa faz e por
   // quem responde. Editado pelo admin no próprio card.
   atribuicoes?: string[] // áreas/funções: 'Design', 'Copy', 'Tráfego'…

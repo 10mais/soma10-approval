@@ -16,6 +16,7 @@ import { registrarDesfazer } from '@/lib/desfazer'
 import { foraDaJanela, inicioParaMostrar, etapasComTitulo, rotuloPeriodoLista } from '@/lib/playbookLista'
 import type { SquadPapeis } from '@/lib/squadPapeis'
 import { toast } from '@/lib/toast'
+import { useArea } from '@/app/components/Idioma'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string }
 type Marco = {
@@ -80,6 +81,7 @@ function fmtData(iso: string) {
 }
 
 export default function Playbook({ clientes, clienteFixo, podeEditar = true, podeExcluir = true, somenteLeitura = false }: { clientes: Cliente[]; clienteFixo?: string; podeEditar?: boolean; podeExcluir?: boolean; somenteLeitura?: boolean }) {
+  const area = useArea()
   const [marcos, setMarcos] = useState<Marco[]>([])
   const [periodo, setPeriodo] = useState('mensal')
   // Janela CONTÍNUA em dias (zoom livre): os botões de período são atalhos para escalas fixas.
@@ -691,7 +693,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Playbook</h2>
+        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{area('playbook')}</h2>
         <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }} role="tablist" aria-label="Visualização">
           {([['gantt', 'Gantt'], ['lista', 'Lista']] as const).map(([k, l]) => (
             <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)} style={{ padding: '6px 12px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700, background: view === k ? 'var(--v2-surface)' : 'transparent', color: view === k ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: view === k ? '0 1px 3px rgba(0,0,0,0.12)' : 'none', fontFamily: 'inherit' }}>{l}</button>

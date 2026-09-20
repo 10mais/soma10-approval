@@ -9,6 +9,9 @@ import { ABAS_PERM, ACOES_PERM, podeAbaGranular, podeAcaoGranular } from '@/lib/
 import { abasOcultasDoPerfil as abasOcultas, PERFIS as PERFIS_INSTANCIA } from '@/lib/perfisInstanciaCatalogo'
 import { MODULOS, MODULOS_PAGOS, totalMensalModulos } from '@/lib/modulos'
 import { apareceNoPlanner, ordenarPorPostagem } from '@/lib/plannerFiltro'
+// Nome de cada área vem do dicionário (lib/i18n), no idioma de quem está usando.
+import { TEXTOS } from '@/lib/i18n'
+import { useArea } from '@/app/components/Idioma'
 import { statusAoSalvarEdicao } from '@/lib/composerPendencias'
 import { PAPEIS_SQUAD } from '@/lib/squadPapeis'
 import Calendar from '../components/Calendar'
@@ -428,6 +431,7 @@ function Dashboard() {
   const searchParams = useSearchParams()
   const [posts, setPosts] = useState<Post[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
+  const area = useArea()
   const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'clientes-todos' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'viagens' | 'calendario-viagens' | 'reservas' | 'recebiveis' | 'procedimentos' | 'processos' | 'produtos' | 'vendas' | 'metas'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
@@ -1890,15 +1894,18 @@ function Dashboard() {
     if (ABAS_PERM.some(a => a.key === chave) && !podeAbaDash(chave)) return null
     // Modo clínica: telas de agência somem para TODOS, admin incluso
     if (ocultas.includes(chave)) return null
+    // O nome da área vem do dicionário quando existe: um lugar só decide como cada tela se
+    // chama, em qualquer idioma (lib/i18n). O `label` da chamada é o reserva.
+    const texto = TEXTOS[`nav.${chave}`] ? area(chave) : label
     const ativo = aba === chave
     // Ao clicar com a sidebar recolhida, expande automaticamente
     const aoClicar = () => { if (onClick) onClick(); else setAba(chave as any); if (recolhida) { setRecolhida(false); try { localStorage.setItem('sidebarRecolhida', '0') } catch {} } }
     return (
-      <button title={recolhida ? label : undefined} onClick={aoClicar} className={ativo ? 'v2-nav on' : 'v2-nav'}
+      <button title={recolhida ? texto : undefined} onClick={aoClicar} className={ativo ? 'v2-nav on' : 'v2-nav'}
         style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: recolhida ? 'center' : 'space-between', gap: 11, width: '100%', padding: recolhida ? '10px 0' : '9px 10px', border: 'none', borderRadius: 10, cursor: 'pointer', textAlign: 'left', fontWeight: ativo ? 500 : 400, color: ativo ? 'var(--v2-amber)' : 'var(--v2-ink2)', background: ativo ? 'var(--v2-amber-bg)' : 'transparent', fontSize, fontFamily: 'var(--v2-font)', transition: 'background 120ms, color 120ms' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           <span style={{ display: 'flex', flexShrink: 0, color: ativo ? 'var(--v2-amber)' : 'var(--v2-ink3)', opacity: ativo ? 1 : 0.85 }}><Icon size={17}><path d={ICONE_ABA[chave] || ICONE_ABA.default} /></Icon></span>
-          {!recolhida && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>}
+          {!recolhida && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{texto}</span>}
         </span>
         {!recolhida && !!badge && <span style={{ fontSize: 11.5, fontWeight: 500, color: ativo ? 'var(--v2-amber)' : 'var(--v2-ink3)', fontVariantNumeric: 'tabular-nums' }}>{badge > 99 ? '99+' : badge}</span>}
         {recolhida && !!badge && <span style={{ position: 'absolute', top: 7, right: 12, width: 7, height: 7, borderRadius: '50%', background: 'var(--v2-amber-on)' }} />}
@@ -2548,7 +2555,7 @@ function Dashboard() {
         {/* PLANNER — cabeçalho (Novo Post + alternância Lista/Calendário) */}
         {aba === 'planner' && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
-            <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Planner{clienteEmVisualizacao ? ` — ${clienteEmVisualizacao.nome}` : ''}</h2>
+            <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{area('planner')}{clienteEmVisualizacao ? ` — ${clienteEmVisualizacao.nome}` : ''}</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }}>
                 {(['lista', 'calendario'] as const).map(v => (
@@ -2966,7 +2973,7 @@ function Dashboard() {
         {/* MARCA — Brands Board */}
         {aba === 'marca' && (
           <div style={{ maxWidth: 820 }}>
-            <h2 style={{ margin: '0 0 4px', fontSize: 18, color: 'var(--v2-ink)' }}>Marca — Brand Board{clienteEmVisualizacao ? ` · ${clienteEmVisualizacao.nome}` : ''}</h2>
+            <h2 style={{ margin: '0 0 4px', fontSize: 18, color: 'var(--v2-ink)' }}>{area('marca')}{clienteEmVisualizacao ? ` · ${clienteEmVisualizacao.nome}` : ''}</h2>
             <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--v2-ink3)' }}>A identidade e o DNA do cliente. Isso alimenta o Social Listening e dá contexto ao conteúdo.</p>
 
             {/* BLOCO FECHADO */}
@@ -3175,7 +3182,7 @@ function Dashboard() {
         {aba === 'listening' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
-              <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Social Listening{clienteEmVisualizacao ? ` · ${clienteEmVisualizacao.nome}` : ''}</h2>
+              <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{area('listening')}{clienteEmVisualizacao ? ` · ${clienteEmVisualizacao.nome}` : ''}</h2>
               <button onClick={carregarListening} disabled={listeningLoading}
                 style={{ background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: listeningLoading ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 {listeningLoading ? 'Buscando...' : (<><IconRefresh size={14} /> Atualizar</>)}
@@ -3613,7 +3620,7 @@ function Dashboard() {
         {aba === 'inbox' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Inbox</h2>
+              <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{area('inbox')}</h2>
               {notificacoes.length > 0 && (
                 <button onClick={limparNotificacoes} style={{ padding: '8px 16px', background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--v2-hot)', cursor: 'pointer' }}>Limpar todas</button>
               )}

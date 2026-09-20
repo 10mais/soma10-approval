@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { redis, Usuario } from '@/lib/redis'
 import { revalidateTag } from 'next/cache'
 import bcrypt from 'bcryptjs'
+import { normalizarIdioma } from '@/lib/i18n'
 
 export const runtime = 'nodejs'
 
@@ -17,6 +18,7 @@ export async function GET() {
     nome: usuario.nome, email: usuario.email, cargo: usuario.cargo || '',
     foto: usuario.foto || '', role: usuario.role, telefone: usuario.telefone || '',
     bio: usuario.bio || '', fusoHorario: usuario.fusoHorario || 'America/Sao_Paulo',
+    idioma: usuario.idioma || 'pt',
   })
 }
 
@@ -27,7 +29,7 @@ export async function PUT(req: NextRequest) {
   const usuario = await redis.get<Usuario>(`usuario:${email}`)
   if (!usuario) return NextResponse.json({ error: 'nao encontrado' }, { status: 404 })
 
-  const { nome, cargo, foto, telefone, bio, fusoHorario, senhaAtual, novaSenha, confirmarSenha } = await req.json()
+  const { nome, cargo, foto, telefone, bio, fusoHorario, idioma, senhaAtual, novaSenha, confirmarSenha } = await req.json()
 
   if (nome !== undefined) usuario.nome = nome
   if (cargo !== undefined) usuario.cargo = cargo
@@ -35,6 +37,7 @@ export async function PUT(req: NextRequest) {
   if (telefone !== undefined) usuario.telefone = telefone
   if (bio !== undefined) usuario.bio = bio
   if (fusoHorario !== undefined) usuario.fusoHorario = fusoHorario
+  if (idioma !== undefined) usuario.idioma = normalizarIdioma(idioma)
 
   // Alteracao de senha com validacao
   if (novaSenha) {

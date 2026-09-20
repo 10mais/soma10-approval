@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react'
 import { temModulo } from '@/lib/modulos'
 import AvatarCliente from '@/app/components/AvatarCliente'
 import { fecharFora } from '@/lib/fecharModal'
+import { nomeDaArea } from '@/lib/i18n'
+import { useIdioma } from '@/app/components/Idioma'
 
 // HUB DO CLIENTE (decisão do dono, 06/09/2026): "clico em um cliente, abre um
 // menu e mostra tudo o que está atribuído a ele". Esta é a casa do cliente
@@ -36,6 +38,15 @@ const IC: Record<string, string> = {
   lua: 'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
   menu: 'M3 6h18M3 12h18M3 18h18',
   troca: 'M7 16V4m0 0L3 8m4-4 4 4M17 8v12m0 0 4-4m-4 4-4-4',
+}
+
+// O rótulo de cada item vem do dicionário (lib/i18n) pela chave da área — o `label` aqui é
+// só o reserva para item que não tem nome de área (ex.: "Solicitar conteúdo").
+const AREA_DO_ITEM: Record<string, string> = {
+  '/onboarding': 'onboarding', '/relatorio': 'relatorio', '/playbook': 'playbook',
+  '/tarefas': 'tarefas', '/studio': 'studio', '/planner': 'planner', '/aprovacoes': 'aprovacoes',
+  '/entregas': 'entregas', '/marca': 'marca', '/documentos': 'documentos', '/listening': 'listening',
+  '/analytics': 'analytics', '/metricas': 'metricas', '/conta': 'minha-conta',
 }
 
 const GRUPOS_EQUIPE: Grupo[] = [
@@ -87,6 +98,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname()
   const router = useRouter()
   const { data: session } = useSession()
+  const { idioma } = useIdioma()
   const clienteId = params.clienteId as string
   const role = (session?.user as any)?.role
   const ehEquipe = role === 'admin' || role === 'gerente'
@@ -220,7 +232,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
                 {g.itens.map(i => (
                   <button key={i.key} className={`hub-nav${ativo(i.key) ? ' on' : ''}`} onClick={() => irPara(`${basePath}${i.key}`)}>
                     <Ico d={IC[i.icone]} />
-                    <span style={{ flex: 1 }}>{i.label}</span>
+                    <span style={{ flex: 1 }}>{AREA_DO_ITEM[i.key] ? nomeDaArea(AREA_DO_ITEM[i.key], idioma) : i.label}</span>
                     {i.badge === 'aprovacoes' && pendentes > 0 && <span style={{ background: 'var(--v2-hot)', color: '#fff', borderRadius: 999, minWidth: 18, height: 18, padding: '0 5px', display: 'grid', placeItems: 'center', fontSize: 10.5, fontWeight: 600 }}>{pendentes}</span>}
                     {i.badge === 'onboarding' && cliente?.fase === 'onboarding' && <span style={{ width: 8, height: 8, borderRadius: 999, background: 'var(--v2-info)', display: 'inline-block' }} aria-label="Em onboarding" />}
                   </button>

@@ -7,6 +7,7 @@ import { apareceNoPlanner } from '@/lib/plannerFiltro'
 import { toast, confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
 import { statusAoSalvarEdicao } from '@/lib/composerPendencias'
+import { useArea } from '@/app/components/Idioma'
 
 // Acompanha o status da publicacao pelo proprio post (resiliente a requisicoes longas:
 // Reels demoram e a conexao do navegador pode cair antes do servidor terminar).
@@ -49,6 +50,7 @@ function paraDatetimeLocal(iso?: string): string {
 }
 
 export default function PlannerPage() {
+  const area = useArea()
   const { clienteId } = useParams()
   const [posts, setPosts] = useState<any[]>([])
   const [clientes, setClientes] = useState<any[]>([])
@@ -193,7 +195,7 @@ export default function PlannerPage() {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Planner</h2>
+        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{area('planner')}</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }}>
             {(['lista', 'calendario'] as const).map(v => (
