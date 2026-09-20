@@ -14,6 +14,8 @@ import OptImg from './OptImg'
 import UploadProgress from './UploadProgress'
 import { fecharFora } from '@/lib/fecharModal'
 import { ehTarefaDeProducao, anexosCriativoPronto, avisoAoConcluir } from '@/lib/producaoVinculo'
+import { useT } from '@/app/components/Idioma'
+import { TEXTOS } from '@/lib/i18n'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; squad?: string[] }
 type Usuario = { id: string; nome: string; email: string; role: string; foto?: string }
@@ -150,6 +152,7 @@ function TextoComMencoes({ texto }: { texto: string }) {
 }
 
 function ConfirmPopup({ mensagem, onConfirm, onCancel }: { mensagem: string; onConfirm: () => void; onCancel: () => void }) {
+  const tr = useT()
   return (
     <div onClick={fecharFora(onCancel)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '24px 28px', maxWidth: 400, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
@@ -159,10 +162,10 @@ function ConfirmPopup({ mensagem, onConfirm, onCancel }: { mensagem: string; onC
           </div>
           <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--v2-ink)', lineHeight: 1.4 }}>{mensagem}</p>
         </div>
-        <p style={{ margin: '0 0 20px', fontSize: 12, color: 'var(--v2-ink3)' }}>A tarefa será movida para a lixeira e poderá ser restaurada em até 30 dias.</p>
+        <p style={{ margin: '0 0 20px', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('tarefa.lixeira-aviso')}</p>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button onClick={onCancel} style={{ padding: '9px 20px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Cancelar</button>
-          <button onClick={onConfirm} style={{ padding: '9px 20px', background: 'var(--v2-hot)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, color: 'var(--v2-surface)', cursor: 'pointer' }}>Excluir</button>
+          <button onClick={onCancel} style={{ padding: '9px 20px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
+          <button onClick={onConfirm} style={{ padding: '9px 20px', background: 'var(--v2-hot)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, color: 'var(--v2-surface)', cursor: 'pointer' }}>{tr('comum.excluir')}</button>
         </div>
       </div>
     </div>
@@ -175,6 +178,7 @@ function AnexoViewer({ anexo, anexoIndex, onClose, onAddAnotacao, onRemoveAnotac
   onAddAnotacao: (idx: number, anotacao: Anotacao) => void
   onRemoveAnotacao: (idx: number, anotacaoId: string) => void
 }) {
+  const tr = useT()
   const [pendente, setPendente] = useState<{ x: number; y: number } | null>(null)
   const [textoAnotacao, setTextoAnotacao] = useState('')
   const [anotacaoHover, setAnotacaoHover] = useState<string | null>(null)
@@ -210,7 +214,7 @@ function AnexoViewer({ anexo, anexoIndex, onClose, onAddAnotacao, onRemoveAnotac
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--v2-surface)" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
           </button>
           <button onClick={() => forcarDownload(anexo.url, anexo.nome)} style={{ position: 'absolute', top: 12, right: 52, width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.15)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 10 }}
-            title="Baixar">
+            title={tr('comum.baixar')}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--v2-surface)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </button>
           {ehImagem && (
@@ -229,7 +233,7 @@ function AnexoViewer({ anexo, anexoIndex, onClose, onAddAnotacao, onRemoveAnotac
                       <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink)' }}>{an.texto}</p>
                       <p style={{ margin: 0, fontSize: 10, color: 'var(--v2-ink3)' }}>{an.autorNome} · {new Date(an.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
                       <button onClick={e => { e.stopPropagation(); onRemoveAnotacao(anexoIndex, an.id) }}
-                        style={{ marginTop: 6, padding: '3px 8px', background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 4, fontSize: 10, color: 'var(--v2-hot)', cursor: 'pointer', fontWeight: 600 }}>Remover</button>
+                        style={{ marginTop: 6, padding: '3px 8px', background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 4, fontSize: 10, color: 'var(--v2-hot)', cursor: 'pointer', fontWeight: 600 }}>{tr('comum.remover')}</button>
                     </div>
                   )}
                 </div>
@@ -238,12 +242,12 @@ function AnexoViewer({ anexo, anexoIndex, onClose, onAddAnotacao, onRemoveAnotac
                 <div style={{ position: 'absolute', left: `${pendente.x}%`, top: `${pendente.y}%`, transform: 'translate(-50%, -50%)', zIndex: 10 }}>
                   <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--v2-amber-on)', color: '#17150E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, border: '2px solid var(--v2-surface)', boxShadow: '0 2px 8px rgba(0,0,0,0.4)', animation: 'soma-pulse 1.2s ease-in-out infinite' }}>?</div>
                   <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', top: 30, left: '50%', transform: 'translateX(-50%)', background: 'var(--v2-surface)', borderRadius: 10, padding: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.3)', minWidth: 220, zIndex: 10 }}>
-                    <textarea lang="pt-BR" value={textoAnotacao} onChange={e => setTextoAnotacao(e.target.value)} placeholder="Descreva a correcao..."
+                    <textarea lang="pt-BR" value={textoAnotacao} onChange={e => setTextoAnotacao(e.target.value)} placeholder={tr('tarefa.descreva-correcao')}
                       autoFocus style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--v2-rule)', fontSize: 12, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }}
                       onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); confirmarAnotacao() } }} />
                     <div style={{ display: 'flex', gap: 6 }}>
-                      <button onClick={() => setPendente(null)} style={{ flex: 1, padding: '6px 0', background: 'var(--v2-surface1)', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Cancelar</button>
-                      <button onClick={confirmarAnotacao} disabled={!textoAnotacao.trim()} style={{ flex: 1, padding: '6px 0', background: textoAnotacao.trim() ? 'var(--v2-hot)' : 'var(--v2-surface2)', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, color: textoAnotacao.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', cursor: textoAnotacao.trim() ? 'pointer' : 'not-allowed' }}>Marcar</button>
+                      <button onClick={() => setPendente(null)} style={{ flex: 1, padding: '6px 0', background: 'var(--v2-surface1)', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
+                      <button onClick={confirmarAnotacao} disabled={!textoAnotacao.trim()} style={{ flex: 1, padding: '6px 0', background: textoAnotacao.trim() ? 'var(--v2-hot)' : 'var(--v2-surface2)', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, color: textoAnotacao.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', cursor: textoAnotacao.trim() ? 'pointer' : 'not-allowed' }}>{tr('comum.marcar')}</button>
                     </div>
                   </div>
                 </div>
@@ -255,17 +259,17 @@ function AnexoViewer({ anexo, anexoIndex, onClose, onAddAnotacao, onRemoveAnotac
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 40 }}>
               <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
               <p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)', fontWeight: 600 }}>{anexo.nome}</p>
-              <a href={anexo.url} target="_blank" rel="noreferrer" style={{ padding: '8px 20px', background: 'var(--v2-amber-on)', color: '#17150E', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none' }}>Abrir arquivo</a>
+              <a href={anexo.url} target="_blank" rel="noreferrer" style={{ padding: '8px 20px', background: 'var(--v2-amber-on)', color: '#17150E', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none' }}>{tr('tarefa.abrir-arquivo')}</a>
             </div>
           )}
-          {ehImagem && <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--v2-ink3)', textAlign: 'center' }}>Clique na imagem para marcar uma correcao</p>}
+          {ehImagem && <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--v2-ink3)', textAlign: 'center' }}>{tr('tarefa.clique-correcao')}</p>}
         </div>
 
         {/* Lado direito — lista de anotacoes */}
         {ehImagem && (
           <div style={{ width: 280, background: '#1e1e1e', borderLeft: '1px solid var(--v2-ink)', padding: 16, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
             <h4 style={{ margin: '0 0 14px', fontSize: 13, fontWeight: 800, color: 'var(--v2-surface)' }}>Correcoes ({anotacoes.length})</h4>
-            {anotacoes.length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink2)' }}>Nenhuma correcao marcada. Clique na imagem para adicionar.</p>}
+            {anotacoes.length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink2)' }}>{tr('tarefa.sem-correcao')}</p>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
               {anotacoes.map((an, idx) => (
                 <div key={an.id}
@@ -277,7 +281,7 @@ function AnexoViewer({ anexo, anexoIndex, onClose, onAddAnotacao, onRemoveAnotac
                     <p style={{ margin: '0 0 2px', fontSize: 12, color: 'var(--v2-rule2)', lineHeight: 1.4 }}>{an.texto}</p>
                     <p style={{ margin: 0, fontSize: 10, color: 'var(--v2-ink3)' }}>{an.autorNome || 'Voce'} · {new Date(an.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
-                  <button onClick={e => { e.stopPropagation(); onRemoveAnotacao(anexoIndex, an.id) }} title="Remover"
+                  <button onClick={e => { e.stopPropagation(); onRemoveAnotacao(anexoIndex, an.id) }} title={tr('comum.remover')}
                     style={{ width: 20, height: 20, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: 0.5 }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
                   </button>
@@ -289,6 +293,15 @@ function AnexoViewer({ anexo, anexoIndex, onClose, onAddAnotacao, onRemoveAnotac
       </div>
     </div>
   )
+}
+
+// Tipo, status e prioridade têm nome no dicionário (lib/i18n): 'tipo.carrossel',
+// 'status.em_andamento', 'prioridade.alta'. Tipo criado pela agência (custom) não está lá —
+// aí vale o rótulo que a pessoa escreveu.
+function useRotulos() {
+  const tr = useT()
+  const de = (prefixo: string) => (chave: string, reserva: string) => (TEXTOS[`${prefixo}.${chave}`] ? tr(`${prefixo}.${chave}`) : reserva)
+  return { rotuloTipo: de('tipo'), rotuloStatus: de('status'), rotuloPrioridade: de('prioridade') }
 }
 
 const COLUNAS: { key: string; label: string }[] = [
@@ -321,6 +334,8 @@ function ehAtrasado(prazo?: string, status?: string) {
 }
 
 export default function GestaoTarefas({ clientes, usuarios, clienteFixo, responsavelFixo, abrirTarefaId, onAbriuTarefa, podeEditar = true, podeExcluir = true, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false }: { clientes: Cliente[]; usuarios: Usuario[]; clienteFixo?: string; responsavelFixo?: string; abrirTarefaId?: string | null; onAbriuTarefa?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean }) {
+  const { rotuloTipo, rotuloStatus, rotuloPrioridade } = useRotulos()
+  const tr = useT()
   // Propaga o perfil para o catálogo de tipos (módulo — TarefaModal também usa)
   PERFIL_CLINICA_TAREFAS = perfilClinica
   PERFIL_TURISMO_TAREFAS = perfilTurismo
@@ -366,17 +381,17 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
     if (recusadas.length && podem.length === 0) { toast(recusadas[0].motivo, 'erro'); return }
     const mudam = podem.map(id => tarefas.find(t => t.id === id)!).filter(t => camposAoVincular(t as any, mae as any).clienteMudou)
     if (mudam.length) {
-      const nomes = mudam.slice(0, 3).map(t => `"${t.titulo}"`).join(', ') + (mudam.length > 3 ? ` e mais ${mudam.length - 3}` : '')
-      const ok = await confirmar(`${nomes} ${mudam.length === 1 ? 'é de outro cliente e passa' : 'são de outro cliente e passam'} a ser de ${mae.clienteNome || 'sem cliente'}, o cliente de "${mae.titulo}". Continuar?`, { titulo: 'Trocar o cliente da subtarefa', okLabel: 'Continuar' })
+      const nomes = mudam.slice(0, 3).map(t => `"${t.titulo}"`).join(', ') + (mudam.length > 3 ? ` ${tr('tarefa.e-mais', { n: mudam.length - 3 })}` : '')
+      const ok = await confirmar(tr('tarefa.dlg-troca-cliente-varias', { nomes, cliente: mae.clienteNome || mae.titulo }), { titulo: 'Trocar o cliente da subtarefa', okLabel: 'Continuar' })
       if (!ok) return
     }
     // Otimista: a Lista reorganiza na hora; a rede confirma e ressincroniza.
     setTarefas(ts => ts.map(t => podem.includes(t.id) ? { ...t, ...camposAoVincular(t as any, mae as any) } as any : t))
     const res = await Promise.all(podem.map(id => fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, tarefaPaiId: maeId }) }).then(r => r.ok).catch(() => false)))
     const falhas = res.filter(x => !x).length
-    if (falhas) toast(`${falhas} tarefa(s) não foram movidas.`, 'erro')
-    else toast(podem.length === 1 ? `Agora é subtarefa de "${mae.titulo}".` : `${podem.length} tarefas viraram subtarefas de "${mae.titulo}".`, 'sucesso')
-    if (recusadas.length) toast(`${recusadas.length} não puderam: ${recusadas[0].motivo}`, 'info')
+    if (falhas) toast(tr('tarefa.aviso-nao-movidas', { n: falhas }), 'erro')
+    else toast(podem.length === 1 ? tr('tarefa.virou-subtarefa-de', { nome: mae.titulo }) : tr('tarefa.aviso-viraram-subtarefas', { n: podem.length, nome: mae.titulo }), 'sucesso')
+    if (recusadas.length) toast(tr('tarefa.aviso-nao-puderam', { n: recusadas.length, motivo: recusadas[0].motivo }), 'info')
     setSubsRecolhidas(r => ({ ...r, [maeId]: false }))
     setSelecionadas([])
     carregar()
@@ -431,7 +446,7 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
     const antes = tarefas.find(t => t.id === id)
     setTarefas(ts => ts.map(t => t.id === id ? { ...t, status } : t))
     await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) }).catch(() => {})
-    if (antes) registrarDesfazer(`Status de "${antes.titulo}"`, async () => {
+    if (antes) registrarDesfazer(tr('tarefa.desfazer-status', { nome: antes.titulo }), async () => {
       const r = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: antes.status }) }).catch(() => null)
       carregar()
       return !!r?.ok
@@ -493,17 +508,17 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
     const falhas = res.filter(ok => !ok).length
     setAplicandoMassa(false)
     carregar()
-    if (falhas) toast(`${ids.length - falhas} de ${ids.length} atualizadas — ${falhas} falharam. Tente de novo nas que sobraram.`, 'erro')
-    else { toast(`${ids.length} ${ids.length > 1 ? 'tarefas' : 'tarefa'} · ${rotulo}`, 'sucesso'); setSelecionadas([]) }
+    if (falhas) toast(tr('tarefa.aviso-parcial', { ok: ids.length - falhas, total: ids.length, falhas }), 'erro')
+    else { toast(tr('tarefa.massa-resultado', { n: ids.length, alvo: tr(ids.length > 1 ? 'comum.tarefas' : 'comum.tarefa'), rotulo }), 'sucesso'); setSelecionadas([]) }
   }
 
   function excluirSelecionadas() {
     setConfirmPopup({
-      mensagem: `Excluir ${selecionadas.length} tarefa(s)?`,
+      mensagem: tr('tarefa.excluir-n', { n: selecionadas.length }),
       onConfirm: async () => {
         const ids = [...selecionadas]
         await Promise.all(ids.map(id => fetch(`/api/tarefas?id=${id}`, { method: 'DELETE' })))
-        registrarDesfazer(`Exclusão de ${ids.length} tarefa(s)`, async () => {
+        registrarDesfazer(tr('tarefa.desfazer-exclusao-varias', { n: ids.length }), async () => {
           const rs = await Promise.all(ids.map(id => fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, restaurar: true }) }).then(r => r.ok).catch(() => false)))
           carregar()
           return rs.every(Boolean)
@@ -517,12 +532,12 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
   // Exclusao individual a partir do "X" na linha da lista (tarefa ou subtarefa)
   function excluirUma(id: string, titulo: string) {
     setConfirmPopup({
-      mensagem: `Excluir "${titulo}"?`,
+      mensagem: tr('tarefa.dlg-excluir', { nome: titulo }),
       onConfirm: async () => {
         setConfirmPopup(null)
         setTarefas(ts => ts.filter(t => t.id !== id)) // remocao otimista
         await fetch(`/api/tarefas?id=${id}`, { method: 'DELETE' }).catch(() => {})
-        registrarDesfazer(`Exclusão de "${titulo}"`, async () => {
+        registrarDesfazer(tr('tarefa.desfazer-exclusao', { nome: titulo }), async () => {
           const r = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, restaurar: true }) }).catch(() => null)
           carregar()
           return !!r?.ok
@@ -543,7 +558,7 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
       {confirmPopup && <ConfirmPopup mensagem={confirmPopup.mensagem} onConfirm={confirmPopup.onConfirm} onCancel={() => setConfirmPopup(null)} />}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Tarefas</h2>
+        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{tr('tarefa.tarefas')}</h2>
         {!mostrarLixeira && (
           <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }}>
             {(['kanban', 'lista'] as const).map(v => (
@@ -559,29 +574,29 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
           <>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <span style={{ position: 'absolute', left: 10, color: 'var(--v2-ink3)', pointerEvents: 'none', display: 'flex' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.35-4.35" /></svg></span>
-              <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Pesquisar tarefas..." style={{ padding: '8px 12px 8px 30px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit', width: 180 }} />
+              <input value={busca} onChange={e => setBusca(e.target.value)} placeholder={tr('tarefa.buscar')} style={{ padding: '8px 12px 8px 30px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit', width: 180 }} />
             </div>
             {!clienteFixo && !perfilClinica && !perfilTurismo && !perfilCidadania && !perfilTelefonia && (
               <select value={filtroCliente} onChange={e => setFiltroCliente(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }}>
-                <option value="">Todos os clientes</option>
+                <option value="">{tr('tarefa.todos-clientes')}</option>
                 {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             )}
             {!responsavelFixo && <select value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }}>
-              <option value="">Todos os responsáveis</option>
+              <option value="">{tr('tarefa.todos-responsaveis')}</option>
               {(usuarios || []).filter(u => u.role !== 'cliente').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
             </select>}
             <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }}>
-              <option value="">Todos os tipos</option>
-              {[...tiposBase(), ...tiposCustom].map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
+              <option value="">{tr('tarefa.todos-tipos')}</option>
+              {[...tiposBase(), ...tiposCustom].map(t => <option key={t.key} value={t.key}>{rotuloTipo(t.key, t.label)}</option>)}
             </select>
-            <select value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)} title="Filtrar por urgência"
+            <select value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)} title={tr('tarefa.filtrar-urgencia')}
               style={{ padding: '8px 12px', borderRadius: 8, fontSize: 12, fontFamily: 'inherit', fontWeight: filtroPrioridade ? 700 : 400, color: filtroPrioridade ? corPrioridade(filtroPrioridade) : 'var(--v2-ink)', border: `1px solid ${filtroPrioridade ? corPrioridade(filtroPrioridade) : 'var(--v2-rule)'}` }}>
-              <option value="">Todas as urgências</option>
-              {PRIORIDADES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+              <option value="">{tr('tarefa.todas-urgencias')}</option>
+              {PRIORIDADES.map(p => <option key={p.key} value={p.key}>{rotuloPrioridade(p.key, p.label)}</option>)}
             </select>
             {(filtroCliente || filtroResponsavel || filtroTipo || filtroPrioridade || busca) && (
-              <button onClick={() => { setFiltroCliente(''); setFiltroResponsavel(''); setFiltroTipo(''); setFiltroPrioridade(''); setBusca('') }} style={{ padding: '8px 14px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Limpar filtros</button>
+              <button onClick={() => { setFiltroCliente(''); setFiltroResponsavel(''); setFiltroTipo(''); setFiltroPrioridade(''); setBusca('') }} style={{ padding: '8px 14px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer' }}>{tr('tarefa.limpar-filtros')}</button>
             )}
             {/* Mostrar/ocultar concluídas */}
             <button onClick={() => setMostrarConcluidas(v => !v)} title={mostrarConcluidas ? 'Ocultar concluídas' : 'Mostrar concluídas'} style={{
@@ -617,7 +632,7 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
             {!mostrarLixeira && excluidas.length > 0 && <span style={{ background: 'var(--v2-hot)', color: 'var(--v2-surface)', borderRadius: 999, padding: '0 6px', fontSize: 10, fontWeight: 700 }}>{excluidas.length}</span>}
           </button>
           {!mostrarLixeira && podeEditar && (
-            <button onClick={() => setNovaModal(true)} className="soma10-no-invert" style={{ padding: '9px 16px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova tarefa</button>
+            <button onClick={() => setNovaModal(true)} className="soma10-no-invert" style={{ padding: '9px 16px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{tr('tarefa.nova')}</button>
           )}
         </div>
       </div>
@@ -627,38 +642,38 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
         return (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, padding: '10px 16px', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{selecionadas.length} selecionada(s)</span>
-          <button onClick={() => setSelecionadas([])} style={{ background: 'none', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Limpar</button>
+          <button onClick={() => setSelecionadas([])} style={{ background: 'none', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: 'var(--v2-ink2)', cursor: 'pointer' }}>{tr('comum.limpar')}</button>
 
           {podeEditar && <>
             <span style={{ width: 1, height: 22, background: 'var(--v2-surface2)' }} />
             {/* Cada select volta para o placeholder depois de aplicar (value fixo):
                 ele é um COMANDO, não o estado atual das tarefas — que podem ter
                 seis status diferentes entre si. */}
-            <select value="" disabled={aplicandoMassa} onChange={e => { const v = e.target.value; if (!v) return; if (v === 'concluido') { concluirComPergunta(selecionadas, (filhas) => aplicarEmMassa({ status: v }, 'concluídas', Array.from(new Set([...selecionadas, ...filhas])))); return } aplicarEmMassa({ status: v }, `movidas para ${COLUNAS.find(c => c.key === v)?.label || v}`) }} style={selEstilo} title="Mover as selecionadas de coluna">
-              <option value="">Mover para...</option>
-              {COLUNAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+            <select value="" disabled={aplicandoMassa} onChange={e => { const v = e.target.value; if (!v) return; if (v === 'concluido') { concluirComPergunta(selecionadas, (filhas) => aplicarEmMassa({ status: v }, 'concluídas', Array.from(new Set([...selecionadas, ...filhas])))); return } aplicarEmMassa({ status: v }, tr('tarefa.massa-movidas', { coluna: COLUNAS.find(c => c.key === v)?.label || v })) }} style={selEstilo} title={tr('tarefa.mover-coluna')}>
+              <option value="">{tr('tarefa.mover-para')}</option>
+              {COLUNAS.map(c => <option key={c.key} value={c.key}>{rotuloStatus(c.key, c.label)}</option>)}
             </select>
 
-            <select value="" disabled={aplicandoMassa} onChange={e => { const v = e.target.value; if (!v) return; const u = (usuarios || []).find(x => x.email === v); aplicarEmMassa({ responsavelEmail: v, responsavelNome: u?.nome || '' }, `atribuídas a ${u?.nome || v}`) }} style={selEstilo} title="Definir o responsável das selecionadas">
-              <option value="">Responsável...</option>
+            <select value="" disabled={aplicandoMassa} onChange={e => { const v = e.target.value; if (!v) return; const u = (usuarios || []).find(x => x.email === v); aplicarEmMassa({ responsavelEmail: v, responsavelNome: u?.nome || '' }, tr('tarefa.massa-atribuidas', { nome: u?.nome || v })) }} style={selEstilo} title={tr('tarefa.definir-responsavel')}>
+              <option value="">{tr('tarefa.responsavel-placeholder')}</option>
               {(usuarios || []).filter(u => u.role !== 'cliente').map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
             </select>
 
-            <select value="" disabled={aplicandoMassa} onChange={e => { const v = e.target.value; if (v) aplicarEmMassa({ prioridade: v }, `prioridade ${PRIORIDADES.find(p => p.key === v)?.label || v}`) }} style={selEstilo} title="Definir a prioridade das selecionadas">
-              <option value="">Prioridade...</option>
-              {PRIORIDADES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+            <select value="" disabled={aplicandoMassa} onChange={e => { const v = e.target.value; if (v) aplicarEmMassa({ prioridade: v }, tr('tarefa.massa-prioridade', { valor: PRIORIDADES.find(p => p.key === v)?.label || v })) }} style={selEstilo} title={tr('tarefa.definir-prioridade')}>
+              <option value="">{tr('tarefa.prioridade-placeholder')}</option>
+              {PRIORIDADES.map(p => <option key={p.key} value={p.key}>{rotuloPrioridade(p.key, p.label)}</option>)}
             </select>
 
-            <input type="date" disabled={aplicandoMassa} onChange={e => { const v = e.target.value; if (v) aplicarEmMassa({ prazo: new Date(v + 'T12:00:00').toISOString() }, `prazo ${new Date(v + 'T12:00:00').toLocaleDateString('pt-BR')}`) }} title="Definir o prazo das selecionadas" style={{ ...selEstilo, maxWidth: 150 }} />
-            <button onClick={() => { setBuscaMae(''); setEscolherMae({ ids: selecionadas }) }} disabled={aplicandoMassa} title="As selecionadas viram subtarefas de uma tarefa-mãe"
+            <input type="date" disabled={aplicandoMassa} onChange={e => { const v = e.target.value; if (v) aplicarEmMassa({ prazo: new Date(v + 'T12:00:00').toISOString() }, tr('tarefa.massa-prazo', { data: new Date(v + 'T12:00:00').toLocaleDateString() })) }} title={tr('tarefa.definir-prazo')} style={{ ...selEstilo, maxWidth: 150 }} />
+            <button onClick={() => { setBuscaMae(''); setEscolherMae({ ids: selecionadas }) }} disabled={aplicandoMassa} title={tr('tarefa.viram-subtarefas')}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 4v6a4 4 0 0 0 4 4h7M16 10l4 4-4 4" /></svg>
               Mover para dentro de…
             </button>
           </>}
 
-          {aplicandoMassa && <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>aplicando...</span>}
-          {podeExcluir && <button onClick={excluirSelecionadas} disabled={aplicandoMassa} style={{ marginLeft: 'auto', background: 'var(--v2-hot)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Excluir selecionadas</button>}
+          {aplicandoMassa && <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('comum.aplicando')}</span>}
+          {podeExcluir && <button onClick={excluirSelecionadas} disabled={aplicandoMassa} style={{ marginLeft: 'auto', background: 'var(--v2-hot)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{tr('tarefa.excluir-selecionadas')}</button>}
         </div>
         )
       })()}
@@ -690,7 +705,7 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
                       {(() => { const tp = tipoInfo(t.tipo); return (
                         <span style={{ position: 'absolute', top: 6, left: 8, display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 700, color: tp.cor, background: `${tp.cor}15`, borderRadius: 4, padding: '1px 5px', textTransform: 'uppercase', letterSpacing: 0.3 }}>
                           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={tp.cor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d={tp.icone} /></svg>
-                          {tp.label}
+                          {rotuloTipo(tp.key, tp.label)}
                         </span>
                       )})()}
                       <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{t.titulo}</p>
@@ -712,7 +727,7 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
                         {(t.anexos || []).length > 0 && <span style={{ fontSize: 10, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '1px 6px' }}>{t.anexos!.length} anexo(s)</span>}
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                        <button onClick={e => { e.stopPropagation(); setQuickSubTexto(''); setQuickSubId(quickSubId === t.id ? null : t.id) }} title="Adicionar subtarefa"
+                        <button onClick={e => { e.stopPropagation(); setQuickSubTexto(''); setQuickSubId(quickSubId === t.id ? null : t.id) }} title={tr('tarefa.add-subtarefa')}
                           style={{ width: 18, height: 18, borderRadius: 5, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 13, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>+</button>
                         <span onClick={e => { e.stopPropagation(); alternarSelecao(t.id) }}
                           style={{ width: 16, height: 16, borderRadius: 4, border: selecionadas.includes(t.id) ? '1.5px solid #1877f2' : '1px solid var(--v2-rule2)',
@@ -726,10 +741,10 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
                         <div onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 4, marginTop: 6 }}>
                           <input autoFocus value={quickSubTexto} onChange={e => setQuickSubTexto(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter' && quickSubTexto.trim()) criarSubtarefa(t, quickSubTexto); if (e.key === 'Escape') setQuickSubId(null) }}
-                            placeholder="Subtarefa — Enter adiciona"
+                            placeholder={tr('tarefa.subtarefa-enter')}
                             style={{ flex: 1, minWidth: 0, padding: '6px 8px', borderRadius: 7, border: '1.5px solid var(--v2-rule)', fontSize: 11.5, fontFamily: 'inherit' }} />
                           <button onClick={() => criarSubtarefa(t, quickSubTexto)} disabled={!quickSubTexto.trim()}
-                            style={{ padding: '6px 9px', background: quickSubTexto.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: quickSubTexto.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>Ok</button>
+                            style={{ padding: '6px 9px', background: quickSubTexto.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: quickSubTexto.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>{tr('comum.ok')}</button>
                         </div>
                       )}
                     </div>
@@ -758,12 +773,12 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
           <div onClick={fecharFora(() => setEscolherMae(null), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
             <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <div style={{ padding: '16px 18px 10px' }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>Mover para dentro de</p>
-                <p style={{ margin: '4px 0 10px', fontSize: 15, fontWeight: 500, color: 'var(--v2-ink)' }}>{origem.length === 1 ? `"${origem[0]?.titulo}"` : `${origem.length} tarefas`} {origem.length === 1 ? 'vira' : 'viram'} subtarefa de…</p>
-                <input autoFocus value={buscaMae} onChange={e => setBuscaMae(e.target.value)} placeholder="Buscar tarefa-mãe pelo título ou cliente" style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 13.5, fontFamily: 'inherit' }} />
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--v2-ink3)' }}>{tr('tarefa.mover-dentro')}</p>
+                <p style={{ margin: '4px 0 10px', fontSize: 15, fontWeight: 500, color: 'var(--v2-ink)' }}>{tr('tarefa.viram-subtarefa-de', { alvo: origem.length === 1 ? `"${origem[0]?.titulo}"` : tr('tarefa.n-tarefas', { n: origem.length }) })}</p>
+                <input autoFocus value={buscaMae} onChange={e => setBuscaMae(e.target.value)} placeholder={tr('tarefa.buscar-mae')} style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 13.5, fontFamily: 'inherit' }} />
               </div>
               <div style={{ overflowY: 'auto', padding: '0 8px 8px' }}>
-                {candidatas.length === 0 && <p style={{ margin: 0, padding: 16, fontSize: 13, color: 'var(--v2-ink3)' }}>Nenhuma tarefa pode ser a mãe (só tarefas de primeiro nível).</p>}
+                {candidatas.length === 0 && <p style={{ margin: 0, padding: 16, fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('tarefa.sem-mae')}</p>}
                 {candidatas.map(c => {
                   const pg = progressoDaMae(c.id, tarefas as any)
                   const outroCliente = origem.some(o => (o.clienteId || '') !== (c.clienteId || ''))
@@ -773,7 +788,7 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
                       onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--v2-surface2)' }} onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}>
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ display: 'block', fontSize: 13.5, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.titulo}</span>
-                        <span style={{ display: 'block', fontSize: 12, color: 'var(--v2-ink3)' }}>{c.clienteNome || 'Interno'}{pg.total ? ` · ${pg.concluidas}/${pg.total} subtarefas` : ''}{outroCliente ? ' · outro cliente' : ''}</span>
+                        <span style={{ display: 'block', fontSize: 12, color: 'var(--v2-ink3)' }}>{c.clienteNome || tr('tarefa.interno')}{pg.total ? ` · ${tr('tarefa.contagem-subtarefas', { feitas: pg.concluidas, total: pg.total })}` : ''}{outroCliente ? ' · outro cliente' : ''}</span>
                       </span>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 4v6a4 4 0 0 0 4 4h7M16 10l4 4-4 4" /></svg>
                     </button>
@@ -789,16 +804,16 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
       {perguntaMae && typeof document !== 'undefined' && createPortal(
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 20 }}>
           <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 16, width: '100%', maxWidth: 460, padding: '20px 22px' }}>
-            <p style={{ margin: 0, fontSize: 11, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--v2-amber)' }}>Subtarefas em aberto</p>
-            <p style={{ margin: '6px 0 4px', fontSize: 16, fontWeight: 500, color: 'var(--v2-ink)' }}>{perguntaMae.abertas.length === 1 ? 'Ainda há 1 subtarefa aberta.' : `Ainda há ${perguntaMae.abertas.length} subtarefas abertas.`}</p>
+            <p style={{ margin: 0, fontSize: 11, fontWeight: 500, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--v2-amber)' }}>{tr('tarefa.subtarefas-abertas')}</p>
+            <p style={{ margin: '6px 0 4px', fontSize: 16, fontWeight: 500, color: 'var(--v2-ink)' }}>{perguntaMae.abertas.length === 1 ? tr('tarefa.uma-subtarefa-aberta') : tr('tarefa.n-subtarefas-abertas', { n: perguntaMae.abertas.length })}</p>
             <ul style={{ margin: '0 0 14px', padding: 0, listStyle: 'none', fontSize: 13, color: 'var(--v2-ink2)', display: 'flex', flexDirection: 'column', gap: 3 }}>
               {perguntaMae.abertas.slice(0, 5).map((a: any) => <li key={a.id}>· {a.titulo}</li>)}
-              {perguntaMae.abertas.length > 5 && <li>· e mais {perguntaMae.abertas.length - 5}</li>}
+              {perguntaMae.abertas.length > 5 && <li>· {tr('tarefa.e-mais', { n: perguntaMae.abertas.length - 5 })}</li>}
             </ul>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={() => { const f = perguntaMae.depois; const filhas = perguntaMae.abertas.map((a: any) => a.id); setPerguntaMae(null); f(filhas) }} style={{ padding: '9px 14px', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Concluir subtarefas também</button>
-              <button onClick={() => { const ids = perguntaMae.ids; setPerguntaMae(null); setView('lista'); setSubsRecolhidas(r => ({ ...r, ...Object.fromEntries(ids.map(i => [i, false])) })); toast('A tarefa-mãe continua aberta. Revise as subtarefas.', 'info') }} style={{ padding: '9px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>Revisar subtarefas</button>
-              <button onClick={() => setPerguntaMae(null)} style={{ padding: '9px 12px', background: 'none', color: 'var(--v2-ink3)', border: 0, borderRadius: 10, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
+              <button onClick={() => { const f = perguntaMae.depois; const filhas = perguntaMae.abertas.map((a: any) => a.id); setPerguntaMae(null); f(filhas) }} style={{ padding: '9px 14px', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{tr('tarefa.concluir-subtarefas')}</button>
+              <button onClick={() => { const ids = perguntaMae.ids; setPerguntaMae(null); setView('lista'); setSubsRecolhidas(r => ({ ...r, ...Object.fromEntries(ids.map(i => [i, false])) })); toast('A tarefa-mãe continua aberta. Revise as subtarefas.', 'info') }} style={{ padding: '9px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>{tr('tarefa.revisar-subtarefas')}</button>
+              <button onClick={() => setPerguntaMae(null)} style={{ padding: '9px 12px', background: 'none', color: 'var(--v2-ink3)', border: 0, borderRadius: 10, fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>{tr('comum.cancelar')}</button>
             </div>
           </div>
         </div>
@@ -814,9 +829,9 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
             </div>
           )}
           <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px 32px', minWidth: 720, gap: 8, padding: '12px 16px', borderBottom: '1px solid var(--v2-rule)', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>
-            <span>Tipo</span><span>Tarefa</span><span>Responsável</span><span>Cliente</span><span>Prazo</span><span>Prioridade</span><span>Status</span><span></span>
+            <span>{tr('comum.tipo')}</span><span>{tr('tarefa.tarefa')}</span><span>{tr('comum.responsavel')}</span><span>{tr('comum.cliente')}</span><span>{tr('comum.prazo')}</span><span>{tr('comum.prioridade')}</span><span>{tr('comum.status')}</span><span></span>
           </div>
-          {filtradas.length === 0 && <p style={{ margin: 0, padding: 30, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhuma tarefa encontrada.</p>}
+          {filtradas.length === 0 && <p style={{ margin: 0, padding: 30, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>{tr('tarefa.nenhuma')}</p>}
           {filtradas.filter(t => !t.tarefaPaiId || !tarefas.some((p: any) => p.id === t.tarefaPaiId)).map(t => {
             const tp = tipoInfo(t.tipo)
             const subs = tarefas.filter((s: any) => s.tarefaPaiId === t.id && (mostrarConcluidas || (s.status !== 'concluido' && s.status !== 'descartado')))
@@ -833,11 +848,11 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
                   title={podeEditar ? 'Arraste sobre outra tarefa para torná-la subtarefa' : undefined}
                   style={{ display: 'grid', gridTemplateColumns: '100px 1fr 120px 120px 100px 90px 90px 32px', minWidth: 720, gap: 8, padding: '10px 16px', borderBottom: '1px solid var(--v2-rule)', cursor: 'pointer', alignItems: 'center', fontSize: 12, background: overRow === x.id || editModal?.id === x.id ? 'var(--v2-amber-bg)' : ehSub ? 'var(--v2-surface1)' : 'var(--v2-surface)', boxShadow: overRow === x.id ? 'inset 0 0 0 2px var(--v2-amber-on)' : editModal?.id === x.id ? 'inset 3px 0 0 var(--v2-amber-on)' : 'none', opacity: dragId === x.id ? 0.5 : 1, transition: 'background 100ms' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: xp.cor, fontWeight: 600 }}>
-                    <span onClick={e => { e.stopPropagation(); alternarSelecao(x.id) }} title="Selecionar" style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${selecionadas.includes(x.id) ? 'var(--v2-amber-on)' : 'var(--v2-rule2)'}`, background: selecionadas.includes(x.id) ? 'var(--v2-amber-on)' : 'transparent', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer' }}>
+                    <span onClick={e => { e.stopPropagation(); alternarSelecao(x.id) }} title={tr('comum.selecionar')} style={{ width: 15, height: 15, borderRadius: 4, border: `1.5px solid ${selecionadas.includes(x.id) ? 'var(--v2-amber-on)' : 'var(--v2-rule2)'}`, background: selecionadas.includes(x.id) ? 'var(--v2-amber-on)' : 'transparent', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer' }}>
                       {selecionadas.includes(x.id) && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#17150E" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
                     </span>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={xp.cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={xp.icone} /></svg>
-                    {xp.label}
+                    {rotuloPrioridade(xp.key, xp.label)}
                   </span>
                   <span style={{ fontWeight: ehSub ? 500 : 600, color: ehSub ? 'var(--v2-ink2)' : 'var(--v2-ink)', display: 'flex', alignItems: 'center', gap: 8, paddingLeft: ehSub ? 22 : 0, minWidth: 0 }}>
                     {ehSub && <span style={{ color: 'var(--v2-ink3)', flexShrink: 0 }}>↳</span>}
@@ -848,7 +863,7 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
                     )}
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.titulo}</span>
                     {!ehSub && subs.length > 0 && (() => { const pg = progressoDaMae(x.id, tarefas as any); return (
-                      <span title={`${pg.concluidas} de ${pg.total} subtarefas concluídas`} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 700, color: pg.concluidas === pg.total ? 'var(--v2-ok)' : 'var(--v2-info)', background: pg.concluidas === pg.total ? 'var(--v2-ok-bg)' : 'var(--v2-info-bg)', borderRadius: 999, padding: '1px 8px' }}>
+                      <span title={tr('tarefa.subtarefas-concluidas', { feitas: pg.concluidas, total: pg.total })} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 700, color: pg.concluidas === pg.total ? 'var(--v2-ok)' : 'var(--v2-info)', background: pg.concluidas === pg.total ? 'var(--v2-ok-bg)' : 'var(--v2-info-bg)', borderRadius: 999, padding: '1px 8px' }}>
                         {pg.concluidas}/{pg.total}
                         <span style={{ width: 34, height: 3, borderRadius: 2, background: 'rgba(0,0,0,0.12)', overflow: 'hidden', display: 'inline-block' }}><span style={{ display: 'block', width: `${pg.total ? Math.round((pg.concluidas / pg.total) * 100) : 0}%`, height: '100%', background: 'currentColor' }} /></span>
                       </span>
@@ -857,17 +872,17 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
                       style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 5, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 4v6a4 4 0 0 0 4 4h7M16 10l4 4-4 4" /></svg>
                     </button>}
-                    {podeEditar && ehSub && <button onClick={e => { e.stopPropagation(); desvincular(x.id) }} title="Tirar de dentro (volta a ser tarefa)" className="gt-acao-linha"
+                    {podeEditar && ehSub && <button onClick={e => { e.stopPropagation(); desvincular(x.id) }} title={tr('tarefa.tirar-de-dentro-dica')} className="gt-acao-linha"
                       style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 5, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M15 20v-6a4 4 0 0 0-4-4H4M8 14l-4-4 4-4" /></svg>
                     </button>}
-                    {!ehSub && <button onClick={e => { e.stopPropagation(); setQuickSubTexto(''); setQuickSubId(quickSubId === x.id ? null : x.id) }} title="Adicionar subtarefa" style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 5, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>+</button>}
+                    {!ehSub && <button onClick={e => { e.stopPropagation(); setQuickSubTexto(''); setQuickSubId(quickSubId === x.id ? null : x.id) }} title={tr('tarefa.add-subtarefa')} style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 5, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 14, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>+</button>}
                   </span>
                   <span style={{ color: 'var(--v2-ink2)' }}>{x.responsavelNome || '--'}</span>
                   <span style={{ color: 'var(--v2-ink3)' }}>{x.clienteNome || '--'}</span>
                   <span style={{ color: ehAtrasado(x.prazo, x.status) ? 'var(--v2-hot)' : 'var(--v2-ink3)', fontWeight: ehAtrasado(x.prazo, x.status) ? 700 : 500 }}>{prazoFormatado(x.prazo) || '--'}{ehAtrasado(x.prazo, x.status) ? ' (atrasado)' : ''}</span>
-                  <span style={{ color: corPrioridade(x.prioridade), fontWeight: 700 }}>{PRIORIDADES.find(p => p.key === x.prioridade)?.label || x.prioridade}</span>
-                  <span style={{ fontSize: 11 }}>{COLUNAS.find(c => c.key === x.status)?.label || x.status}</span>
+                  <span style={{ color: corPrioridade(x.prioridade), fontWeight: 700 }}>{rotuloPrioridade(x.prioridade, PRIORIDADES.find(p => p.key === x.prioridade)?.label || x.prioridade)}</span>
+                  <span style={{ fontSize: 11 }}>{rotuloStatus(x.status, COLUNAS.find(c => c.key === x.status)?.label || x.status)}</span>
                   {podeExcluir && <button onClick={e => { e.stopPropagation(); excluirUma(x.id, x.titulo) }} title={ehSub ? 'Excluir subtarefa' : 'Excluir tarefa'}
                     style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, lineHeight: 1, padding: 0 }}
                     onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--v2-hot)'; (e.currentTarget as HTMLButtonElement).style.background = 'var(--v2-hot-bg)' }}
@@ -883,9 +898,9 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px 8px 138px', borderBottom: '1px solid var(--v2-rule)', background: 'var(--v2-surface)' }}>
                     <input autoFocus value={quickSubTexto} onChange={e => setQuickSubTexto(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter' && quickSubTexto.trim()) { criarSubtarefa(t, quickSubTexto) } if (e.key === 'Escape') setQuickSubId(null) }}
-                      placeholder="Nome da subtarefa — Enter para adicionar, Esc para fechar"
+                      placeholder={tr('tarefa.subtarefa-nome')}
                       style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
-                    <button onClick={() => criarSubtarefa(t, quickSubTexto)} disabled={!quickSubTexto.trim()} style={{ padding: '7px 12px', background: quickSubTexto.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: quickSubTexto.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Adicionar</button>
+                    <button onClick={() => criarSubtarefa(t, quickSubTexto)} disabled={!quickSubTexto.trim()} style={{ padding: '7px 12px', background: quickSubTexto.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: quickSubTexto.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('comum.adicionar')}</button>
                   </div>
                 )}
               </div>
@@ -899,10 +914,10 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
         <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
           <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--v2-rule)', display: 'flex', alignItems: 'center', gap: 10 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--v2-hot)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Tarefas excluidas</span>
-            <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Removidas automaticamente apos 30 dias</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{tr('tarefa.excluidas')}</span>
+            <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('tarefa.excluidas-prazo')}</span>
           </div>
-          {excluidas.length === 0 && <p style={{ margin: 0, padding: 40, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhuma tarefa na lixeira.</p>}
+          {excluidas.length === 0 && <p style={{ margin: 0, padding: 40, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>{tr('tarefa.lixeira-vazia')}</p>}
           {excluidas.map(t => (
             <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px', borderBottom: '1px solid var(--v2-rule)' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -913,9 +928,9 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
                   <span>{diasRestantes(t.excluidoEm)} dia(s) restante(s)</span>
                 </div>
               </div>
-              <button onClick={() => restaurarTarefa(t.id)} style={{ padding: '6px 14px', background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--v2-ok)', cursor: 'pointer' }}>Restaurar</button>
-              {podeExcluir && <button onClick={() => setConfirmPopup({ mensagem: `Excluir "${t.titulo}" permanentemente? Esta acao nao pode ser desfeita.`, onConfirm: () => { excluirPermanente(t.id); setConfirmPopup(null) } })}
-                style={{ padding: '6px 14px', background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--v2-hot)', cursor: 'pointer' }}>Excluir</button>}
+              <button onClick={() => restaurarTarefa(t.id)} style={{ padding: '6px 14px', background: 'var(--v2-ok-bg)', border: '1px solid var(--v2-ok-bg)', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--v2-ok)', cursor: 'pointer' }}>{tr('comum.restaurar')}</button>
+              {podeExcluir && <button onClick={() => setConfirmPopup({ mensagem: tr('tarefa.excluir-definitivo', { nome: t.titulo }), onConfirm: () => { excluirPermanente(t.id); setConfirmPopup(null) } })}
+                style={{ padding: '6px 14px', background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontSize: 12, fontWeight: 600, color: 'var(--v2-hot)', cursor: 'pointer' }}>{tr('comum.excluir')}</button>}
             </div>
           ))}
         </div>
@@ -934,10 +949,10 @@ export default function GestaoTarefas({ clientes, usuarios, clienteFixo, respons
             const id = editModal.id
             const titulo = editModal.titulo
             setConfirmPopup({
-              mensagem: `Excluir a tarefa "${editModal.titulo}"?`,
+              mensagem: tr('tarefa.dlg-excluir', { nome: editModal.titulo }),
               onConfirm: async () => {
                 await fetch(`/api/tarefas?id=${id}`, { method: 'DELETE' })
-                registrarDesfazer(`Exclusão de "${titulo}"`, async () => {
+                registrarDesfazer(tr('tarefa.desfazer-exclusao', { nome: titulo }), async () => {
                   const r = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, restaurar: true }) }).catch(() => null)
                   carregar()
                   return !!r?.ok
@@ -972,6 +987,8 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
   onClose: () => void; onSalvo: () => void; onExcluir?: () => void; onRecarregar?: (tarefaAtualizada: Tarefa) => void
   viewMode?: 'modal' | 'fullscreen' | 'sidebar'; onChangeViewMode?: (m: 'modal' | 'fullscreen' | 'sidebar') => void
 }) {
+  const { rotuloTipo, rotuloStatus, rotuloPrioridade } = useRotulos()
+  const tr = useT()
   // `tarefa` = edição (existe no banco). O Playbook passa um objeto SEM id só para
   // pré-preencher (cliente, marco, tipo): isso é criação — POST, sem atividade/comentários.
   const tarefa: Tarefa | null = tarefaEntrada && tarefaEntrada.id ? tarefaEntrada : null
@@ -1017,7 +1034,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
     if (!p) { setForm(f => ({ ...f, origemPostId: '' })); return }
     const anx = [
       ...(p.anexos || []),
-      ...((p.laminas || []).map((l: any, i: number) => l?.anexo ? { ...l.anexo, nome: `Lâmina ${i + 1} — ${l.anexo.nome}` } : null).filter(Boolean)),
+      ...((p.laminas || []).map((l: any, i: number) => l?.anexo ? { ...l.anexo, nome: tr('tarefa.lamina-n', { n: i + 1, nome: l.anexo.nome }) } : null).filter(Boolean)),
     ]
     setAnexos(anx)
     const esc = (s: string) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -1120,14 +1137,14 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
     const alvo = todasTarefas.find(t => t.id === id)!
     const c = camposAoVincular(alvo as any, tarefa as any)
     if (c.clienteMudou) {
-      const ok = await confirmar(`"${alvo.titulo}" é de outro cliente e passa a ser de ${tarefa.clienteNome || 'sem cliente'}. Continuar?`, { titulo: 'Trocar o cliente da subtarefa', okLabel: 'Continuar' })
+      const ok = await confirmar(tr('tarefa.dlg-troca-cliente', { nome: alvo.titulo, cliente: tarefa.clienteNome || '—' }), { titulo: 'Trocar o cliente da subtarefa', okLabel: 'Continuar' })
       if (!ok) return
     }
     const ok = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, tarefaPaiId: tarefa.id }) }).then(r => r.ok).catch(() => false)
     if (!ok) { toast('Não foi possível puxar a tarefa.', 'erro'); return }
     setBuscaPuxar('')
     setTodasTarefas(ts => ts.map(t => t.id === id ? { ...t, ...c } : t))
-    toast(`"${alvo.titulo}" agora é subtarefa daqui.`, 'sucesso')
+    toast(tr('tarefa.aviso-virou-subtarefa', { nome: alvo.titulo }), 'sucesso')
   }
   async function addSubtarefa() {
     const t = novoSub.trim(); if (!t || !tarefa?.id) return
@@ -1300,7 +1317,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
     }
     // Vinculo obrigatorio: tarefa de um cliente precisa de uma etapa do Playbook
     // Pauta vinculada dispensa a etapa do Playbook: a tarefa de produção nasce da esteira.
-    if (!PERFIL_CLINICA_TAREFAS && form.clienteId && !form.marcoId && !form.origemPostId) { toast('Vincule a tarefa a um marco ou etapa do Playbook do cliente (campo "Marco ou etapa do Playbook").', 'erro'); return }
+    if (!PERFIL_CLINICA_TAREFAS && form.clienteId && !form.marcoId && !form.origemPostId) { toast(tr('tarefa.vincule-marco'), 'erro'); return }
     setSalvando(true)
     const resp = (usuarios || []).find(u => u.email === form.responsavelEmail)
     const cli = (clientes || []).find(c => c.id === form.clienteId)
@@ -1310,7 +1327,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
       const antes: Record<string, any> = { id: tarefa.id }
       for (const k of Object.keys(body)) antes[k] = (tarefa as any)[k] ?? (Array.isArray((body as any)[k]) ? [] : '')
       await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, ...body }) })
-      registrarDesfazer(`Edição de "${tarefa.titulo}"`, async () => {
+      registrarDesfazer(tr('tarefa.desfazer-edicao', { nome: tarefa.titulo }), async () => {
         const r = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(antes) }).catch(() => null)
         onSalvo() // recarrega a lista de trás (o modal já fechou quando o Ctrl+Z acontece)
         return !!r?.ok
@@ -1339,13 +1356,13 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
 
   const activityPanel = tarefa && (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <h4 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>Activity</h4>
+      <h4 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('tarefa.atividade')}</h4>
 
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0, marginBottom: 14 }}>
         {/* Anexos com miniatura clicavel */}
         {anexos.length > 0 && (
           <>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Anexos</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>{tr('comum.anexos')}</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
               {anexos.map((a, i) => (
                 <div key={i} onClick={() => setViewerIndex(i)} style={{ position: 'relative', width: 56, height: 56, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--v2-rule)', cursor: 'pointer' }}>
@@ -1370,7 +1387,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
         {/* Correcoes marcadas */}
         {anexosComAnotacoes.length > 0 && (
           <>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-hot)', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Correcoes marcadas</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-hot)', marginBottom: 8, textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>{tr('tarefa.correcoes-marcadas')}</div>
             {anexosComAnotacoes.map((a, ai) => {
               const realIdx = anexos.indexOf(a)
               return (
@@ -1392,7 +1409,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
 
         {/* Historico */}
         {(tarefa.atividades || []).length > 0 && (
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', margin: '4px 0 8px', textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Histórico</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', margin: '4px 0 8px', textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>{tr('comum.historico')}</div>
         )}
         {(tarefa.atividades || []).map((a: any) => (
           <div key={a.id} style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--v2-surface1)' }}>
@@ -1403,21 +1420,21 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
             </div>
           </div>
         ))}
-        {anexos.length === 0 && (tarefa.comentarios || []).length === 0 && (tarefa.atividades || []).length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhuma atividade ainda.</p>}
+        {anexos.length === 0 && (tarefa.comentarios || []).length === 0 && (tarefa.atividades || []).length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('tarefa.sem-atividade')}</p>}
 
         {(tarefa.comentarios || []).length > 0 && (
           <>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', margin: '14px 0 8px', textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>Comentários</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', margin: '14px 0 8px', textTransform: 'uppercase' as const, letterSpacing: 0.5 }}>{tr('comum.comentarios')}</div>
             {(tarefa.comentarios || []).map((c: any) => (
               <div key={c.id} style={{ background: 'var(--v2-surface1)', borderRadius: 10, padding: '10px 14px', marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                   <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--v2-ink)' }}>{c.autorNome}</span>
                   <span style={{ fontSize: 10, color: 'var(--v2-ink3)' }}>{new Date(c.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                   <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
-                    <button onClick={() => { setEditandoComentarioId(c.id); setEditandoComentarioTexto(c.texto) }} title="Editar" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, opacity: 0.4 }}>
+                    <button onClick={() => { setEditandoComentarioId(c.id); setEditandoComentarioTexto(c.texto) }} title={tr('comum.editar')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, opacity: 0.4 }}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink2)" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     </button>
-                    <button onClick={() => excluirComentario(c.id)} title="Excluir" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, opacity: 0.4 }}>
+                    <button onClick={() => excluirComentario(c.id)} title={tr('comum.excluir')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, opacity: 0.4 }}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--v2-hot)" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                     </button>
                   </div>
@@ -1427,9 +1444,9 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
                     <textarea lang="pt-BR" value={editandoComentarioTexto} onChange={e => setEditandoComentarioTexto(e.target.value)}
                       style={{ width: '100%', padding: '6px 8px', borderRadius: 6, border: '1px solid var(--v2-rule)', fontSize: 12, minHeight: 40, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} autoFocus />
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                      <button onClick={() => setEditandoComentarioId(null)} style={{ padding: '4px 10px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Cancelar</button>
+                      <button onClick={() => setEditandoComentarioId(null)} style={{ padding: '4px 10px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
                       <button onClick={() => { editarComentario(c.id, editandoComentarioTexto); setEditandoComentarioId(null) }} disabled={!editandoComentarioTexto.trim()}
-                        style={{ padding: '4px 10px', background: 'var(--v2-ink)', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, color: 'var(--v2-surface)', cursor: 'pointer' }}>Salvar</button>
+                        style={{ padding: '4px 10px', background: 'var(--v2-ink)', border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, color: 'var(--v2-surface)', cursor: 'pointer' }}>{tr('comum.salvar')}</button>
                     </div>
                   </div>
                 ) : (
@@ -1472,7 +1489,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
             if (!query.includes(' ') || query.length < 30) { setMencaoAberta(true); setMencaoQuery(query); setMencaoPos(arroba) }
             else setMencaoAberta(false)
           } else setMencaoAberta(false)
-        }} placeholder="Escreva um comentário... Use @ para mencionar"
+        }} placeholder={tr('tarefa.comentario-placeholder')}
           style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !mencaoAberta) { e.preventDefault(); enviarComentario() } }} />
         <button onClick={enviarComentario} disabled={enviandoComentario || !novoComentario.trim()}
@@ -1518,13 +1535,13 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
             return (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, alignSelf: 'flex-start', margin: '-6px 0 16px', padding: '6px 12px', background: 'var(--v2-info-bg)', border: '1px solid var(--v2-info-bg)', borderRadius: 8, fontSize: 12, color: 'var(--v2-info)' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 4v6a4 4 0 0 0 4 4h7" /><path d="M16 10l4 4-4 4" /></svg>
-                <span style={{ color: '#60a5fa', fontWeight: 600 }}>Subtarefa de</span>
+                <span style={{ color: '#60a5fa', fontWeight: 600 }}>{tr('tarefa.subtarefa-de')}</span>
                 <button type="button" onClick={() => mae && onRecarregar?.(mae)} disabled={!mae}
                   style={{ background: 'none', border: 'none', padding: 0, fontSize: 12, fontWeight: 800, color: 'var(--v2-info)', cursor: mae ? 'pointer' : 'default', textDecoration: mae ? 'underline' : 'none', fontFamily: 'inherit' }}>
                   {mae?.titulo || 'tarefa-mãe'}
                 </button>
-                <button type="button" onClick={tirarDeDentro} title="Tirar de dentro (volta a ser tarefa de primeiro nível)"
-                  style={{ marginLeft: 6, background: 'none', border: '1px solid var(--v2-rule)', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer', fontFamily: 'inherit' }}>Tirar de dentro</button>
+                <button type="button" onClick={tirarDeDentro} title={tr('tarefa.tirar-de-dentro-dica2')}
+                  style={{ marginLeft: 6, background: 'none', border: '1px solid var(--v2-rule)', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer', fontFamily: 'inherit' }}>{tr('tarefa.tirar-de-dentro')}</button>
               </div>
             )
           })()}
@@ -1546,17 +1563,17 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
               <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Titulo *</label>
-                <input value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} placeholder="O que precisa ser feito?"
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('comum.titulo-obrigatorio')}</label>
+                <input value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} placeholder={tr('tarefa.o-que-fazer')}
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
               <div style={{ width: 160 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Tipo</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('comum.tipo')}</label>
                 <div style={{ position: 'relative' }}>
                   <select value={form.tipo} onChange={e => { if (e.target.value === '__novo__') { setCriandoTipo(true) } else { setForm(f => ({ ...f, tipo: e.target.value })) } }}
                     style={{ width: '100%', padding: '10px 12px 10px 32px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)', appearance: 'none', boxSizing: 'border-box' }}>
-                    {[...tiposBase(), ...tiposCustom].map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
-                    <option value="__novo__">+ Criar novo tipo...</option>
+                    {[...tiposBase(), ...tiposCustom].map(t => <option key={t.key} value={t.key}>{rotuloTipo(t.key, t.label)}</option>)}
+                    <option value="__novo__">{tr('tarefa.criar-novo-tipo')}</option>
                   </select>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={tipoInfo(form.tipo).cor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                     style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
@@ -1564,11 +1581,11 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
                   </svg>
                   {criandoTipo && (
                     <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 30, width: 250, background: 'var(--v2-surface)', border: '1.5px solid var(--v2-rule)', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', padding: 12 }}>
-                      <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)', marginBottom: 8 }}>Novo tipo de tarefa</div>
-                      <input autoFocus value={novoTipoLabel} onChange={e => setNovoTipoLabel(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); criarTipo() } }} placeholder="Ex: Newsletter, Podcast..."
+                      <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)', marginBottom: 8 }}>{tr('tarefa.novo-tipo')}</div>
+                      <input autoFocus value={novoTipoLabel} onChange={e => setNovoTipoLabel(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); criarTipo() } }} placeholder={tr('tarefa.ex-tipo')}
                         style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                        <span style={{ fontSize: 12, color: 'var(--v2-ink3)', fontWeight: 600 }}>Cor</span>
+                        <span style={{ fontSize: 12, color: 'var(--v2-ink3)', fontWeight: 600 }}>{tr('comum.cor')}</span>
                         <input type="color" value={novoTipoCor} onChange={e => setNovoTipoCor(e.target.value)}
                           style={{ width: 34, height: 28, border: '1px solid var(--v2-rule)', borderRadius: 6, padding: 0, cursor: 'pointer', background: 'var(--v2-surface)' }} />
                         <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>{novoTipoCor}</span>
@@ -1577,9 +1594,9 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
                         <button type="button" onClick={criarTipo} disabled={!novoTipoLabel.trim() || salvandoTipo}
                           style={{ flex: 1, padding: '8px 0', background: novoTipoLabel.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: novoTipoLabel.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: novoTipoLabel.trim() && !salvandoTipo ? 'pointer' : 'not-allowed' }}>{salvandoTipo ? 'Criando...' : 'Criar tipo'}</button>
                         <button type="button" onClick={() => { setCriandoTipo(false); setNovoTipoLabel('') }}
-                          style={{ padding: '8px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1.5px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+                          style={{ padding: '8px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1.5px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
                       </div>
-                      <p style={{ margin: '8px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)', lineHeight: 1.4 }}>Fica fixo no dropdown e disponível em todas as tarefas.</p>
+                      <p style={{ margin: '8px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)', lineHeight: 1.4 }}>{tr('tarefa.novo-tipo-ajuda')}</p>
                     </div>
                   )}
                 </div>
@@ -1587,12 +1604,12 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: PERFIL_CLINICA_TAREFAS ? '1fr' : '1fr 1fr', gap: 12 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Responsável</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('comum.responsavel')}</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {(() => { const u = (usuarios || []).find(x => x.email === form.responsavelEmail); return u?.foto ? <OptImg src={u.foto} size={28} style={{ flexShrink: 0 }} /> : null })()}
                   <select value={form.responsavelEmail} onChange={e => setForm(f => ({ ...f, responsavelEmail: e.target.value }))}
                     style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                    <option value="">Sem responsável</option>
+                    <option value="">{tr('tarefa.sem-responsavel')}</option>
                     {(() => {
                       const squadEmails = ((clientes || []).find(c => c.id === form.clienteId)?.squad || [])
                       const time = (usuarios || []).filter(u => u.role !== 'cliente')
@@ -1609,7 +1626,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
               </div>
               {!PERFIL_CLINICA_TAREFAS && (
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Cliente vinculado</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('tarefa.cliente-vinculado')}</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {(() => { const c = (clientes || []).find(x => x.id === form.clienteId); return c?.logo ? <OptImg src={c.logo} size={28} style={{ flexShrink: 0 }} /> : null })()}
                   <select value={form.clienteId} onChange={e => {
@@ -1619,7 +1636,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
                     setForm(f => ({ ...f, clienteId: cid, marcoId: '', subetapaId: '', responsavelEmail: (!f.responsavelEmail && sq.length) ? sq[0] : f.responsavelEmail }))
                   }}
                     style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                    <option value="">Nenhum</option>
+                    <option value="">{tr('comum.nenhum')}</option>
                     {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                   </select>
                 </div>
@@ -1628,22 +1645,22 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
             </div>
             {!PERFIL_CLINICA_TAREFAS && form.clienteId && (pautasCliente.length > 0 || !!form.origemPostId) && (
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Pauta do Studio <span style={{ fontWeight: 400, color: 'var(--v2-ink3)' }}>{tarefa?.id ? '(o criativo pronto volta para ela)' : '(traz briefing, copy e anexos)'}</span></label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('tarefa.pauta-studio')}<span style={{ fontWeight: 400, color: 'var(--v2-ink3)' }}>{tr(tarefa?.id ? 'tarefa.pauta-volta' : 'tarefa.pauta-traz')}</span></label>
                 <select value={form.origemPostId} onChange={e => vincularPauta(e.target.value)}
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${form.origemPostId ? 'var(--v2-info)' : 'var(--v2-rule)'}`, fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                  <option value="">Nenhuma — tarefa avulsa</option>
+                  <option value="">{tr('tarefa.sem-pauta')}</option>
                   {pautasCliente.map((p: any) => (
                     <option key={p.id} value={p.id}>{(p.briefing || p.headline || p.legenda || 'Pauta sem título').slice(0, 60)} · {ROTULO_ETAPA[p.etapa] || p.etapa}{p.tarefaId ? ' (já tem tarefa)' : ''}</option>
                   ))}
                 </select>
-                {form.origemPostId && <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-info)' }}>Pauta vinculada — anexe o criativo pronto; ao concluir, a pauta volta ao Studio com ele para revisão interna e envio.</p>}
+                {form.origemPostId && <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-info)' }}>{tr('tarefa.pauta-vinculada-aviso')}</p>}
               </div>
             )}
             {!PERFIL_CLINICA_TAREFAS && (
             <div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Marco ou etapa do Playbook {form.origemPostId ? '' : '*'}</label>
-                  {form.clienteId && !criandoEtapa && <button type="button" onClick={() => setCriandoEtapa(true)} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Criar marco</button>}
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>{tr('tarefa.marco-ou-etapa')} {form.origemPostId ? '' : '*'}</label>
+                  {form.clienteId && !criandoEtapa && <button type="button" onClick={() => setCriandoEtapa(true)} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{tr('tarefa.criar-marco')}</button>}
                 </div>
                 {!form.clienteId && (
                   <select disabled value="" style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface1)', color: 'var(--v2-ink3)' }}>
@@ -1656,8 +1673,8 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
                   <select value={juntarValor(form.marcoId, form.subetapaId)}
                     onChange={e => { const v = e.target.value; if (v === '__nova__') { setCriandoEtapa(true) } else { const pp = separarValor(v); setForm(f => ({ ...f, marcoId: pp.marcoId, subetapaId: pp.subetapaId })) } }}
                     style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                    <option value="">{marcos.length === 0 ? 'Nenhum marco — crie um abaixo' : 'Selecione o marco ou a etapa...'}</option>
-                    {(() => { const grupos = opcoesEtapas(marcos); const atual = opcaoDoValorAtual(grupos, juntarValor(form.marcoId, form.subetapaId)); return (<>
+                    <option value="">{tr(marcos.length === 0 ? 'tarefa.sem-marco-crie' : 'tarefa.escolha-marco')}</option>
+                    {(() => { const grupos = opcoesEtapas(marcos, tr('etapa.marco-inteiro')); const atual = opcaoDoValorAtual(grupos, juntarValor(form.marcoId, form.subetapaId)); return (<>
                       {/* O vínculo GRAVADO sempre tem opção: sem isto o select pulava sozinho
                           para o marco inteiro quando a etapa não estava na lista (dono, 10/09). */}
                       {atual && <option value={atual.valor}>{atual.rotulo}</option>}
@@ -1667,58 +1684,58 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
                         </optgroup>
                       ) : <option key={g.marcoId} value={g.marcoId}>{g.titulo}</option>)}
                     </>) })()}
-                    <option value="__nova__">+ Criar novo marco...</option>
+                    <option value="__nova__">{tr('tarefa.criar-novo-marco')}</option>
                   </select>
-                  {marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#ea580c' }}>Este cliente não tem marcos no Playbook. Clique em "+ Criar marco".</p>}
+                  {marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#ea580c' }}>{tr('tarefa.sem-marcos')}</p>}
                 </>)}
                 {form.clienteId && criandoEtapa && (
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input autoFocus value={novaEtapaTitulo} onChange={e => setNovaEtapaTitulo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); criarEtapaRapida() } }} placeholder="Nome da etapa (ex: Conteudos Julho)"
+                    <input autoFocus value={novaEtapaTitulo} onChange={e => setNovaEtapaTitulo(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); criarEtapaRapida() } }} placeholder={tr('tarefa.nome-etapa')}
                       style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
                     <button type="button" onClick={criarEtapaRapida} disabled={!novaEtapaTitulo.trim() || salvandoEtapa}
                       style={{ padding: '10px 14px', background: novaEtapaTitulo.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: novaEtapaTitulo.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: novaEtapaTitulo.trim() && !salvandoEtapa ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}>{salvandoEtapa ? '...' : 'Criar'}</button>
                     <button type="button" onClick={() => { setCriandoEtapa(false); setNovaEtapaTitulo('') }}
-                      style={{ padding: '10px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+                      style={{ padding: '10px 12px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
                   </div>
                 )}
             </div>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Prazo</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('comum.prazo')}</label>
                 <input type="date" value={form.prazo} onChange={e => setForm(f => ({ ...f, prazo: e.target.value }))}
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Prioridade</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('comum.prioridade')}</label>
                 <select value={form.prioridade} onChange={e => setForm(f => ({ ...f, prioridade: e.target.value }))}
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                  {PRIORIDADES.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+                  {PRIORIDADES.map(p => <option key={p.key} value={p.key}>{rotuloPrioridade(p.key, p.label)}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Status</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('comum.status')}</label>
                 <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                  {COLUNAS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                  {COLUNAS.map(c => <option key={c.key} value={c.key}>{rotuloStatus(c.key, c.label)}</option>)}
                 </select>
               </div>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Recorrência</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('tarefa.recorrencia')}</label>
               <select value={(form as any).recorrencia} onChange={e => setForm(f => ({ ...f, recorrencia: e.target.value }))}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                <option value="">Não repete</option>
-                <option value="diaria">Diária</option>
-                <option value="semanal">Semanal</option>
-                <option value="quinzenal">Quinzenal</option>
-                <option value="mensal">Mensal</option>
+                <option value="">{tr('repete.nao')}</option>
+                <option value="diaria">{tr('repete.diaria')}</option>
+                <option value="semanal">{tr('repete.semanal')}</option>
+                <option value="quinzenal">{tr('repete.quinzenal')}</option>
+                <option value="mensal">{tr('repete.mensal')}</option>
               </select>
-              {(form as any).recorrencia && <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Ao concluir, uma nova ocorrência é criada com o prazo avançado.</p>}
+              {(form as any).recorrencia && <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('tarefa.recorrencia-ajuda')}</p>}
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Descrição</label>
-              <RichText value={form.descricao} onChange={d => setForm(f => ({ ...f, descricao: d }))} placeholder="Detalhes, contexto, links..." minHeight={80} />
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('comum.descricao')}</label>
+              <RichText value={form.descricao} onChange={d => setForm(f => ({ ...f, descricao: d }))} placeholder={tr('tarefa.detalhes')} minHeight={80} />
             </div>
           </div>
           {/* Checklist (Definition of Done) */}
@@ -1744,20 +1761,20 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
               </div>
             )}
             <div style={{ display: 'flex', gap: 6 }}>
-              <input value={novoItemCheck} onChange={e => setNovoItemCheck(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && novoItemCheck.trim()) { e.preventDefault(); salvarChecklist([...checklist, { id: slug(), texto: novoItemCheck.trim(), feito: false }]); setNovoItemCheck('') } }} placeholder="+ item do checklist"
+              <input value={novoItemCheck} onChange={e => setNovoItemCheck(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && novoItemCheck.trim()) { e.preventDefault(); salvarChecklist([...checklist, { id: slug(), texto: novoItemCheck.trim(), feito: false }]); setNovoItemCheck('') } }} placeholder={tr('tarefa.item-checklist')}
                 style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
-              <button type="button" disabled={!novoItemCheck.trim()} onClick={() => { salvarChecklist([...checklist, { id: slug(), texto: novoItemCheck.trim(), feito: false }]); setNovoItemCheck('') }} style={{ padding: '7px 12px', background: novoItemCheck.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: novoItemCheck.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Add</button>
+              <button type="button" disabled={!novoItemCheck.trim()} onClick={() => { salvarChecklist([...checklist, { id: slug(), texto: novoItemCheck.trim(), feito: false }]); setNovoItemCheck('') }} style={{ padding: '7px 12px', background: novoItemCheck.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: novoItemCheck.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('comum.add')}</button>
             </div>
           </div>
 
           {/* Subtarefas */}
           {tarefa?.id && perguntaConcluir && (
             <div style={{ marginTop: 14, padding: '14px 16px', border: '1px solid var(--v2-amber-on)', background: 'var(--v2-amber-bg)', borderRadius: 12 }}>
-              <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: 'var(--v2-ink)' }}>{subsAbertas.length === 1 ? 'Ainda há 1 subtarefa aberta.' : `Ainda há ${subsAbertas.length} subtarefas abertas.`} Concluir a tarefa-mãe assim mesmo?</p>
+              <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: 'var(--v2-ink)' }}>{subsAbertas.length === 1 ? tr('tarefa.uma-subtarefa-aberta') : tr('tarefa.n-subtarefas-abertas', { n: subsAbertas.length })} Concluir a tarefa-mãe assim mesmo?</p>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-                <button type="button" onClick={() => salvar(true)} style={{ padding: '8px 14px', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Concluir subtarefas também</button>
-                <button type="button" onClick={() => { setPerguntaConcluir(false); setForm(f => ({ ...f, status: tarefa.status })); toast('Status mantido. Revise as subtarefas abaixo.', 'info') }} style={{ padding: '8px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 9, fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>Revisar subtarefas</button>
-                <button type="button" onClick={() => setPerguntaConcluir(false)} style={{ padding: '8px 10px', background: 'none', color: 'var(--v2-ink3)', border: 0, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
+                <button type="button" onClick={() => salvar(true)} style={{ padding: '8px 14px', background: 'var(--v2-amber-on)', color: '#17150E', border: 0, borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>{tr('tarefa.concluir-subtarefas')}</button>
+                <button type="button" onClick={() => { setPerguntaConcluir(false); setForm(f => ({ ...f, status: tarefa.status })); toast('Status mantido. Revise as subtarefas abaixo.', 'info') }} style={{ padding: '8px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 9, fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>{tr('tarefa.revisar-subtarefas')}</button>
+                <button type="button" onClick={() => setPerguntaConcluir(false)} style={{ padding: '8px 10px', background: 'none', color: 'var(--v2-ink3)', border: 0, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>{tr('comum.cancelar')}</button>
               </div>
             </div>
           )}
@@ -1773,15 +1790,15 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
                         {s.status === 'concluido' && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--v2-surface)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
                       </button>
                       <span style={{ flex: 1, fontSize: 13, color: s.status === 'concluido' ? 'var(--v2-ink3)' : 'var(--v2-ink)', textDecoration: s.status === 'concluido' ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.titulo}</span>
-                      {onRecarregar && <button type="button" onClick={() => onRecarregar(s)} title="Abrir subtarefa" style={{ background: 'none', border: 'none', color: 'var(--v2-info)', cursor: 'pointer', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>abrir</button>}
+                      {onRecarregar && <button type="button" onClick={() => onRecarregar(s)} title={tr('tarefa.abrir-subtarefa')} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', cursor: 'pointer', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{tr('comum.abrir')}</button>}
                     </div>
                   ))}
                 </div>
               )}
               <div style={{ display: 'flex', gap: 6 }}>
-                <input value={novoSub} onChange={e => setNovoSub(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSubtarefa() } }} placeholder="+ Nova subtarefa"
+                <input value={novoSub} onChange={e => setNovoSub(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSubtarefa() } }} placeholder={tr('tarefa.nova-subtarefa')}
                   style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
-                <button type="button" disabled={!novoSub.trim()} onClick={addSubtarefa} style={{ padding: '7px 12px', background: novoSub.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: novoSub.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Add</button>
+                <button type="button" disabled={!novoSub.trim()} onClick={addSubtarefa} style={{ padding: '7px 12px', background: novoSub.trim() ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: novoSub.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('comum.add')}</button>
               </div>
               {/* Puxar uma tarefa que já existe para dentro desta (ClickUp: "add existing task") */}
               {!tarefa.tarefaPaiId && (() => {
@@ -1791,7 +1808,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
                   .slice(0, 8)
                 return (
                   <div style={{ marginTop: 6, position: 'relative' }}>
-                    <input value={buscaPuxar} onChange={e => setBuscaPuxar(e.target.value)} placeholder="Puxar tarefa existente para dentro desta — digite para buscar"
+                    <input value={buscaPuxar} onChange={e => setBuscaPuxar(e.target.value)} placeholder={tr('tarefa.puxar-existente')}
                       style={{ width: '100%', boxSizing: 'border-box', padding: '7px 10px', borderRadius: 8, border: '1.5px dashed var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)', color: 'var(--v2-ink)' }} />
                     {cands.length > 0 && (
                       <div style={{ position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 5, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
@@ -1828,14 +1845,14 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
                             <span style={{ width: 8, height: 8, borderRadius: '50%', background: COR_STATUS[t.status] || 'var(--v2-rule)', flexShrink: 0 }} title={t.status} />
                             <span style={{ flex: 1, fontSize: 13, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titulo}</span>
                             {t.clienteNome && <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)', flexShrink: 0 }}>{t.clienteNome}</span>}
-                            <button type="button" onClick={() => desrelacionarTarefa(t.id)} title="Desvincular" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15, padding: 0, flexShrink: 0 }}>×</button>
+                            <button type="button" onClick={() => desrelacionarTarefa(t.id)} title={tr('tarefa.desvincular')} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15, padding: 0, flexShrink: 0 }}>×</button>
                           </div>
                         ))}
                       </div>
                     )}
                     {pickerRel && (
                       <div>
-                        <input autoFocus value={buscaRel} onChange={e => setBuscaRel(e.target.value)} placeholder="Buscar tarefa pelo título..."
+                        <input autoFocus value={buscaRel} onChange={e => setBuscaRel(e.target.value)} placeholder={tr('tarefa.buscar-titulo')}
                           style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 4 }} />
                         <div style={{ maxHeight: 180, overflowY: 'auto', border: '1px solid var(--v2-rule)', borderRadius: 8 }}>
                           {todasTarefas
@@ -1848,12 +1865,12 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
                               </button>
                             ))}
                           {todasTarefas.filter(t => t.id !== tarefa.id && !relacionadas.includes(t.id) && (!buscaRel.trim() || (t.titulo || '').toLowerCase().includes(buscaRel.toLowerCase()))).length === 0 && (
-                            <p style={{ margin: 0, padding: '10px', fontSize: 12, color: 'var(--v2-ink3)', textAlign: 'center' }}>Nenhuma tarefa encontrada.</p>
+                            <p style={{ margin: 0, padding: '10px', fontSize: 12, color: 'var(--v2-ink3)', textAlign: 'center' }}>{tr('tarefa.nenhuma')}</p>
                           )}
                         </div>
                       </div>
                     )}
-                    {relTarefas.length === 0 && !pickerRel && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhuma tarefa relacionada.</p>}
+                    {relTarefas.length === 0 && !pickerRel && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('tarefa.sem-relacionada')}</p>}
                   </>
                 )
               })()}
@@ -1864,16 +1881,16 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
           {tarefa?.id && (
             <div style={{ marginTop: 14, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Documento vinculado</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('tarefa.documento-vinculado')}</label>
                 <select value={documentoId} onChange={e => vincularDoc(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)', boxSizing: 'border-box', color: documentoId ? 'var(--v2-ink)' : 'var(--v2-ink3)' }}>
-                  <option value="">Nenhum</option>
+                  <option value="">{tr('comum.nenhum')}</option>
                   {docsList.map(d => <option key={d.id} value={d.id}>{d.titulo?.trim() || 'Sem título'}</option>)}
                 </select>
               </div>
               <div style={{ flex: 1, minWidth: 200 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Mapa mental vinculado</label>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('tarefa.mapa-vinculado')}</label>
                 <select value={mapaId} onChange={e => vincularMapa(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)', boxSizing: 'border-box', color: mapaId ? 'var(--v2-ink)' : 'var(--v2-ink3)' }}>
-                  <option value="">Nenhum</option>
+                  <option value="">{tr('comum.nenhum')}</option>
                   {mapasList.map(m => <option key={m.id} value={m.id}>{m.titulo?.trim() || 'Sem título'}</option>)}
                 </select>
               </div>
@@ -1888,8 +1905,8 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
             return (
               <div style={{ marginTop: 14, padding: 12, borderRadius: 12, border: `1.5px solid ${prontos.length ? 'var(--v2-ok)' : 'var(--v2-amber-on)'}`, background: prontos.length ? 'var(--v2-ok-bg)' : 'var(--v2-amber-bg)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)' }}>Criativo pronto</label>
-                  <span style={{ fontSize: 11.5, color: 'var(--v2-ink2)' }}>{prontos.length ? `${validos} arquivo${validos > 1 ? 's' : ''} — vira a mídia da pauta ao concluir` : form.origemPostId ? 'Anexe a arte final aqui. Ao concluir, a pauta volta ao Studio com ela.' : 'Anexe a arte final aqui.'}</span>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)' }}>{tr('tarefa.criativo-pronto')}</label>
+                  <span style={{ fontSize: 11.5, color: 'var(--v2-ink2)' }}>{prontos.length ? tr('tarefa.arquivos-viram-midia', { n: validos }) : form.origemPostId ? 'Anexe a arte final aqui. Ao concluir, a pauta volta ao Studio com ela.' : 'Anexe a arte final aqui.'}</span>
                   <label style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, cursor: enviandoAnexo ? 'wait' : 'pointer', background: 'var(--v2-ink)', color: 'var(--v2-surface)', borderRadius: 8, padding: '8px 14px', fontSize: 12, fontWeight: 700 }}>
                     {enviandoAnexo ? 'Enviando...' : '+ Anexar criativo pronto'}
                     <input type="file" multiple accept="image/*,video/*" style={{ display: 'none' }} disabled={enviandoAnexo}
@@ -1909,7 +1926,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
                         {anexoEhVideo(a)
                           ? <video src={a.url} style={{ width: 96, height: 96, objectFit: 'cover' }} muted preload="metadata" />
                           : <img src={a.url} alt={a.nome} style={{ width: 96, height: 96, objectFit: 'cover' }} />}
-                        <button onClick={e => { e.stopPropagation(); setAnexos(arr => arr.filter((_, j) => j !== i)) }} title="Remover" style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: 'var(--v2-surface)', border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}>×</button>
+                        <button onClick={e => { e.stopPropagation(); setAnexos(arr => arr.filter((_, j) => j !== i)) }} title={tr('comum.remover')} style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: 'var(--v2-surface)', border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}>×</button>
                         <button onClick={e => { e.stopPropagation(); setAnexos(arr => arr.map((x, j) => j === i ? { ...x, papel: 'referencia' } : x)) }} title="Mover para referências" style={{ position: 'absolute', bottom: 2, left: 2, height: 18, borderRadius: 4, background: 'rgba(0,0,0,0.55)', color: 'var(--v2-surface)', border: 'none', cursor: 'pointer', fontSize: 9, padding: '0 5px' }}>ref.</button>
                       </div>
                     ))}
@@ -1939,11 +1956,11 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
                     <button onClick={e => { e.stopPropagation(); setAnexos(arr => arr.filter((_, j) => j !== i)) }} style={{ position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,0.6)', color: 'var(--v2-surface)', border: 'none', cursor: 'pointer', fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>x</button>
                     <button onClick={e => { e.stopPropagation(); forcarDownload(a.url, a.nome) }}
                       style={{ position: 'absolute', bottom: 2, right: 2, width: 20, height: 20, borderRadius: 4, background: 'rgba(0,0,0,0.55)', border: 'none', color: 'var(--v2-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                      title={`Baixar ${a.nome}`}>
+                      title={tr('tarefa.baixar-arquivo', { nome: a.nome })}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--v2-surface)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     </button>
                     {(ehTarefaDeProducao({ tipo: form.tipo }) || !!form.origemPostId) && (anexoEhImagem(a) || anexoEhVideo(a)) && (
-                      <button onClick={e => { e.stopPropagation(); setAnexos(arr => arr.map((x, j) => j === i ? { ...x, papel: 'criativo' } : x)) }} title="Marcar como criativo pronto" style={{ position: 'absolute', bottom: 2, left: 2, height: 18, borderRadius: 4, background: 'rgba(0,0,0,0.55)', color: 'var(--v2-surface)', border: 'none', cursor: 'pointer', fontSize: 9, padding: '0 5px' }}>é a arte</button>
+                      <button onClick={e => { e.stopPropagation(); setAnexos(arr => arr.map((x, j) => j === i ? { ...x, papel: 'criativo' } : x)) }} title={tr('tarefa.marcar-criativo-pronto')} style={{ position: 'absolute', bottom: 2, left: 2, height: 18, borderRadius: 4, background: 'rgba(0,0,0,0.55)', color: 'var(--v2-surface)', border: 'none', cursor: 'pointer', fontSize: 9, padding: '0 5px' }}>{tr('tarefa.eh-a-arte')}</button>
                     )}
                   </div>
                 ))}
@@ -1964,7 +1981,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
                   <p style={{ margin: '0 0 8px', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>Anexos das subtarefas ({anexosSubs.length})</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {anexosSubs.map((a: any, i: number) => (
-                      <a key={i} href={a.url} target="_blank" rel="noreferrer" title={`${a.nome} — subtarefa: ${a.subNome}`} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--v2-rule)', display: 'block', textDecoration: 'none' }}>
+                      <a key={i} href={a.url} target="_blank" rel="noreferrer" title={tr('tarefa.anexo-de-subtarefa', { nome: a.nome, sub: a.subNome })} style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--v2-rule)', display: 'block', textDecoration: 'none' }}>
                         {(a.tipo || '').startsWith('video') ? <video src={a.url} style={{ width: 72, height: 72, objectFit: 'cover' }} muted preload="metadata" />
                           : (a.tipo || '').startsWith('image') ? <img src={a.url} alt={a.nome} style={{ width: 72, height: 72, objectFit: 'cover' }} />
                           : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 72, height: 72, background: 'var(--v2-surface1)', fontSize: 9, color: 'var(--v2-ink2)', padding: 4, textAlign: 'center', wordBreak: 'break-all' }}>{a.nome}</div>}
@@ -1981,7 +1998,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
           {tarefa?.id && (
             <div style={{ marginTop: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Tempo trabalhado</label>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>{tr('tarefa.tempo-trabalhado')}</label>
                 <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{fmtMin(totalMin)}</span>
               </div>
               {/* Timer + lançamento manual */}
@@ -1995,12 +2012,12 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2" /></svg> Parar ({fmtRelogio(Date.now() - timerInicio)})
                   </button>
                 )}
-                <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>ou lançar manual:</span>
+                <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('tarefa.lancar-manual')}</span>
                 <input type="number" min="0" value={apontH} onChange={e => setApontH(e.target.value)} placeholder="h" style={{ width: 48, padding: '7px 8px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
-                <input type="number" min="0" max="59" value={apontM} onChange={e => setApontM(e.target.value)} placeholder="min" style={{ width: 54, padding: '7px 8px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
-                <input value={apontDesc} onChange={e => setApontDesc(e.target.value)} placeholder="o que foi feito (opcional)" style={{ flex: 1, minWidth: 120, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
+                <input type="number" min="0" max="59" value={apontM} onChange={e => setApontM(e.target.value)} placeholder={tr('tarefa.min')} style={{ width: 54, padding: '7px 8px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
+                <input value={apontDesc} onChange={e => setApontDesc(e.target.value)} placeholder={tr('tarefa.o-que-foi-feito')} style={{ flex: 1, minWidth: 120, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
                 <button type="button" disabled={salvandoApont || (Number(apontH) || 0) * 60 + (Number(apontM) || 0) <= 0} onClick={() => registrarApont((Number(apontH) || 0) * 60 + (Number(apontM) || 0), apontDesc)}
-                  style={{ padding: '8px 14px', background: ((Number(apontH) || 0) * 60 + (Number(apontM) || 0) > 0) ? 'var(--v2-ok)' : 'var(--v2-surface2)', color: ((Number(apontH) || 0) * 60 + (Number(apontM) || 0) > 0) ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Registrar</button>
+                  style={{ padding: '8px 14px', background: ((Number(apontH) || 0) * 60 + (Number(apontM) || 0) > 0) ? 'var(--v2-ok)' : 'var(--v2-surface2)', color: ((Number(apontH) || 0) * 60 + (Number(apontM) || 0) > 0) ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('comum.registrar')}</button>
               </div>
               {apontamentos.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -2009,7 +2026,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
                       <span style={{ fontWeight: 700, color: 'var(--v2-ink)', width: 52 }}>{fmtMin(a.minutos)}</span>
                       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.usuarioNome}{a.descricao ? ` · ${a.descricao}` : ''}</span>
                       <span style={{ color: 'var(--v2-ink3)' }}>{new Date(a.data).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
-                      <button onClick={() => removerApont(a.id)} title="Remover" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-ink3)', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                      <button onClick={() => removerApont(a.id)} title={tr('comum.remover')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-ink3)', fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
                     </div>
                   ))}
                 </div>
@@ -2022,7 +2039,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
               {salvando ? 'Salvando...' : (tarefa ? 'Salvar' : 'Criar tarefa')}
             </button>
             {onExcluir && (
-              <button onClick={onExcluir} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
+              <button onClick={onExcluir} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.excluir')}</button>
             )}
           </div>
           </>)}

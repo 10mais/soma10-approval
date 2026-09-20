@@ -79,6 +79,7 @@ function pedacosDeCrase(src) {
       if (t.length < 3 || !TEM_LETRA.test(t) || SUSPEITO.test(t)) continue
       if (/^[a-z-]+$/.test(t) && t.length < 5) continue // 'px', 'auto', nome de classe
       if (!/\s/.test(t) && /[/_]/.test(t)) continue // caminho de arquivo/chave ('perfis/', 'ads_conta')
+      if (/\d(\.\d+)?px|(solid|dashed|dotted|rgba?|calc|ease-|translate|scale)/.test(t)) continue // pedaco de CSS
       saida.push({ tipo: 'crase', texto: t, indice: m.index })
     }
   }

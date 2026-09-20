@@ -1,6 +1,6 @@
 'use client'
 import { createContext, useContext, useEffect, useState } from 'react'
-import { IDIOMA_PADRAO, normalizarIdioma, nomeDaArea, t, type Idioma } from '@/lib/i18n'
+import { IDIOMA_PADRAO, normalizarIdioma, nomeDaArea, t, tv, type Idioma } from '@/lib/i18n'
 import { ehRotaPublica } from '@/lib/rotasPublicas'
 
 // IDIOMA DE QUEM ESTÁ USANDO (dono, 20/09/2026: "cada pessoa escolhe o seu"). A equipe
@@ -56,10 +56,11 @@ export function useIdioma() {
   return useContext(IdiomaCtx)
 }
 
-/** `const tr = useT()` → `tr('nav.planner')` no idioma de quem está usando. */
+/** `const tr = useT()` → `tr('nav.planner')` no idioma de quem está usando.
+ *  Com o segundo argumento, preenche os buracos: tr('tarefa.excluir', { nome: 'Carrossel' }). */
 export function useT() {
   const { idioma } = useIdioma()
-  return (chave: string) => t(chave, idioma)
+  return (chave: string, vars?: Record<string, string | number>) => (vars ? tv(chave, idioma, vars) : t(chave, idioma))
 }
 
 /** Nome da área (aba) no idioma de quem está usando: `useArea()('planner')`. */
