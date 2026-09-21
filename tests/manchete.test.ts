@@ -137,12 +137,16 @@ describe('dia tranquilo', () => {
 // Dono, 20/09: o sistema fala português, inglês e espanhol — e a manchete é montada no
 // SERVIDOR, então ela também precisa sair traduzida.
 describe('manchete em outros idiomas', () => {
+  // Dia FIXO: a variante da frase é sorteada pela semente do dia (sementeDoDia), então
+  // Date.now() faz o teste trocar de resposta sozinho — e ele quebrou o build às 21h,
+  // quando virou o dia em UTC.
+  const AGORA = new Date('2026-09-04T09:00:00').getTime()
   const c = {
-    tarefas: [{ titulo: 'Carrossel', prazo: new Date(Date.now() - 86400000).toISOString(), status: 'a_fazer' }],
+    tarefas: [{ titulo: 'Carrossel', prazo: new Date(AGORA - 86400000).toISOString(), status: 'a_fazer' }],
     aprovacoes: [], ajustes: [], publicaHoje: 2, reunioes: [],
   }
   it('inglês: a mesma fila sai em inglês, com os números destacados', () => {
-    const m = montarManchete(c, Date.now(), 'en')
+    const m = montarManchete(c, AGORA, 'en')
     const t = textoDaManchete(m)
     expect(t).toContain('task is overdue')
     expect(t).toContain('posts of yours go live')
@@ -150,11 +154,12 @@ describe('manchete em outros idiomas', () => {
     expect(m.partes.filter(p => p.destaque).length).toBeGreaterThan(0)
   })
   it('espanhol responde, e idioma desconhecido cai no português', () => {
-    expect(textoDaManchete(montarManchete(c, Date.now(), 'es'))).toContain('tarea está atrasada')
-    expect(textoDaManchete(montarManchete(c, Date.now(), 'klingon' as any))).toContain('tarefa está atrasada')
+    expect(textoDaManchete(montarManchete(c, AGORA, 'es'))).toContain('tarea está atrasada')
+    // "cai no português" = sai igualzinho à manchete em português do mesmo instante
+    expect(textoDaManchete(montarManchete(c, AGORA, 'klingon' as any))).toBe(textoDaManchete(montarManchete(c, AGORA)))
   })
   it('fila vazia também fala inglês', () => {
     const vazio = { tarefas: [], aprovacoes: [], ajustes: [], publicaHoje: 0, reunioes: [] }
-    expect(textoDaManchete(montarManchete(vazio, Date.now(), 'en'))).toContain('Queue is clear')
+    expect(textoDaManchete(montarManchete(vazio, AGORA, 'en'))).toContain('Queue is clear')
   })
 })

@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/app/components/Idioma'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import { Bloqueio, bloqueioNoDia, feriadoDoDia, ehProfissionalAgenda } from '@/lib/agenda'
@@ -23,20 +24,20 @@ type Ag = {
   valorInvestido?: number
 }
 // Tipos de atendimento da clínica (dropdown fixo — pedido do dono)
-const SERVICOS_CLINICA = ['Consulta', 'Revisão', 'Procedimento']
+const SERVICOS_CLINICA = ['ag.consulta', 'ag.revisao', 'ag.procedimento']
 type Espera = { id: string; pacienteNome: string; pacienteTelefone?: string; contatoId?: string; servico?: string; observacoes?: string; criadoEm: string }
 
-const STATUS: { key: string; label: string; cor: string; bg: string }[] = [
-  { key: 'agendado', label: 'Agendado', cor: 'var(--v2-info)', bg: 'var(--v2-info-bg)' },
-  { key: 'confirmado', label: 'Confirmado', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' },
-  { key: 'atendido', label: 'Atendido', cor: 'var(--v2-ink2)', bg: 'var(--v2-surface2)' },
-  { key: 'faltou', label: 'Faltou', cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)' },
-  { key: 'cancelado', label: 'Cancelado', cor: 'var(--v2-ink3)', bg: 'var(--v2-surface1)' },
+const STATUS: { key: string; rotulo: string; cor: string; bg: string }[] = [
+  { key: 'agendado', rotulo: 'ag.st-agendado', cor: 'var(--v2-info)', bg: 'var(--v2-info-bg)' },
+  { key: 'confirmado', rotulo: 'ag.st-confirmado', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' },
+  { key: 'atendido', rotulo: 'ag.st-atendido', cor: 'var(--v2-ink2)', bg: 'var(--v2-surface2)' },
+  { key: 'faltou', rotulo: 'ag.st-faltou', cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)' },
+  { key: 'cancelado', rotulo: 'ag.st-cancelado', cor: 'var(--v2-ink3)', bg: 'var(--v2-surface1)' },
 ]
 const stInfo = (s: string) => STATUS.find(x => x.key === s) || STATUS[0]
 // Rótulos de clínica: "aguardando confirmação" = aguardando pagamento; "confirmado" = pago
-const LABEL_CLINICA: Record<string, string> = { agendado: 'Aguardando confirmação', confirmado: 'Confirmado (pago)' }
-const labelSt = (key: string, label: string, clinica: boolean) => (clinica && LABEL_CLINICA[key]) || label
+const LABEL_CLINICA: Record<string, string> = { agendado: 'ag.st-aguardando', confirmado: 'ag.st-confirmado-pago' }
+const labelSt = (key: string, rotulo: string, clinica: boolean, tr: (c: string) => string) => tr((clinica && LABEL_CLINICA[key]) || rotulo)
 const DIAS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 // Seletor de dias no form de bloqueio recorrente (começa na segunda)
 const DIAS_ORDEM = [1, 2, 3, 4, 5, 6, 0]
@@ -61,6 +62,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
   podeEditar?: boolean
   perfilClinica?: boolean
 }) {
+  const tr = useT()
   const [ref, setRef] = useState(() => new Date())
   const [visao, setVisao] = useState<'mes' | 'semana' | 'dia' | 'lista'>('semana')
   const [profFiltro, setProfFiltro] = useState('')
@@ -224,24 +226,24 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
         await fetch('/api/agenda/espera', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: esperaOrigem }) }).catch(() => {})
         setEsperaOrigem(null); carregarEspera()
       }
-      toast(modal.id ? 'Agendamento atualizado.' : 'Agendamento criado.', 'sucesso'); setModal(null); carregar(); return
+      toast(modal.id ? tr('ag.agendamento-atualizado') : tr('ag.agendamento-criado'), 'sucesso'); setModal(null); carregar(); return
     }
     if (r?.conflito) {
-      if (await confirmar(`${r.error}\n\nEncaixar mesmo assim?`, { titulo: 'Conflito de horário', okLabel: 'Encaixar', perigo: true })) await salvar(true)
+      if (await confirmar(`${r.error}\n\nEncaixar mesmo assim?`, { titulo: tr('ag.conflito'), okLabel: tr('ag.encaixar'), perigo: true })) await salvar(true)
       return
     }
-    toast(r?.error || 'Falha ao salvar.', 'erro')
+    toast(r?.error || tr('ag.falha-salvar'), 'erro')
   }
 
   async function adicionarEspera() {
     if (!esperaForm?.pacienteNome.trim()) return
     const r = await fetch('/api/agenda/espera', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(esperaForm) }).then(x => x.json()).catch(() => null)
-    if (r?.ok) { toast('Adicionado à lista de espera.', 'sucesso'); setEsperaForm(null); carregarEspera() }
-    else toast(r?.error || 'Falha ao adicionar.', 'erro')
+    if (r?.ok) { toast(tr('ag.adicionado-espera'), 'sucesso'); setEsperaForm(null); carregarEspera() }
+    else toast(r?.error || tr('ag.falha-adicionar'), 'erro')
   }
 
   async function removerEspera(id: string) {
-    if (!(await confirmar('Remover da lista de espera?', { titulo: 'Lista de espera', okLabel: 'Remover', perigo: true }))) return
+    if (!(await confirmar(tr('ag.remover-espera'), { titulo: tr('ag.lista-espera'), okLabel: tr('comum.remover'), perigo: true }))) return
     await fetch('/api/agenda/espera', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => {})
     carregarEspera()
   }
@@ -256,7 +258,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
 
   async function excluir() {
     if (!modal?.id) return
-    if (!(await confirmar('Excluir este agendamento de vez? (Para manter o histórico, prefira marcar como Cancelado.)', { titulo: 'Excluir agendamento', okLabel: 'Excluir', perigo: true }))) return
+    if (!(await confirmar(tr('ag.dlg-excluir'), { titulo: tr('ag.excluir-agendamento'), okLabel: tr('comum.excluir'), perigo: true }))) return
     await fetch('/api/agenda', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: modal.id }) }).catch(() => {})
     setModal(null); carregar()
   }
@@ -269,11 +271,11 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
   }
   async function salvarBloco() {
     if (!blocoForm || salvandoBloco) return
-    if (!blocoForm.profissionalEmail) { toast('Escolha o profissional.', 'erro'); return }
+    if (!blocoForm.profissionalEmail) { toast(tr('ag.escolha-profissional'), 'erro'); return }
     const prof = usuarios.find(u => u.email === blocoForm.profissionalEmail)
     const corpo: any = { profissionalEmail: blocoForm.profissionalEmail, profissionalNome: prof?.nome, titulo: blocoForm.titulo.trim() || undefined, recorrente: blocoForm.recorrente }
     if (blocoForm.recorrente) {
-      if (!blocoForm.diasSemana.length) { toast('Escolha ao menos um dia da semana.', 'erro'); return }
+      if (!blocoForm.diasSemana.length) { toast(tr('ag.escolha-dia'), 'erro'); return }
       corpo.diasSemana = blocoForm.diasSemana; corpo.horaInicio = blocoForm.horaInicio; corpo.horaFim = blocoForm.horaFim
       if (blocoForm.ate) corpo.ate = blocoForm.ate
     } else {
@@ -282,11 +284,11 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
     setSalvandoBloco(true)
     const r = await fetch('/api/agenda/bloqueios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).then(x => x.json()).catch(() => null)
     setSalvandoBloco(false)
-    if (r?.ok) { toast('Bloqueio adicionado.', 'sucesso'); setBlocoForm(null); carregarBloqueios() }
-    else toast(r?.error || 'Falha ao salvar o bloqueio.', 'erro')
+    if (r?.ok) { toast(tr('ag.bloqueio-adicionado'), 'sucesso'); setBlocoForm(null); carregarBloqueios() }
+    else toast(r?.error || tr('ag.falha-bloqueio'), 'erro')
   }
   async function removerBloco(id: string) {
-    if (!(await confirmar('Remover este bloqueio?', { titulo: 'Bloqueio', okLabel: 'Remover', perigo: true }))) return
+    if (!(await confirmar(tr('ag.remover-bloqueio'), { titulo: tr('ag.bloqueio'), okLabel: tr('comum.remover'), perigo: true }))) return
     await fetch('/api/agenda/bloqueios', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => {})
     carregarBloqueios()
   }
@@ -349,9 +351,9 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
         {blocos.map(({ b, inicio, fim }, i) => {
           const top = y(inicio), h = Math.max(3, y(fim) - top)
           return (
-            <div key={b.id + i} title={`${b.titulo || 'Bloqueado'}${!profFiltro ? ' · ' + (b.profissionalNome || '').split(' ')[0] : ''}`}
+            <div key={b.id + i} title={`${b.titulo || tr('ag.bloqueado')}${!profFiltro ? ' · ' + (b.profissionalNome || '').split(' ')[0] : ''}`}
               style={{ position: 'absolute', top, height: h, left: 2, right: 2, background: 'repeating-linear-gradient(45deg,#f1f1f3,#f1f1f3 6px,#e7e7ec 6px,#e7e7ec 12px)', border: '1px solid #e2e2e7', borderRadius: 6, pointerEvents: 'none', padding: '2px 6px', overflow: 'hidden', boxSizing: 'border-box' }}>
-              <span style={{ fontSize: 9.5, fontWeight: 800, color: '#9a9aa2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{b.titulo || 'Bloqueado'}</span>
+              <span style={{ fontSize: 9.5, fontWeight: 800, color: '#9a9aa2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{b.titulo || tr('ag.bloqueado')}</span>
             </div>
           )
         })}
@@ -369,7 +371,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
               style={{ position: 'absolute', top, height: altura, left: `calc(${(col / cols) * 100}% + 3px)`, width: `calc(${100 / cols}% - 6px)`, background: cancelado ? 'var(--v2-surface1)' : `${cor}18`, borderLeft: `3px solid ${cor}`, borderRadius: 7, padding: '3px 6px', overflow: 'hidden', cursor: 'pointer', opacity: cancelado ? 0.6 : 1, boxSizing: 'border-box', zIndex: 1 }}>
               <div style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: cancelado ? 'line-through' : 'none' }}>{hora(a.dataInicio)} {a.pacienteNome}</div>
               {altura > SLOT_H && <div style={{ fontSize: 9.5, color: 'var(--v2-ink2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{[a.servico, !profFiltro && (a.profissionalNome || '').split(' ')[0]].filter(Boolean).join(' · ')}</div>}
-              {altura > SLOT_H * 2 && <div style={{ fontSize: 9, fontWeight: 800, color: st.cor, marginTop: 2 }}>{labelSt(st.key, st.label, perfilClinica)}</div>}
+              {altura > SLOT_H * 2 && <div style={{ fontSize: 9, fontWeight: 800, color: st.cor, marginTop: 2 }}>{labelSt(st.key, st.rotulo, perfilClinica, tr)}</div>}
             </div>
           )
         })}
@@ -380,17 +382,17 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
-        <h2 style={{ margin: 0, fontSize: 20, color: 'var(--v2-ink)' }}>Agenda</h2>
+        <h2 style={{ margin: 0, fontSize: 20, color: 'var(--v2-ink)' }}>{tr('nav.agenda')}</h2>
         <div style={{ display: 'inline-flex', gap: 2, background: 'var(--v2-surface1)', borderRadius: 10, padding: 3 }}>
           {(['mes', 'semana', 'dia', 'lista'] as const).map(v => (
             <button key={v} onClick={() => setVisao(v)} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: visao === v ? 'var(--v2-surface)' : 'transparent', fontWeight: visao === v ? 700 : 500, fontSize: 12.5, cursor: 'pointer', color: 'var(--v2-ink)', boxShadow: visao === v ? '0 1px 4px rgba(0,0,0,.1)' : 'none' }}>
-              {v === 'mes' ? 'Mês' : v === 'semana' ? 'Semana' : v === 'dia' ? 'Dia' : 'Lista'}
+              {v === 'mes' ? 'Mês' : v === 'semana' ? tr('ag.semana') : v === 'dia' ? 'Dia' : 'Lista'}
             </button>
           ))}
         </div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <button onClick={() => mover((visao === 'semana' || visao === 'lista') ? -7 : -1)} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 14 }}>‹</button>
-          <button onClick={() => setRef(new Date())} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)' }}>Hoje</button>
+          <button onClick={() => setRef(new Date())} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)' }}>{tr('ag.hoje')}</button>
           <button onClick={() => mover((visao === 'semana' || visao === 'lista') ? 7 : 1)} style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 14 }}>›</button>
         </div>
         <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink2)', textTransform: 'capitalize' }}>{tituloPeriodo}</span>
@@ -400,7 +402,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
         <span style={{ flex: 1 }} />
         <select value={profFiltro} onChange={e => setProfFiltro(e.target.value)}
           style={{ padding: '8px 11px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)', cursor: 'pointer' }}>
-          <option value="">Todos os profissionais</option>
+          <option value="">{tr('ag.todos-profissionais')}</option>
           {profissionais.map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
         </select>
         {perfilClinica && (
@@ -414,7 +416,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
           </button>
         )}
         {podeEditar && (
-          <button onClick={() => novo()} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Agendamento</button>
+          <button onClick={() => novo()} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('ag.agendamento')}</button>
         )}
       </div>
 
@@ -422,24 +424,24 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
       {perfilClinica && esperaAberta && (
         <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 12, padding: 14, marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-            <h3 style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink)' }}>Lista de espera</h3>
-            <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>ordem de chegada</span>
+            <h3 style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink)' }}>{tr('ag.lista-espera')}</h3>
+            <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>{tr('ag.ordem-chegada')}</span>
             <span style={{ flex: 1 }} />
             {podeEditar && !esperaForm && (
-              <button onClick={() => setEsperaForm({ pacienteNome: '', pacienteTelefone: '', servico: '', observacoes: '' })} style={{ padding: '6px 12px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', color: 'var(--v2-ink)' }}>+ Adicionar</button>
+              <button onClick={() => setEsperaForm({ pacienteNome: '', pacienteTelefone: '', servico: '', observacoes: '' })} style={{ padding: '6px 12px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', color: 'var(--v2-ink)' }}>{tr('dash.adicionar-2')}</button>
             )}
           </div>
           {esperaForm && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10, alignItems: 'center' }}>
-              <input value={esperaForm.pacienteNome} onChange={e => setEsperaForm(f => f && { ...f, pacienteNome: e.target.value })} placeholder="Nome do paciente *" style={{ flex: 2, minWidth: 140, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
-              <input value={esperaForm.pacienteTelefone} onChange={e => setEsperaForm(f => f && { ...f, pacienteTelefone: e.target.value })} placeholder="Telefone" style={{ flex: 1, minWidth: 110, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
-              <input value={esperaForm.servico} onChange={e => setEsperaForm(f => f && { ...f, servico: e.target.value })} list="agenda-servicos" placeholder="Serviço" style={{ flex: 1, minWidth: 110, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
-              <input value={esperaForm.observacoes} onChange={e => setEsperaForm(f => f && { ...f, observacoes: e.target.value })} placeholder="Observações (preferência de horário...)" style={{ flex: 2, minWidth: 150, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
-              <button onClick={adicionarEspera} disabled={!esperaForm.pacienteNome.trim()} style={{ padding: '8px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: esperaForm.pacienteNome.trim() ? 1 : 0.5 }}>Salvar</button>
-              <button onClick={() => setEsperaForm(null)} style={{ padding: '8px 12px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer', color: 'var(--v2-ink2)' }}>Cancelar</button>
+              <input value={esperaForm.pacienteNome} onChange={e => setEsperaForm(f => f && { ...f, pacienteNome: e.target.value })} placeholder={tr('ag.nome-paciente')} style={{ flex: 2, minWidth: 140, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
+              <input value={esperaForm.pacienteTelefone} onChange={e => setEsperaForm(f => f && { ...f, pacienteTelefone: e.target.value })} placeholder={tr('crm.telefone')} style={{ flex: 1, minWidth: 110, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
+              <input value={esperaForm.servico} onChange={e => setEsperaForm(f => f && { ...f, servico: e.target.value })} list="agenda-servicos" placeholder={tr('ag.servico')} style={{ flex: 1, minWidth: 110, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
+              <input value={esperaForm.observacoes} onChange={e => setEsperaForm(f => f && { ...f, observacoes: e.target.value })} placeholder={tr('ag.observacoes-preferencia-horari')} style={{ flex: 2, minWidth: 150, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
+              <button onClick={adicionarEspera} disabled={!esperaForm.pacienteNome.trim()} style={{ padding: '8px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: esperaForm.pacienteNome.trim() ? 1 : 0.5 }}>{tr('comum.salvar')}</button>
+              <button onClick={() => setEsperaForm(null)} style={{ padding: '8px 12px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer', color: 'var(--v2-ink2)' }}>{tr('comum.cancelar')}</button>
             </div>
           )}
-          {espera.length === 0 && !esperaForm && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Ninguém aguardando horário.</p>}
+          {espera.length === 0 && !esperaForm && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('ag.ninguem-aguardando-horario')}</p>}
           {espera.map((it, i) => (
             <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', borderTop: i > 0 ? '1px solid var(--v2-surface1)' : 'none' }}>
               <span style={{ width: 20, fontSize: 11, fontWeight: 800, color: 'var(--v2-ink3)', flexShrink: 0 }}>{i + 1}º</span>
@@ -448,8 +450,8 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
               <span style={{ fontSize: 11, color: 'var(--v2-ink3)', flexShrink: 0 }}>desde {new Date(it.criadoEm).toLocaleDateString('pt-BR')}</span>
               {podeEditar && (
                 <>
-                  <button onClick={() => agendarDaEspera(it)} style={{ padding: '5px 12px', background: 'var(--v2-amber-on)', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 11.5, cursor: 'pointer', color: '#17150E', flexShrink: 0 }}>Agendar</button>
-                  <button onClick={() => removerEspera(it.id)} style={{ padding: '5px 10px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 999, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: 'var(--v2-hot)', flexShrink: 0 }}>Remover</button>
+                  <button onClick={() => agendarDaEspera(it)} style={{ padding: '5px 12px', background: 'var(--v2-amber-on)', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 11.5, cursor: 'pointer', color: '#17150E', flexShrink: 0 }}>{tr('ag.agendar')}</button>
+                  <button onClick={() => removerEspera(it.id)} style={{ padding: '5px 10px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 999, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: 'var(--v2-hot)', flexShrink: 0 }}>{tr('comum.remover')}</button>
                 </>
               )}
             </div>
@@ -458,7 +460,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
       )}
 
       {carregando ? (
-        <p style={{ color: 'var(--v2-ink3)', fontSize: 13, padding: 30, textAlign: 'center' }}>Carregando agenda...</p>
+        <p style={{ color: 'var(--v2-ink3)', fontSize: 13, padding: 30, textAlign: 'center' }}>{tr('ag.carregando-agenda')}</p>
       ) : visao === 'mes' ? (
         <div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(110px, 1fr))', gap: 6, marginBottom: 6 }}>
@@ -527,7 +529,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
             const dias = Array.from({ length: 7 }, (_, i) => { const d = new Date(semana); d.setDate(d.getDate() + i); return d })
               .map(d => ({ d, lista: doDia(d).sort((a, b) => new Date(a.dataInicio).getTime() - new Date(b.dataInicio).getTime()), feriado: feriadoDe(d) }))
               .filter(x => x.lista.length > 0 || x.feriado)
-            if (!dias.length) return <p style={{ margin: 0, padding: 30, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhum agendamento nesta semana.</p>
+            if (!dias.length) return <p style={{ margin: 0, padding: 30, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>{tr('ag.nenhum-agendamento-nesta-seman')}</p>
             return dias.map(({ d, lista, feriado }) => {
               const hoje = new Date().toDateString() === d.toDateString()
               return (
@@ -549,7 +551,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
                           <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--v2-ink)', textDecoration: cancelado ? 'line-through' : 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.pacienteNome}</div>
                           <div style={{ fontSize: 11.5, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[a.servico, `${a.duracaoMin}min`, !profFiltro && (a.profissionalNome || '').split(' ')[0]].filter(Boolean).join(' · ')}</div>
                         </div>
-                        <span style={{ fontSize: 10, fontWeight: 800, color: st.cor, background: st.bg, borderRadius: 999, padding: '3px 9px', flexShrink: 0 }}>{labelSt(st.key, st.label, perfilClinica)}</span>
+                        <span style={{ fontSize: 10, fontWeight: 800, color: st.cor, background: st.bg, borderRadius: 999, padding: '3px 9px', flexShrink: 0 }}>{labelSt(st.key, st.rotulo, perfilClinica, tr)}</span>
                       </div>
                     )
                   })}
@@ -564,32 +566,32 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
       {modal && (
         <div onClick={() => { setModal(null); setEsperaOrigem(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-            <h3 style={{ margin: '0 0 14px', fontSize: 16.5, color: 'var(--v2-ink)' }}>{modal.id ? 'Editar agendamento' : 'Novo agendamento'}</h3>
+            <h3 style={{ margin: '0 0 14px', fontSize: 16.5, color: 'var(--v2-ink)' }}>{modal.id ? tr('ag.editar-agendamento') : tr('ag.novo-agendamento')}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <input list={perfilClinica ? 'agenda-pacientes' : undefined} value={modal.pacienteNome || ''} onChange={e => perfilClinica ? aoDigitarPaciente(e.target.value) : setModal(m => ({ ...m, pacienteNome: e.target.value }))} placeholder="Nome do paciente/cliente *"
+              <input list={perfilClinica ? 'agenda-pacientes' : undefined} value={modal.pacienteNome || ''} onChange={e => perfilClinica ? aoDigitarPaciente(e.target.value) : setModal(m => ({ ...m, pacienteNome: e.target.value }))} placeholder={tr('ag.nome-paciente-cliente')}
                 style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13.5, fontFamily: 'inherit' }} />
               {perfilClinica && (
                 <>
                   <datalist id="agenda-pacientes">{contatos.filter(c => !c.tipo || c.tipo === 'paciente' || c.tipo === 'lead').map(c => <option key={c.id} value={c.nome} />)}</datalist>
                   {(modal.pacienteNome || '').trim() && (
                     modal.contatoId
-                      ? <p style={{ margin: '-4px 0 0', fontSize: 11, color: 'var(--v2-ok)' }}>Paciente do cadastro — o atendimento entra no histórico dele.</p>
-                      : <p style={{ margin: '-4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Paciente novo — será cadastrado automaticamente ao salvar.</p>
+                      ? <p style={{ margin: '-4px 0 0', fontSize: 11, color: 'var(--v2-ok)' }}>{tr('ag.paciente-cadastro-atendimento')}</p>
+                      : <p style={{ margin: '-4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('ag.paciente-novo-sera-cadastrado')}</p>
                   )}
                 </>
               )}
               <div style={{ display: 'flex', gap: 8 }}>
-                <input value={modal.pacienteTelefone || ''} onChange={e => setModal(m => ({ ...m, pacienteTelefone: e.target.value }))} placeholder="Telefone/WhatsApp"
+                <input value={modal.pacienteTelefone || ''} onChange={e => setModal(m => ({ ...m, pacienteTelefone: e.target.value }))} placeholder={tr('ag.telefone-whatsapp')}
                   style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                 {perfilClinica ? (
                   <select value={modal.servico || ''} onChange={e => setModal(m => ({ ...m, servico: e.target.value }))}
                     style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                    <option value="">Tipo de atendimento...</option>
+                    <option value="">{tr('ag.tipo-atendimento')}</option>
                     {servicosClinica.map(s => <option key={s} value={s}>{s}</option>)}
                     {modal.servico && !servicosClinica.includes(modal.servico) && <option value={modal.servico}>{modal.servico}</option>}
                   </select>
                 ) : (
-                  <input list="agenda-servicos" value={modal.servico || ''} onChange={e => setModal(m => ({ ...m, servico: e.target.value }))} placeholder="Serviço"
+                  <input list="agenda-servicos" value={modal.servico || ''} onChange={e => setModal(m => ({ ...m, servico: e.target.value }))} placeholder={tr('ag.servico')}
                     style={{ flex: 1, padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                 )}
                 <datalist id="agenda-servicos">{servicos.map(s => <option key={s} value={s} />)}</datalist>
@@ -615,25 +617,25 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
                     {(modal.id ? STATUS : STATUS.filter(s => s.key === 'agendado' || s.key === 'confirmado')).map(s => (
                       <button key={s.key} onClick={() => setModal(m => ({ ...m, status: s.key }))}
                         style={{ padding: '6px 12px', borderRadius: 999, border: modal.status === s.key ? `1.5px solid ${s.cor}` : '1px solid var(--v2-surface2)', background: modal.status === s.key ? s.bg : 'var(--v2-surface)', color: modal.status === s.key ? s.cor : 'var(--v2-ink3)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>
-                        {labelSt(s.key, s.label, perfilClinica)}
+                        {labelSt(s.key, s.rotulo, perfilClinica, tr)}
                       </button>
                     ))}
                   </div>
                 </div>
               )}
               {perfilClinica && (
-                <input value={modal.queixaPrincipal || ''} onChange={e => setModal(m => ({ ...m, queixaPrincipal: e.target.value }))} placeholder="Queixa principal (motivo da consulta)"
+                <input value={modal.queixaPrincipal || ''} onChange={e => setModal(m => ({ ...m, queixaPrincipal: e.target.value }))} placeholder={tr('ag.queixa-principal-motivo-consul')}
                   style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
               )}
-              <textarea lang="pt-BR" value={modal.observacoes || ''} onChange={e => setModal(m => ({ ...m, observacoes: e.target.value }))} placeholder="Observações" rows={2}
+              <textarea lang="pt-BR" value={modal.observacoes || ''} onChange={e => setModal(m => ({ ...m, observacoes: e.target.value }))} placeholder={tr('ag.observacoes')} rows={2}
                 style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
               {perfilClinica && modal.id && (modal.status === 'atendido' || !!modal.registroAtendimento) && (
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>Registro do atendimento (evolução)</label>
-                  <textarea lang="pt-BR" value={modal.registroAtendimento || ''} onChange={e => setModal(m => ({ ...m, registroAtendimento: e.target.value }))} placeholder="O que foi feito, orientações, próximos passos..." rows={4}
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>{tr('ag.registro-atendimento-evolucao')}</label>
+                  <textarea lang="pt-BR" value={modal.registroAtendimento || ''} onChange={e => setModal(m => ({ ...m, registroAtendimento: e.target.value }))} placeholder={tr('ag.que-foi-feito-orientacoes-prox')} rows={4}
                     style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
                   {/* Pós-atendimento estruturado: procedimentos realizados (do catálogo) + investimento */}
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', margin: '10px 0 5px' }}>Procedimentos realizados</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', margin: '10px 0 5px' }}>{tr('ag.procedimentos-realizados')}</label>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {Array.from(new Set([...servicosClinica, ...(modal.procedimentosRealizados || [])])).map(p => {
                       const marcado = (modal.procedimentosRealizados || []).includes(p)
@@ -650,19 +652,19 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
                     <input type="number" min={0} step="0.01" value={modal.valorInvestido ?? ''} onChange={e => setModal(m => ({ ...m, valorInvestido: e.target.value === '' ? undefined : Number(e.target.value) }))} placeholder="0,00"
                       style={{ width: 140, padding: '9px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                   </div>
-                  <p style={{ margin: '6px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>Fica no histórico do paciente. Dado sensível — visível só para a equipe.</p>
+                  <p style={{ margin: '6px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>{tr('ag.fica-historico-paciente-dado-s')}</p>
                 </div>
               )}
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 16, alignItems: 'center' }}>
               {modal.id && podeEditar && (
-                <button onClick={excluir} style={{ padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, color: 'var(--v2-hot)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginRight: 'auto' }}>Excluir</button>
+                <button onClick={excluir} style={{ padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, color: 'var(--v2-hot)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginRight: 'auto' }}>{tr('comum.excluir')}</button>
               )}
               <span style={{ flex: modal.id ? undefined : 1 }} />
-              <button onClick={() => { setModal(null); setEsperaOrigem(null) }} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => { setModal(null); setEsperaOrigem(null) }} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
               {podeEditar && (
                 <button onClick={() => salvar()} disabled={salvando || !(modal.pacienteNome || '').trim()} style={{ padding: '10px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: salvando ? 'wait' : 'pointer', opacity: !(modal.pacienteNome || '').trim() ? 0.5 : 1 }}>
-                  {salvando ? 'Salvando…' : 'Salvar'}
+                  {salvando ? tr('dash.salvando') : tr('comum.salvar')}
                 </button>
               )}
             </div>
@@ -675,13 +677,13 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
         <div onClick={() => { setBlocosModal(false); setBlocoForm(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <h3 style={{ margin: 0, fontSize: 16.5, color: 'var(--v2-ink)' }}>Bloqueios da agenda</h3>
+              <h3 style={{ margin: 0, fontSize: 16.5, color: 'var(--v2-ink)' }}>{tr('ag.bloqueios-agenda')}</h3>
               <span style={{ flex: 1 }} />
               {podeEditar && !blocoForm && (
-                <button onClick={novoBloco} style={{ padding: '7px 13px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>+ Novo bloqueio</button>
+                <button onClick={novoBloco} style={{ padding: '7px 13px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{tr('ag.novo-bloqueio')}</button>
               )}
             </div>
-            <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--v2-ink3)' }}>Horários em que o profissional não atende (almoço, folga, reunião). A agenda avisa e recusa marcar por cima.</p>
+            <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('ag.horarios-que-profissional-nao')}</p>
 
             {/* Formulário */}
             {blocoForm && (
@@ -690,10 +692,10 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
                   style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
                   {profissionais.map(u => <option key={u.email} value={u.email}>{u.nome}</option>)}
                 </select>
-                <input value={blocoForm.titulo} onChange={e => setBlocoForm(f => f && { ...f, titulo: e.target.value })} placeholder="Título (ex.: Almoço, Folga, Reunião)"
+                <input value={blocoForm.titulo} onChange={e => setBlocoForm(f => f && { ...f, titulo: e.target.value })} placeholder={tr('ag.titulo-ex-almoco-folga-reuniao')}
                   style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                 <div style={{ display: 'inline-flex', gap: 2, background: 'var(--v2-surface2)', borderRadius: 9, padding: 3, alignSelf: 'flex-start' }}>
-                  {([['recorrente', 'Recorrente'], ['pontual', 'Pontual']] as const).map(([k, label]) => {
+                  {([['recorrente', tr('ag.recorrente')], ['pontual', tr('ag.pontual')]] as const).map(([k, label]) => {
                     const ativo = (k === 'recorrente') === blocoForm.recorrente
                     return (
                       <button key={k} onClick={() => setBlocoForm(f => f && { ...f, recorrente: k === 'recorrente' })}
@@ -704,7 +706,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
                 {blocoForm.recorrente ? (
                   <>
                     <div>
-                      <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Dias da semana</label>
+                      <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('ag.dias-semana')}</label>
                       <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                         {DIAS_ORDEM.map(d => {
                           const on = blocoForm.diasSemana.includes(d)
@@ -717,15 +719,15 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                       <div>
-                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>Das</label>
+                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>{tr('ag.das')}</label>
                         <input type="time" value={blocoForm.horaInicio} onChange={e => setBlocoForm(f => f && { ...f, horaInicio: e.target.value })} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                       </div>
                       <div>
-                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>Às</label>
+                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>{tr('ag.as')}</label>
                         <input type="time" value={blocoForm.horaFim} onChange={e => setBlocoForm(f => f && { ...f, horaFim: e.target.value })} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                       </div>
                       <div>
-                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>Até (opcional)</label>
+                        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>{tr('ag.ate-opcional')}</label>
                         <input type="date" value={blocoForm.ate} onChange={e => setBlocoForm(f => f && { ...f, ate: e.target.value })} style={{ padding: '9px 11px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                       </div>
                     </div>
@@ -740,32 +742,32 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                  <button onClick={() => setBlocoForm(null)} style={{ padding: '9px 14px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
-                  <button onClick={salvarBloco} disabled={salvandoBloco} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: salvandoBloco ? 'wait' : 'pointer' }}>{salvandoBloco ? 'Salvando…' : 'Salvar bloqueio'}</button>
+                  <button onClick={() => setBlocoForm(null)} style={{ padding: '9px 14px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
+                  <button onClick={salvarBloco} disabled={salvandoBloco} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: salvandoBloco ? 'wait' : 'pointer' }}>{salvandoBloco ? tr('dash.salvando') : tr('ag.salvar-bloqueio')}</button>
                 </div>
               </div>
             )}
 
             {/* Lista de bloqueios */}
-            {bloqueios.length === 0 && !blocoForm && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhum bloqueio cadastrado.</p>}
+            {bloqueios.length === 0 && !blocoForm && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('ag.nenhum-bloqueio-cadastrado')}</p>}
             {[...bloqueios].sort((a, b) => (a.profissionalNome || '').localeCompare(b.profissionalNome || '')).map((b, i) => (
               <div key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderTop: i > 0 ? '1px solid var(--v2-surface1)' : 'none' }}>
                 <span style={{ width: 8, height: 8, borderRadius: 3, background: b.recorrente ? '#7c3aed' : '#0891b2', flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {b.titulo || (b.recorrente ? 'Bloqueio recorrente' : 'Bloqueio')}
+                    {b.titulo || (b.recorrente ? tr('ag.bloqueio-recorrente') : tr('ag.bloqueio'))}
                     <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--v2-ink3)' }}> · {(b.profissionalNome || '').split(' ')[0]}</span>
                   </div>
                   <div style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>{descBloco(b)}</div>
                 </div>
                 {podeEditar && (
-                  <button onClick={() => removerBloco(b.id)} style={{ padding: '5px 11px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 999, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: 'var(--v2-hot)', flexShrink: 0 }}>Remover</button>
+                  <button onClick={() => removerBloco(b.id)} style={{ padding: '5px 11px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 999, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', color: 'var(--v2-hot)', flexShrink: 0 }}>{tr('comum.remover')}</button>
                 )}
               </div>
             ))}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 18 }}>
-              <button onClick={() => { setBlocosModal(false); setBlocoForm(null) }} style={{ padding: '10px 18px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Fechar</button>
+              <button onClick={() => { setBlocosModal(false); setBlocoForm(null) }} style={{ padding: '10px 18px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{tr('comum.fechar')}</button>
             </div>
           </div>
         </div>

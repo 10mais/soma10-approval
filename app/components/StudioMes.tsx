@@ -56,7 +56,7 @@ function nomeMes(m: number, tr: (c: string) => string) { return tr(`mes.${m}`) }
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 // A lista vive em lib/formatoPost: o link do cliente mostra o MESMO rótulo (dono, 09/09).
-const FORMATOS = FORMATOS_LIB.map(f => ({ key: f.chave, label: f.label, cor: f.cor }))
+const FORMATOS = FORMATOS_LIB.map(f => ({ key: f.chave, rotulo: f.rotulo, cor: f.cor }))
 
 // Estado da linha e a ação natural seguinte (o "próximo passo" de cada pauta).
 function estadoStudio(p: Pauta, tr: (c: string) => string): { label: string; cor: string; bg: string } {
@@ -1339,7 +1339,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                         </span>
                         <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#d8d8db', flexShrink: 0 }} />
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11.5, color: '#9a9a9a', whiteSpace: 'nowrap' }}>
-                          <span style={{ width: 6, height: 6, borderRadius: 2, background: fmt.cor }} />{fmt.label}
+                          <span style={{ width: 6, height: 6, borderRadius: 2, background: fmt.cor }} />{tr(fmt.rotulo)}
                         </span>
                         <span style={{ width: 3, height: 3, borderRadius: '50%', background: '#d8d8db', flexShrink: 0 }} />
                         <span style={{ fontSize: 11.5, color: atrasada(p) ? 'var(--v2-hot)' : '#9a9a9a', fontWeight: atrasada(p) ? 800 : undefined, whiteSpace: 'nowrap' }}>{dataFmt}</span>
@@ -1443,7 +1443,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                               return (
                                 <button key={f.key} className="st-btn" disabled={!podeEditar} onClick={() => salvarCampo(p.id, 'formato', f.key)}
                                   style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 8, border: 'none', background: on ? 'var(--v2-surface)' : 'transparent', color: on ? f.cor : '#8a8a8a', fontWeight: on ? 700 : 500, fontSize: 12, cursor: podeEditar ? 'pointer' : 'default', boxShadow: on ? '0 1px 4px rgba(0,0,0,.12)' : 'none' }}>
-                                  <span style={{ width: 6, height: 6, borderRadius: 2, background: f.cor }} />{f.label}
+                                  <span style={{ width: 6, height: 6, borderRadius: 2, background: f.cor }} />{tr(f.rotulo)}
                                 </button>
                               )
                             })}

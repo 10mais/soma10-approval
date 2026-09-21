@@ -30,3 +30,18 @@ describe('formatoPost — o rótulo do formato é um só no sistema', () => {
     expect(FORMATOS.map(f => f.chave)).toEqual(['feed', 'reel', 'carrossel', 'story', 'grafico'])
   })
 })
+
+describe('formatoPost — o rótulo fala o idioma de quem lê', () => {
+  it('a chave é a mesma; só o texto muda', () => {
+    expect(labelFormato('carrossel', 'en')).toBe('Carousel')
+    expect(labelFormato('grafico', 'en')).toBe('Graphic material')
+    expect(labelFormato('feed', 'en')).toBe('Feed')
+    expect(labelFormato(undefined, 'en')).toBe('Feed')
+    expect(seloFormato('carrossel', 'en')).toBe('Carousel')
+    expect(seloFormato('feed', 'en')).toBeNull()
+  })
+
+  it('formato desconhecido continua devolvendo ele mesmo, em qualquer idioma', () => {
+    expect(labelFormato('podcast', 'en')).toBe('Podcast')
+  })
+})

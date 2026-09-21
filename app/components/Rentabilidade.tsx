@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/app/components/Idioma'
 import { useEffect, useMemo, useState } from 'react'
 import { totalMensalModulos, type ClienteModulos } from '@/lib/modulos'
 import { rotuloFormaPagamento } from '@/lib/ganhosFinanceiro'
@@ -12,6 +13,7 @@ function brlFmt(v: number) { return v.toLocaleString('pt-BR', { style: 'currency
 function fmtH(min: number) { return `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, '0')}` }
 
 export default function Rentabilidade({ clientes, usuarios }: { clientes: Cliente[]; usuarios: Usuario[] }) {
+  const tr = useT()
   const [tarefas, setTarefas] = useState<any[]>([])
   const [despesas, setDespesas] = useState<Despesa[]>([])
   const [contas, setContas] = useState<{ id: string; nome: string; saldo: number; atualizadoEm?: string }[]>([])
@@ -265,11 +267,11 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
     <div style={{ maxWidth: 980 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Financeiro</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Resultado financeiro: receita recorrente (contratos + assinaturas de módulos) menos folha (fixo + variável) e despesas.</p>
+          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{tr('fin.financeiro')}</h2>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('fin.resultado-financeiro-receita-r')}</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button onClick={toggleOcultar} title={ocultar ? 'Mostrar valores' : 'Ocultar valores'} aria-label={ocultar ? 'Mostrar valores' : 'Ocultar valores'}
+          <button onClick={toggleOcultar} title={ocultar ? tr('fin.mostrar-valores') : tr('fin.ocultar-valores')} aria-label={ocultar ? tr('fin.mostrar-valores') : tr('fin.ocultar-valores')}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 38, height: 38, borderRadius: 10, border: '1.5px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', cursor: 'pointer' }}>
             {ocultar ? (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" /><path d="M1 1l22 22" /></svg>
@@ -283,14 +285,14 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
         </div>
       </div>
 
-      {carregando ? <p style={{ color: 'var(--v2-ink3)' }}>Carregando...</p> : (
+      {carregando ? <p style={{ color: 'var(--v2-ink3)' }}>{tr('conta.carregando')}</p> : (
         <div>
           {/* DRE — Resultado do mes */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 18 }}>
-            <div style={card}><p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Receita recorrente</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: 'var(--v2-ink)' }}>{brl(receitaTotal)}</p><p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Contratos + módulos{mrrModulos > 0 ? ` · ${brl(mrrModulos)} em módulos` : ''}</p>{mrrRisco > 0 && <p style={{ margin: '4px 0 0', fontSize: 11, fontWeight: 700, color: 'var(--v2-hot)' }}>{brl(mrrRisco)}/mês em risco (suspensos)</p>}</div>
-            <div style={card}><p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Folha (fixo + variável)</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: 'var(--v2-hot)' }}>{brl(folha)}</p></div>
-            <div style={card}><p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Despesas</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: 'var(--v2-hot)' }}>{brl(despesasTotal)}</p></div>
-            <div style={{ ...card, background: lucro >= 0 ? 'var(--v2-ok-bg)' : 'var(--v2-hot-bg)' }}><p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Lucro</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: lucro >= 0 ? 'var(--v2-ok)' : 'var(--v2-hot)' }}>{brl(lucro)}{margemPct !== null && <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}> ({mascP(Math.round(margemPct))}%)</span>}</p></div>
+            <div style={card}><p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('fin.receita-recorrente')}</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: 'var(--v2-ink)' }}>{brl(receitaTotal)}</p><p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Contratos + módulos{mrrModulos > 0 ? ` · ${brl(mrrModulos)} em módulos` : ''}</p>{mrrRisco > 0 && <p style={{ margin: '4px 0 0', fontSize: 11, fontWeight: 700, color: 'var(--v2-hot)' }}>{brl(mrrRisco)}/mês em risco (suspensos)</p>}</div>
+            <div style={card}><p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('fin.folha-fixo-variavel')}</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: 'var(--v2-hot)' }}>{brl(folha)}</p></div>
+            <div style={card}><p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('fin.despesas')}</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: 'var(--v2-hot)' }}>{brl(despesasTotal)}</p></div>
+            <div style={{ ...card, background: lucro >= 0 ? 'var(--v2-ok-bg)' : 'var(--v2-hot-bg)' }}><p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('fin.lucro')}</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: lucro >= 0 ? 'var(--v2-ok)' : 'var(--v2-hot)' }}>{brl(lucro)}{margemPct !== null && <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}> ({mascP(Math.round(margemPct))}%)</span>}</p></div>
           </div>
 
           {/* Saúde do Caixa — termômetro (open doors 60 dias) */}
@@ -310,34 +312,34 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
               </div>
               {/* Indicador */}
               <div style={{ flex: 1, minWidth: 180 }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink2)' }}>Saúde do Caixa</p>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink2)' }}>{tr('fin.saude-caixa')}</p>
                 <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>
-                  {saudeCaixa === null ? 'Cadastre contas e despesas para calcular.' : ocultar ? 'Valores ocultos (clique no olho para mostrar).' : `Cobre ~${Math.round(Math.min(saudeCaixa, 999) / 100 * saudeDias)} dias de operação sem nenhuma receita. Meta: ${saudeDias} dias (100%).`}
+                  {saudeCaixa === null ? tr('fin.cadastre-contas') : ocultar ? tr('fin.valores-ocultos') : `Cobre ~${Math.round(Math.min(saudeCaixa, 999) / 100 * saudeDias)} dias de operação sem nenhuma receita. Meta: ${saudeDias} dias (100%).`}
                 </p>
               </div>
               {/* Composição */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12.5, color: 'var(--v2-ink2)', minWidth: 200 }}>
-                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>Saldo em contas <strong style={{ color: 'var(--v2-ink)' }}>{brl(saldoContas)}</strong></span>
-                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>Despesa op. mensal <strong style={{ color: 'var(--v2-hot)' }}>{brl(despOpMensal)}</strong></span>
+                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>{tr('fin.saldo-contas')}<strong style={{ color: 'var(--v2-ink)' }}>{brl(saldoContas)}</strong></span>
+                <span style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>{tr('fin.despesa-op-mensal')}<strong style={{ color: 'var(--v2-hot)' }}>{brl(despOpMensal)}</strong></span>
                 <span style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>Reserva p/ {saudeDias} dias <strong style={{ color: 'var(--v2-ink)' }}>{brl(reserva60)}</strong></span>
-                <button onClick={() => setGerenciarContas(v => !v)} style={{ alignSelf: 'flex-start', marginTop: 2, background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{gerenciarContas ? 'Fechar' : 'Gerenciar contas bancárias'}</button>
+                <button onClick={() => setGerenciarContas(v => !v)} style={{ alignSelf: 'flex-start', marginTop: 2, background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{gerenciarContas ? tr('comum.fechar') : tr('fin.gerenciar-contas')}</button>
               </div>
             </div>
             {gerenciarContas && (
               <div style={{ borderTop: '1px solid var(--v2-rule)', marginTop: 14, paddingTop: 14 }}>
-                <p style={{ margin: '0 0 8px', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Saldo atual de cada conta (atualize manualmente). A soma alimenta a Saúde do Caixa.</p>
+                <p style={{ margin: '0 0 8px', fontSize: 11.5, color: 'var(--v2-ink3)' }}>{tr('fin.saldo-atual-cada-conta-atualiz')}</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {contas.map((c, i) => (
                     <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <input value={c.nome} onChange={e => setContas(cs => cs.map((x, j) => j === i ? { ...x, nome: e.target.value } : x))} placeholder="Conta (ex.: Itaú PJ)" style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
+                      <input value={c.nome} onChange={e => setContas(cs => cs.map((x, j) => j === i ? { ...x, nome: e.target.value } : x))} placeholder={tr('fin.conta-ex-itau-pj')} style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                       <input type="number" value={c.saldo || ''} onChange={e => setContas(cs => cs.map((x, j) => j === i ? { ...x, saldo: Number(e.target.value) || 0 } : x))} placeholder="Saldo R$" style={{ width: 130, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
-                      <button onClick={() => setContas(cs => cs.filter((_, j) => j !== i))} title="Remover" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 16, padding: 4 }}>×</button>
+                      <button onClick={() => setContas(cs => cs.filter((_, j) => j !== i))} title={tr('comum.remover')} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 16, padding: 4 }}>×</button>
                     </div>
                   ))}
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <button onClick={() => setContas(cs => [...cs, { id: '', nome: '', saldo: 0 }])} style={{ padding: '8px 14px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>+ Conta</button>
-                  <button onClick={() => salvarContas(contas)} disabled={salvandoContas} style={{ padding: '8px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{salvandoContas ? 'Salvando...' : 'Salvar contas'}</button>
+                  <button onClick={() => setContas(cs => [...cs, { id: '', nome: '', saldo: 0 }])} style={{ padding: '8px 14px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{tr('fin.conta')}</button>
+                  <button onClick={() => salvarContas(contas)} disabled={salvandoContas} style={{ padding: '8px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{salvandoContas ? tr('dash.salvando') : tr('fin.salvar-contas')}</button>
                 </div>
               </div>
             )}
@@ -347,7 +349,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
           <div style={{ ...card, marginBottom: 18 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
               <div>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink2)' }}>Fluxo de caixa</p>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink2)' }}>{tr('fin.fluxo-caixa')}</p>
                 <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Entradas (receita) e saídas (folha + despesas) por mês. Meses à frente = previsão dos recorrentes já lançados.</p>
               </div>
               <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 9, padding: 3 }}>
@@ -369,24 +371,24 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
               ))}
             </div>
             <div style={{ display: 'flex', gap: 16, marginTop: 10, fontSize: 11.5, color: 'var(--v2-ink3)' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--v2-ok)' }} />Entradas</span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--v2-hot)' }} />Saídas</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--v2-ok)' }} />{tr('fin.entradas')}</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--v2-hot)' }} />{tr('fin.saidas')}</span>
               <span style={{ marginLeft: 'auto', color: 'var(--v2-ink3)' }}>valores em milhares (k) abaixo de cada mês = saldo</span>
             </div>
           </div>
 
           {/* Saldo previsto (60 dias) */}
           <div style={{ ...card, marginBottom: 18 }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink2)' }}>Saldo previsto · próximos 60 dias</p>
-            <p style={{ margin: '2px 0 12px', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Parte do saldo atual das contas e aplica os recebimentos (dia de vencimento de cada cliente) e os lançamentos futuros, na ordem das datas.</p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink2)' }}>{tr('fin.saldo-previsto-proximos-60-dia')}</p>
+            <p style={{ margin: '2px 0 12px', fontSize: 11.5, color: 'var(--v2-ink3)' }}>{tr('fin.parte-saldo-atual-contas-aplic')}</p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-              <div style={{ flex: 1, minWidth: 120, background: 'var(--v2-surface1)', borderRadius: 10, padding: '10px 12px' }}><p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)' }}>Saldo atual</p><p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 800, color: 'var(--v2-ink)' }}>{brl(saldoContas)}</p></div>
-              <div style={{ flex: 1, minWidth: 120, background: 'var(--v2-surface1)', borderRadius: 10, padding: '10px 12px' }}><p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)' }}>Previsto em 60d</p><p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 800, color: previsao.saldoFinal >= 0 ? 'var(--v2-ok)' : 'var(--v2-hot)' }}>{brl(previsao.saldoFinal)}</p></div>
-              <div style={{ flex: 1, minWidth: 120, background: previsao.menor < 0 ? 'var(--v2-hot-bg)' : 'var(--v2-surface1)', borderRadius: 10, padding: '10px 12px' }}><p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)' }}>Menor saldo no período</p><p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 800, color: previsao.menor < 0 ? 'var(--v2-hot)' : 'var(--v2-ink)' }}>{brl(previsao.menor)}</p></div>
+              <div style={{ flex: 1, minWidth: 120, background: 'var(--v2-surface1)', borderRadius: 10, padding: '10px 12px' }}><p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('fin.saldo-atual')}</p><p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 800, color: 'var(--v2-ink)' }}>{brl(saldoContas)}</p></div>
+              <div style={{ flex: 1, minWidth: 120, background: 'var(--v2-surface1)', borderRadius: 10, padding: '10px 12px' }}><p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('fin.previsto-60d')}</p><p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 800, color: previsao.saldoFinal >= 0 ? 'var(--v2-ok)' : 'var(--v2-hot)' }}>{brl(previsao.saldoFinal)}</p></div>
+              <div style={{ flex: 1, minWidth: 120, background: previsao.menor < 0 ? 'var(--v2-hot-bg)' : 'var(--v2-surface1)', borderRadius: 10, padding: '10px 12px' }}><p style={{ margin: 0, fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('fin.menor-saldo-periodo')}</p><p style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 800, color: previsao.menor < 0 ? 'var(--v2-hot)' : 'var(--v2-ink)' }}>{brl(previsao.menor)}</p></div>
             </div>
-            {previsao.menor < 0 && <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--v2-hot)', fontWeight: 600 }}>Atenção: o saldo fica negativo em algum momento dos próximos 60 dias.</p>}
+            {previsao.menor < 0 && <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--v2-hot)', fontWeight: 600 }}>{tr('fin.atencao-saldo-fica-negativo-al')}</p>}
             {previsao.linhas.length === 0 ? (
-              <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Sem eventos previstos. Defina o dia de vencimento dos clientes (Configurações → Clientes) e adicione lançamentos futuros abaixo.</p>
+              <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('fin.sem-eventos-previstos-defina-d')}</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 240, overflowY: 'auto' }}>
                 {previsao.linhas.map((l, i) => (
@@ -419,17 +421,17 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
                       {g.descricao}
                     </span>
                     {!!g.procedimentos?.length && (
-                      <span title="O que foi vendido (vem do CRM)" style={{ fontSize: 10.5, fontWeight: 700, color: '#3730a3', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px', flexShrink: 0 }}>
+                      <span title={tr('fin.que-foi-vendido-vem-crm')} style={{ fontSize: 10.5, fontWeight: 700, color: '#3730a3', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px', flexShrink: 0 }}>
                         {g.procedimentos.slice(0, 2).join(', ')}{g.procedimentos.length > 2 ? ` +${g.procedimentos.length - 2}` : ''}
                       </span>
                     )}
                     <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ok)', flexShrink: 0 }}>{brl(g.valor)}</span>
-                    <button onClick={() => setLancando(g)} title="Informar como foi pago e lançar no caixa"
+                    <button onClick={() => setLancando(g)} title={tr('fin.informar-como-foi-pago-lancar')}
                       style={{ padding: '7px 13px', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>
                       Lançar…
                     </button>
-                    <button onClick={() => dispensarGanho(g)} title="Não vira entrada (permuta, cortesia, cancelado)"
-                      style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 11.5, fontWeight: 700, flexShrink: 0 }}>Ignorar</button>
+                    <button onClick={() => dispensarGanho(g)} title={tr('fin.nao-vira-entrada-permuta-corte')}
+                      style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 11.5, fontWeight: 700, flexShrink: 0 }}>{tr('fin.ignorar')}</button>
                   </div>
                 ))}
               </div>
@@ -446,8 +448,8 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
 
           {/* Lançamentos futuros */}
           <div style={{ ...card, marginBottom: 18 }}>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink2)' }}>Lançamentos futuros</p>
-            <p style={{ margin: '2px 0 12px', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Entradas e saídas planejadas que entram na previsão de saldo.</p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink2)' }}>{tr('fin.lancamentos-futuros')}</p>
+            <p style={{ margin: '2px 0 12px', fontSize: 11.5, color: 'var(--v2-ink3)' }}>{tr('fin.entradas-saidas-planejadas-que')}</p>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
               <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 8, padding: 3 }}>
                 {(['entrada', 'saida'] as const).map(t => (
@@ -455,9 +457,9 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
                 ))}
               </div>
               <input type="date" value={lData} onChange={e => setLData(e.target.value)} style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
-              <input value={lDesc} onChange={e => setLDesc(e.target.value)} placeholder="Descrição" style={{ flex: 1, minWidth: 140, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
+              <input value={lDesc} onChange={e => setLDesc(e.target.value)} placeholder={tr('dash.descricao')} style={{ flex: 1, minWidth: 140, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
               <input type="number" min="0" value={lValor} onChange={e => setLValor(e.target.value)} placeholder="Valor R$" style={{ width: 110, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit' }} />
-              <button onClick={addLancamento} disabled={!lDesc.trim() || !(Number(lValor) > 0) || !lData} style={{ padding: '8px 14px', background: (lDesc.trim() && Number(lValor) > 0 && lData) ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: (lDesc.trim() && Number(lValor) > 0 && lData) ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Adicionar</button>
+              <button onClick={addLancamento} disabled={!lDesc.trim() || !(Number(lValor) > 0) || !lData} style={{ padding: '8px 14px', background: (lDesc.trim() && Number(lValor) > 0 && lData) ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: (lDesc.trim() && Number(lValor) > 0 && lData) ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{tr('fin.adicionar')}</button>
             </div>
             {lancamentos.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -465,18 +467,18 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
                   <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', background: 'var(--v2-surface1)', borderRadius: 8, fontSize: 12.5 }}>
                     <span style={{ width: 52, flexShrink: 0, color: 'var(--v2-ink3)', fontWeight: 700 }}>{new Date(l.data + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
                     <span style={{ flex: 1, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.descricao}</span>
-                    {l.reservaId && <span title="Gerado da reserva — atualiza junto com ela" style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>reserva</span>}
-                    {l.negocioId && <span title="Entrada gerada de uma venda ganha no CRM" style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: '#7c3aed', background: '#f5f3ff', borderRadius: 999, padding: '2px 8px' }}>CRM</span>}
-                    {!!l.totalParcelas && <span title="Parcela do crédito" style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', borderRadius: 999, padding: '2px 8px' }}>{l.parcela}/{l.totalParcelas}</span>}
+                    {l.reservaId && <span title={tr('fin.gerado-reserva-atualiza-junto')} style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>{tr('fin.reserva')}</span>}
+                    {l.negocioId && <span title={tr('fin.entrada-gerada-venda-ganha-crm')} style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: '#7c3aed', background: '#f5f3ff', borderRadius: 999, padding: '2px 8px' }}>{tr('nav.crm')}</span>}
+                    {!!l.totalParcelas && <span title={tr('fin.parcela-credito')} style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', borderRadius: 999, padding: '2px 8px' }}>{l.parcela}/{l.totalParcelas}</span>}
                     {!!l.procedimentos?.length && <span title={l.procedimentos.join(', ')} style={{ flexShrink: 0, fontSize: 10, fontWeight: 700, color: '#3730a3', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px', maxWidth: 150, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.procedimentos.join(', ')}</span>}
                     {l.formaPagamento && <span style={{ flexShrink: 0, fontSize: 10.5, color: 'var(--v2-ink3)' }}>{rotuloFormaPagamento(l.formaPagamento)}</span>}
-                    <button onClick={() => setEditando(l)} title="Editar descrição / procedimento" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>editar</button>
-                    {l.recebido && <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 999, padding: '2px 8px' }}>recebido</span>}
+                    <button onClick={() => setEditando(l)} title={tr('fin.editar-descricao-procedimento')} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>{tr('fin.editar')}</button>
+                    {l.recebido && <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 800, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 999, padding: '2px 8px' }}>{tr('fin.recebido')}</span>}
                     <span style={{ flexShrink: 0, fontWeight: 700, color: l.tipo === 'entrada' ? 'var(--v2-ok)' : 'var(--v2-hot)' }}>{l.tipo === 'entrada' ? '+' : '−'}{brl(Number(l.valor) || 0)}</span>
                     {/* Lançamento de reserva não sai daqui: apagar só a cópia mentiria o caixa — cancele/edite a reserva. */}
                     {l.reservaId
                       ? <span style={{ width: 15, flexShrink: 0 }} />
-                      : <button onClick={() => delLancamento(l.id)} title="Remover" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>×</button>}
+                      : <button onClick={() => delLancamento(l.id)} title={tr('comum.remover')} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15, flexShrink: 0 }}>×</button>}
                   </div>
                 ))}
               </div>
@@ -488,29 +490,29 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--v2-rule)', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Despesas {mes && `· ${opcoesMes.find(o => o.v === mes)?.label}`}</div>
             <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--v2-surface1)' }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <input value={dDesc} onChange={e => setDDesc(e.target.value)} placeholder="Descrição (ex.: Aluguel, Ads, Software)" style={{ flex: 1, minWidth: 180, padding: '9px 12px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
+                <input value={dDesc} onChange={e => setDDesc(e.target.value)} placeholder={tr('fin.descricao-ex-aluguel-ads-softw')} style={{ flex: 1, minWidth: 180, padding: '9px 12px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                 <input type="number" min="0" value={dValor} onChange={e => setDValor(e.target.value)} placeholder="Valor R$" style={{ width: 110, padding: '9px 12px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }} />
                 <select value={dTipo} onChange={e => setDTipo(e.target.value as any)} style={{ padding: '9px 12px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                  <option value="fixo">Fixa</option>
-                  <option value="variavel">Variável</option>
+                  <option value="fixo">{tr('fin.fixa')}</option>
+                  <option value="variavel">{tr('fin.variavel')}</option>
                 </select>
                 <select value={dRecorrente ? 'rec' : 'uni'} onChange={e => setDRecorrente(e.target.value === 'rec')} style={{ padding: '9px 12px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                  <option value="uni">Pagamento único</option>
-                  <option value="rec">Recorrente</option>
+                  <option value="uni">{tr('fin.pagamento-unico')}</option>
+                  <option value="rec">{tr('fin.recorrente')}</option>
                 </select>
-                <button onClick={addDespesa} disabled={salvandoD || !dDesc.trim() || !(Number(dValor) > 0)} style={{ padding: '9px 16px', background: (dDesc.trim() && Number(dValor) > 0) ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: (dDesc.trim() && Number(dValor) > 0) ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Adicionar</button>
+                <button onClick={addDespesa} disabled={salvandoD || !dDesc.trim() || !(Number(dValor) > 0)} style={{ padding: '9px 16px', background: (dDesc.trim() && Number(dValor) > 0) ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: (dDesc.trim() && Number(dValor) > 0) ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('fin.adicionar')}</button>
               </div>
               {dRecorrente && (
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, fontSize: 12, color: 'var(--v2-ink3)' }}>
-                  <span>Começa em <strong style={{ color: 'var(--v2-ink)' }}>{mes || 'mês atual'}</strong> e repete por:</span>
+                  <span>{tr('fin.comeca')}<strong style={{ color: 'var(--v2-ink)' }}>{mes || 'mês atual'}</strong>{tr('fin.repete-por')}</span>
                   <select value={dRecModo} onChange={e => setDRecModo(e.target.value as any)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                    <option value="n">Nº de meses</option>
-                    <option value="ate">Até o mês (vencimento)</option>
+                    <option value="n">{tr('fin.meses')}</option>
+                    <option value="ate">{tr('fin.ate-mes-vencimento')}</option>
                   </select>
                   {dRecModo === 'n'
                     ? <input type="number" min="1" max="60" value={dRecN} onChange={e => setDRecN(e.target.value)} style={{ width: 70, padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />
                     : <input type="month" value={dRecAte} onChange={e => setDRecAte(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }} />}
-                  <span style={{ color: 'var(--v2-ink3)' }}>Cria um lançamento em cada mês.</span>
+                  <span style={{ color: 'var(--v2-ink3)' }}>{tr('fin.cria-lancamento-cada-mes')}</span>
                 </div>
               )}
             </div>
@@ -525,22 +527,22 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
                       <td style={{ padding: '10px 18px', textAlign: 'right' }}><button onClick={() => delDespesa(d.id)} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15 }}>×</button></td>
                     </tr>
                   ))}
-                  {despesasMes.length === 0 && <tr><td colSpan={4} style={{ padding: 18, textAlign: 'center', color: 'var(--v2-ink3)' }}>Nenhuma despesa lançada.</td></tr>}
+                  {despesasMes.length === 0 && <tr><td colSpan={4} style={{ padding: 18, textAlign: 'center', color: 'var(--v2-ink3)' }}>{tr('fin.nenhuma-despesa-lancada')}</td></tr>}
                 </tbody>
               </table>
             </div>
             <div style={{ padding: '10px 18px', borderTop: '1px solid var(--v2-rule)', fontSize: 12, color: 'var(--v2-ink3)', display: 'flex', gap: 16, justifyContent: 'flex-end' }}>
-              <span>Fixas: <strong style={{ color: 'var(--v2-ink)' }}>{brl(despFixas)}</strong></span>
-              <span>Variáveis: <strong style={{ color: 'var(--v2-ink)' }}>{brl(despVar)}</strong></span>
+              <span>{tr('fin.fixas')}<strong style={{ color: 'var(--v2-ink)' }}>{brl(despFixas)}</strong></span>
+              <span>{tr('fin.variaveis')}<strong style={{ color: 'var(--v2-ink)' }}>{brl(despVar)}</strong></span>
             </div>
           </div>
 
           {/* Remuneração da equipe */}
           <div style={{ ...card, padding: 0, overflow: 'hidden', marginBottom: 18 }}>
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--v2-rule)', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Remuneração da equipe (mensal)</div>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--v2-rule)', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{tr('fin.remuneracao-equipe-mensal')}</div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead><tr style={{ background: 'var(--v2-surface1)', color: 'var(--v2-ink3)', fontSize: 11, textTransform: 'uppercase' }}><th style={th}>Colaborador</th><th style={thr}>Fixo</th><th style={thr}>Variável</th><th style={{ ...thr, padding: '10px 18px' }}>Total</th></tr></thead>
+                <thead><tr style={{ background: 'var(--v2-surface1)', color: 'var(--v2-ink3)', fontSize: 11, textTransform: 'uppercase' }}><th style={th}>{tr('fin.colaborador')}</th><th style={thr}>{tr('fin.fixo')}</th><th style={thr}>{tr('fin.variavel')}</th><th style={{ ...thr, padding: '10px 18px' }}>{tr('fin.total')}</th></tr></thead>
                 <tbody>
                   {equipe.map(u => (
                     <tr key={u.email} style={{ borderTop: '1px solid var(--v2-surface1)' }}>
@@ -551,18 +553,18 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
                     </tr>
                   ))}
                 </tbody>
-                <tfoot><tr style={{ borderTop: '2px solid var(--v2-rule)', background: 'var(--v2-surface1)' }}><td style={{ padding: '10px 18px', fontWeight: 800, color: 'var(--v2-ink)' }}>Total folha</td><td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700 }}>{brl(folhaFixa)}</td><td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700 }}>{brl(folhaVar)}</td><td style={{ padding: '10px 18px', textAlign: 'right', fontWeight: 800 }}>{brl(folha)}</td></tr></tfoot>
+                <tfoot><tr style={{ borderTop: '2px solid var(--v2-rule)', background: 'var(--v2-surface1)' }}><td style={{ padding: '10px 18px', fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('fin.total-folha')}</td><td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700 }}>{brl(folhaFixa)}</td><td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 700 }}>{brl(folhaVar)}</td><td style={{ padding: '10px 18px', textAlign: 'right', fontWeight: 800 }}>{brl(folha)}</td></tr></tfoot>
               </table>
             </div>
-            <p style={{ margin: 0, padding: '10px 18px', fontSize: 11, color: 'var(--v2-ink3)', borderTop: '1px solid var(--v2-surface1)' }}>Edite os valores em Pessoas e Cultura → Colaboradores.</p>
+            <p style={{ margin: 0, padding: '10px 18px', fontSize: 11, color: 'var(--v2-ink3)', borderTop: '1px solid var(--v2-surface1)' }}>{tr('fin.edite-valores-pessoas-cultura')}</p>
           </div>
 
           {/* Por cliente (operacional) */}
           <div style={{ ...card, padding: 0, overflow: 'hidden', marginBottom: 18 }}>
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--v2-rule)', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Por cliente — esforço operacional <span style={{ color: 'var(--v2-ink3)', fontWeight: 500 }}>(horas × custo/hora)</span></div>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--v2-rule)', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{tr('fin.por-cliente-esforco-operaciona')}<span style={{ color: 'var(--v2-ink3)', fontWeight: 500 }}>{tr('fin.horas-custo-hora')}</span></div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead><tr style={{ background: 'var(--v2-surface1)', color: 'var(--v2-ink3)', fontSize: 11, textTransform: 'uppercase' }}><th style={th}>Cliente</th><th style={thr}>Horas</th><th style={thr}>Custo op.</th><th style={thr}>Receita</th><th style={{ ...thr, padding: '10px 18px' }}>Margem op.</th></tr></thead>
+                <thead><tr style={{ background: 'var(--v2-surface1)', color: 'var(--v2-ink3)', fontSize: 11, textTransform: 'uppercase' }}><th style={th}>{tr('dash.cliente')}</th><th style={thr}>{tr('fin.horas')}</th><th style={thr}>{tr('fin.custo-op')}</th><th style={thr}>{tr('fin.receita')}</th><th style={{ ...thr, padding: '10px 18px' }}>{tr('fin.margem-op')}</th></tr></thead>
                 <tbody>
                   {linhasCliente.map(l => (
                     <tr key={l.c.id} style={{ borderTop: '1px solid var(--v2-surface1)' }}>
@@ -573,7 +575,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
                       <td style={{ padding: '10px 18px', textAlign: 'right', fontWeight: 800, color: l.receita === 0 ? 'var(--v2-ink3)' : l.margem >= 0 ? 'var(--v2-ok)' : 'var(--v2-hot)' }}>{l.receita > 0 ? brl(l.margem) : '—'}{l.pct !== null && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--v2-ink3)' }}> ({mascP(Math.round(l.pct))}%)</span>}</td>
                     </tr>
                   ))}
-                  {linhasCliente.length === 0 && <tr><td colSpan={5} style={{ padding: 20, textAlign: 'center', color: 'var(--v2-ink3)' }}>Sem dados no período.</td></tr>}
+                  {linhasCliente.length === 0 && <tr><td colSpan={5} style={{ padding: 20, textAlign: 'center', color: 'var(--v2-ink3)' }}>{tr('fin.sem-dados-periodo')}</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -582,15 +584,15 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
 
           {/* Por profissional */}
           <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--v2-rule)', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>Por profissional — horas</div>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--v2-rule)', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)' }}>{tr('fin.por-profissional-horas')}</div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead><tr style={{ background: 'var(--v2-surface1)', color: 'var(--v2-ink3)', fontSize: 11, textTransform: 'uppercase' }}><th style={th}>Profissional</th><th style={thr}>Horas</th><th style={{ ...thr, padding: '10px 18px' }}>Custo op.</th></tr></thead>
+                <thead><tr style={{ background: 'var(--v2-surface1)', color: 'var(--v2-ink3)', fontSize: 11, textTransform: 'uppercase' }}><th style={th}>{tr('fin.profissional')}</th><th style={thr}>{tr('fin.horas')}</th><th style={{ ...thr, padding: '10px 18px' }}>{tr('fin.custo-op')}</th></tr></thead>
                 <tbody>
                   {Object.values(porProf).sort((a, b) => b.min - a.min).map((p, i) => (
                     <tr key={i} style={{ borderTop: '1px solid var(--v2-surface1)' }}><td style={{ padding: '10px 18px', fontWeight: 600, color: 'var(--v2-ink)' }}>{p.nome}</td><td style={{ padding: '10px 12px', textAlign: 'right', color: 'var(--v2-ink2)' }}>{fmtH(p.min)}</td><td style={{ padding: '10px 18px', textAlign: 'right', color: 'var(--v2-ink2)' }}>{brl(p.custo)}</td></tr>
                   ))}
-                  {Object.keys(porProf).length === 0 && <tr><td colSpan={3} style={{ padding: 20, textAlign: 'center', color: 'var(--v2-ink3)' }}>Sem apontamentos no período.</td></tr>}
+                  {Object.keys(porProf).length === 0 && <tr><td colSpan={3} style={{ padding: 20, textAlign: 'center', color: 'var(--v2-ink3)' }}>{tr('fin.sem-apontamentos-periodo')}</td></tr>}
                 </tbody>
               </table>
             </div>

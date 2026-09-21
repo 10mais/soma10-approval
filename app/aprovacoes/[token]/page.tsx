@@ -1,5 +1,5 @@
 'use client'
-import { useT } from '@/app/components/Idioma'
+import { useT, useIdioma } from '@/app/components/Idioma'
 import { useEffect, useState } from 'react'
 import { labelFormato, seloFormato } from '@/lib/formatoPost'
 import { createPortal } from 'react-dom'
@@ -158,6 +158,7 @@ export default function AprovacoesPublicas() {
 // próxima postagem em destaque e as demais em seguida. Lista ou calendário.
 function Programacao({ itens }: { itens: ProgItem[] }) {
   const tr = useT()
+  const { idioma } = useIdioma()
   const [vista, setVista] = useState<'lista' | 'calendario'>('lista')
   const [mesBase, setMesBase] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
   const [diaSel, setDiaSel] = useState('')
@@ -183,7 +184,7 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)' }}>
             {destaque && <span style={{ color: '#b45309', marginRight: 6 }}>{tr('aprov.proxima')}</span>}
-            {fmtDia(it.dataAgendada)} · {fmtHora(it.dataAgendada)} <span style={{ fontWeight: 600, color: 'var(--v2-ink3)' }}>· {labelFormato(it.formato)}</span>
+            {fmtDia(it.dataAgendada)} · {fmtHora(it.dataAgendada)} <span style={{ fontWeight: 600, color: 'var(--v2-ink3)' }}>· {labelFormato(it.formato, idioma)}</span>
           </p>
           {it.legenda && <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.legenda.slice(0, 90)}{it.legenda.length > 90 ? '…' : ''}</p>}
           <span style={{ display: 'inline-block', marginTop: 4, fontSize: 9.5, fontWeight: 800, color: cor, background: bg, borderRadius: 999, padding: '2px 8px' }}>{rot}</span>
@@ -273,7 +274,7 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
               <div style={{ padding: '12px 16px 16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink)' }}>{fmtDia(preview.dataAgendada)} · {fmtHora(preview.dataAgendada)}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>{labelFormato(preview.formato)}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>{labelFormato(preview.formato, idioma)}</span>
                   <span style={{ fontSize: 9.5, fontWeight: 800, color: cor, background: bg, borderRadius: 999, padding: '2px 8px' }}>{rot}</span>
                   <button onClick={() => setPreview(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--v2-ink3)', lineHeight: 1, padding: 0 }}>×</button>
                 </div>
@@ -293,6 +294,7 @@ function Programacao({ itens }: { itens: ProgItem[] }) {
 // card não recebe mais `logo`/`logoAlt`: eram props mortas que fingiam ser fallback.
 function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: string; handle: string; onDecidido: () => void }) {
   const tr = useT()
+  const { idioma } = useIdioma()
   const [cur, setCur] = useState(0)
   const [modo, setModo] = useState<'view' | 'ajuste' | 'reject'>('view')
   const [texto, setTexto] = useState('')          // observação geral do ajuste / motivo da reprovação
@@ -393,8 +395,8 @@ function PostCard({ post, token, handle, onDecidido }: { post: PostA; token: str
         </span>
         <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>{handle}</span>
         {emAjuste && <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 800, color: '#b45309', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 999, padding: '3px 10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{tr('aprov.ajuste')}</span>}
-        {seloFormato(post.formato) && (
-          <span style={{ marginLeft: emAjuste ? 6 : 'auto', fontSize: 10, fontWeight: 700, color: 'var(--v2-ink3)', background: 'var(--v2-surface2)', borderRadius: 999, padding: '3px 9px', textTransform: 'uppercase' }}>{seloFormato(post.formato)}</span>
+        {seloFormato(post.formato, idioma) && (
+          <span style={{ marginLeft: emAjuste ? 6 : 'auto', fontSize: 10, fontWeight: 700, color: 'var(--v2-ink3)', background: 'var(--v2-surface2)', borderRadius: 999, padding: '3px 9px', textTransform: 'uppercase' }}>{seloFormato(post.formato, idioma)}</span>
         )}
       </div>
 
@@ -594,6 +596,7 @@ function TabelaCopies({ posts, token, onDecidido }: { posts: PostA[]; token: str
 
 function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number; token: string; onDecidido: () => void }) {
   const tr = useT()
+  const { idioma } = useIdioma()
   const [modo, setModo] = useState<'view' | 'ajuste' | 'reject'>('view')
   const [enviando, setEnviando] = useState(false)
   const [obs, setObs] = useState('')
@@ -643,7 +646,7 @@ function LinhaCopy({ post, idx, token, onDecidido }: { post: PostA; idx: number;
       {/* Col 1 — IMAGEM */}
       <div>
         <span className="copy-cell-label">{tr('aprov.imagem')}</span>
-        <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)' }}>Postagem {idx + 1}: {labelFormato(post.formato)}</p>
+        <p style={{ margin: '0 0 6px', fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)' }}>Postagem {idx + 1}: {labelFormato(post.formato, idioma)}</p>
         {capa
           ? <img src={capa} alt="" style={{ width: '100%', maxWidth: 130, aspectRatio: '4/5', objectFit: 'cover', borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface2)' }} />
           : <div style={{ width: '100%', maxWidth: 130, aspectRatio: '4/5', borderRadius: 9, border: '1px dashed var(--v2-rule2)', background: 'var(--v2-surface2)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 8, boxSizing: 'border-box' }}>

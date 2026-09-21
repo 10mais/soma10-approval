@@ -1,4 +1,7 @@
 'use client'
+import { useT, useIdioma } from '@/app/components/Idioma'
+import { labelFormato, corFormato, FORMATOS } from '@/lib/formatoPost'
+import type { Idioma } from '@/lib/i18n'
 import { useEffect, useState } from 'react'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
@@ -39,28 +42,30 @@ function tempoEspera(aguardandoDesde?: string): { texto: string; atrasado: boole
   return { texto, atrasado }
 }
 
-const ETAPAS: { key: string; label: string; cliente?: boolean }[] = [
-  { key: 'briefing', label: 'Briefing' },
-  { key: 'copy', label: 'Copy' },
-  { key: 'aprovacao_copy', label: 'Aprovação de copy', cliente: true },
-  { key: 'criativo', label: 'Criativo' },
-  { key: 'aprovacao_criativo', label: 'Aprovação de criativo', cliente: true },
-  { key: 'pronto', label: 'Pronto / Agendado' },
+const ETAPAS: { key: string; rotulo: string; cliente?: boolean }[] = [
+  { key: 'briefing', rotulo: 'est2.briefing' },
+  { key: 'copy', rotulo: 'est2.copy' },
+  { key: 'aprovacao_copy', rotulo: 'est2.aprovacao-copy', cliente: true },
+  { key: 'criativo', rotulo: 'est2.criativo' },
+  { key: 'aprovacao_criativo', rotulo: 'est2.aprovacao-criativo', cliente: true },
+  { key: 'pronto', rotulo: 'est2.pronto-agendado' },
 ]
 // Limite de trabalho em andamento (WIP) por etapa de produção. 0 = sem limite.
 const LIMITE_WIP: Record<string, number> = { copy: 6, criativo: 6 }
-const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+// O nome do mês sai do dicionário (lib/i18n, 'mes.1'…'mes.12').
+const nomeMes = (m: number, tr: (c: string) => string) => tr(`mes.${m}`)
 const ehVideo = (u: string) => /\.(mp4|mov|m4v)(\?|$)/i.test(u || '')
 
-const FORMATO_INFO: Record<string, { label: string; cor: string; icon: string }> = {
-  feed: { label: 'Feed', cor: 'var(--v2-info)', icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z' },
-  reel: { label: 'Reel', cor: 'var(--v2-hot)', icon: 'M5.76 2h12.48L22 6v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6l3.76-4zM10 12l5 3-5 3v-6z' },
-  story: { label: 'Story', cor: '#7c3aed', icon: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12z' },
-  carrossel: { label: 'Carrossel', cor: '#0891b2', icon: 'M4 4h12v12H4zM8 8h12v12H8z' },
+// Só o desenho do ícone mora aqui; o RÓTULO e a cor vêm da fonte única (lib/formatoPost).
+const ICONE_FORMATO: Record<string, string> = {
+  feed: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z',
+  reel: 'M5.76 2h12.48L22 6v14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6l3.76-4zM10 12l5 3-5 3v-6z',
+  story: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4a6 6 0 1 1 0 12 6 6 0 0 1 0-12z',
+  carrossel: 'M4 4h12v12H4zM8 8h12v12H8z',
 }
-function formatoBadge(formato?: string, qtdImagens?: number) {
+function formatoBadge(formato: string | undefined, qtdImagens: number | undefined, idioma: Idioma) {
   const fmt = (qtdImagens && qtdImagens > 1) ? 'carrossel' : (formato || 'feed')
-  const info = FORMATO_INFO[fmt] || FORMATO_INFO.feed
+  const info = { label: labelFormato(fmt, idioma), cor: corFormato(fmt), icon: ICONE_FORMATO[fmt] || ICONE_FORMATO.feed }
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 9, fontWeight: 700, color: info.cor, background: `${info.cor}12`, border: `1px solid ${info.cor}30`, borderRadius: 999, padding: '1px 6px' }}>
       <svg width="10" height="10" viewBox="0 0 24 24" fill={info.cor} style={{ flexShrink: 0 }}><path d={info.icon} /></svg>
@@ -85,6 +90,8 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
   podeEditar?: boolean
   podeExcluir?: boolean
 }) {
+  const tr = useT()
+  const { idioma } = useIdioma()
   const [planos, setPlanos] = useState<Plano[]>([])
   const [planoSel, setPlanoSel] = useState('')
   const [pautas, setPautas] = useState<Pauta[]>([])
@@ -106,18 +113,18 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
   async function gerarLegendaNovaPauta() {
     const plano = planos.find(p => p.id === planoSel)
     if (!plano || !formPauta.briefing.trim()) return
-    setGerandoLegendaNova(true); setLegendaNovaMsg('Gerando legenda...')
+    setGerandoLegendaNova(true); setLegendaNovaMsg(tr('est2.gerando-legenda'))
     try {
       const r = await fetch('/api/esteira/gerar-legenda', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ clienteId: plano.clienteId, briefing: formPauta.briefing, sugestaoImagem: formPauta.sugestaoImagem, textoImagem: formPauta.textoImagem, formato: formPauta.formato }),
       })
       const d = await r.json()
-      if (!r.ok) { setLegendaNovaMsg(d?.error || 'Falha ao gerar.'); return }
+      if (!r.ok) { setLegendaNovaMsg(d?.error || tr('est2.falha-gerar')); return }
       setFormPauta(f => ({ ...f, sugestaoLegenda: d.legenda }))
-      setLegendaNovaMsg('Legenda gerada!')
+      setLegendaNovaMsg(tr('est2.legenda-gerada'))
       setTimeout(() => setLegendaNovaMsg(''), 4000)
-    } catch { setLegendaNovaMsg('Erro de conexão.') }
+    } catch { setLegendaNovaMsg(tr('est2.erro-conexao')) }
     finally { setGerandoLegendaNova(false) }
   }
 
@@ -173,7 +180,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
   // Fechar com alteração = SALVA a pauta (regra do sistema, 08/09: nunca "sair sem salvar").
   async function fecharNovaPauta() {
     if (pautaTemAlteracoes()) {
-      if (!formPauta.briefing.trim()) { toast('Escreva o briefing para salvar a pauta.', 'erro'); return }
+      if (!formPauta.briefing.trim()) { toast(tr('est2.escreva-briefing'), 'erro'); return }
       await criarPauta(); return
     }
     setNovaPautaModal(false)
@@ -181,19 +188,19 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
 
   async function gerarPlanoIA() {
     if (!planoSel) return
-    if (!(await confirmar('A IA vai gerar pautas para o mês inteiro com base no Brand Board. Isso consome créditos da IA. Continuar?', { titulo: 'Gerar pautas com IA', okLabel: 'Continuar' }))) return
-    setGerandoIA(true); setIaMsg('Gerando pautas com IA... (pode levar ate 1 minuto)')
+    if (!(await confirmar(tr('est2.dlg-gerar-ia'), { titulo: tr('est2.gerar-pautas-ia'), okLabel: tr('dash.ok-continuar') }))) return
+    setGerandoIA(true); setIaMsg(tr('est2.gerando-pautas'))
     try {
       const r = await fetch('/api/esteira/gerar-plano', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ planoId: planoSel, quantidade: 12 }),
       })
       const d = await r.json()
-      if (!r.ok) { setIaMsg(d?.error || 'Falha ao gerar o plano.'); return }
+      if (!r.ok) { setIaMsg(d?.error || tr('est2.falha-gerar-plano')); return }
       setIaMsg(`${d.quantidade} pautas criadas com sucesso!`)
       carregarPautas(planoSel)
       setTimeout(() => setIaMsg(''), 6000)
-    } catch { setIaMsg('Erro de conexão ao gerar o plano.') }
+    } catch { setIaMsg(tr('est2.erro-conexao-plano')) }
     finally { setGerandoIA(false) }
   }
 
@@ -211,17 +218,17 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
-        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Esteira de Criativos</h2>
+        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{tr('est2.esteira-criativos')}</h2>
         <select value={planoSel} onChange={e => setPlanoSel(e.target.value)}
           style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', minWidth: 240 }}>
-          <option value="">Selecione um plano...</option>
-          {planos.map(p => <option key={p.id} value={p.id}>{clienteFixo ? '' : `${p.clienteNome} — `}{MESES[p.mes - 1]}/{p.ano}{p.titulo ? ` · ${p.titulo}` : ''}</option>)}
+          <option value="">{tr('est2.selecione-plano')}</option>
+          {planos.map(p => <option key={p.id} value={p.id}>{clienteFixo ? '' : `${p.clienteNome} — `}{nomeMes(p.mes, tr)}/{p.ano}{p.titulo ? ` · ${p.titulo}` : ''}</option>)}
         </select>
-        {podeEditar && <button onClick={() => setNovoPlano(true)} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Novo plano</button>}
+        {podeEditar && <button onClick={() => setNovoPlano(true)} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('est2.novo-plano')}</button>}
         {planoSel && podeEditar && <>
-          <button onClick={() => { setFormPauta({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed', refImagemUrl: '' }); setNovaPautaModal(true) }} style={{ padding: '9px 16px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Nova pauta</button>
+          <button onClick={() => { setFormPauta({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed', refImagemUrl: '' }); setNovaPautaModal(true) }} style={{ padding: '9px 16px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{tr('est2.nova-pauta')}</button>
           <button onClick={gerarPlanoIA} disabled={gerandoIA} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-amber-on)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
-            {gerandoIA ? 'Gerando...' : 'Gerar plano com IA'}
+            {gerandoIA ? tr('dash.gerando') : tr('est2.gerar-plano-ia')}
           </button>
         </>}
       </div>
@@ -231,33 +238,33 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
         <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 18, display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           {!clienteFixo && (
             <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Cliente</label>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('dash.cliente')}</label>
               <select value={formPlano.clienteId} onChange={e => setFormPlano(f => ({ ...f, clienteId: e.target.value }))} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, minWidth: 200 }}>
-                <option value="">Selecione...</option>
+                <option value="">{tr('dash.selecione')}</option>
                 {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </div>
           )}
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Mês</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('est2.mes')}</label>
             <select value={formPlano.mes} onChange={e => setFormPlano(f => ({ ...f, mes: Number(e.target.value) }))} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13 }}>
-              {MESES.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>{nomeMes(m, tr)}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Ano</label>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('est2.ano')}</label>
             <input type="number" value={formPlano.ano} onChange={e => setFormPlano(f => ({ ...f, ano: Number(e.target.value) }))} style={{ padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, width: 90 }} />
           </div>
-          <button onClick={criarPlano} disabled={!clienteFixo && !formPlano.clienteId} style={{ padding: '10px 20px', background: (clienteFixo || formPlano.clienteId) ? 'var(--marca, var(--v2-amber-on))' : 'var(--v2-surface2)', color: (clienteFixo || formPlano.clienteId) ? 'var(--marca-texto, var(--v2-ink))' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (clienteFixo || formPlano.clienteId) ? 'pointer' : 'not-allowed' }}>Criar plano</button>
-          <button onClick={() => setNovoPlano(false)} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+          <button onClick={criarPlano} disabled={!clienteFixo && !formPlano.clienteId} style={{ padding: '10px 20px', background: (clienteFixo || formPlano.clienteId) ? 'var(--marca, var(--v2-amber-on))' : 'var(--v2-surface2)', color: (clienteFixo || formPlano.clienteId) ? 'var(--marca-texto, var(--v2-ink))' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (clienteFixo || formPlano.clienteId) ? 'pointer' : 'not-allowed' }}>{tr('est2.criar-plano')}</button>
+          <button onClick={() => setNovoPlano(false)} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
         </div>
       )}
 
       {iaMsg && (
-        <div style={{ background: iaMsg.includes('sucesso') ? 'var(--v2-ok-bg)' : iaMsg.includes('Gerando') ? 'var(--v2-info-bg)' : 'var(--v2-hot-bg)',
-          border: `1px solid ${iaMsg.includes('sucesso') ? 'var(--v2-ok-bg)' : iaMsg.includes('Gerando') ? '#bfdbfe' : 'var(--v2-hot-bg)'}`,
+        <div style={{ background: iaMsg.includes('sucesso') ? 'var(--v2-ok-bg)' : iaMsg.includes(tr('est2.gerando')) ? 'var(--v2-info-bg)' : 'var(--v2-hot-bg)',
+          border: `1px solid ${iaMsg.includes('sucesso') ? 'var(--v2-ok-bg)' : iaMsg.includes(tr('est2.gerando')) ? '#bfdbfe' : 'var(--v2-hot-bg)'}`,
           borderRadius: 12, padding: '12px 16px', marginBottom: 16, fontSize: 13,
-          color: iaMsg.includes('sucesso') ? 'var(--v2-ok)' : iaMsg.includes('Gerando') ? 'var(--v2-info)' : 'var(--v2-hot)',
+          color: iaMsg.includes('sucesso') ? 'var(--v2-ok)' : iaMsg.includes(tr('est2.gerando')) ? 'var(--v2-info)' : 'var(--v2-hot)',
           display: 'flex', alignItems: 'center', gap: 10 }}>
           {gerandoIA && <span style={{ width: 14, height: 14, border: '2px solid #bfdbfe', borderTopColor: 'var(--v2-info)', borderRadius: '50%', display: 'inline-block', animation: 'soma-girar 0.8s linear infinite', flexShrink: 0 }} />}
           {iaMsg}
@@ -267,10 +274,10 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
       {/* Kanban */}
       {!planoSel ? (
         <div style={{ textAlign: 'center', padding: 60, color: 'var(--v2-ink3)', background: 'var(--v2-surface)', borderRadius: 14, border: '1px solid var(--v2-rule)' }}>
-          <p>Selecione ou crie um plano para abrir a esteira.</p>
+          <p>{tr('est2.selecione-ou-crie-plano-abrir')}</p>
         </div>
       ) : carregando ? (
-        <div style={{ textAlign: 'center', padding: 60, color: 'var(--v2-ink3)' }}>Carregando pautas...</div>
+        <div style={{ textAlign: 'center', padding: 60, color: 'var(--v2-ink3)' }}>{tr('est2.carregando-pautas')}</div>
       ) : (
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, height: 'calc(100vh - 200px)', alignItems: 'stretch' }}>
           {ETAPAS.map(col => {
@@ -292,13 +299,13 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
                 {(() => { const limite = LIMITE_WIP[col.key] || 0; const excedeu = limite > 0 && cards.length > limite; return (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '0 4px' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 800, color: 'var(--v2-ink2)' }}>
-                    {col.label}
-                    {(ehGargalo || excedeu) && <span title={excedeu ? `Acima do limite de ${limite} em produção` : 'Etapa com mais itens acumulados'} style={{ fontSize: 9.5, fontWeight: 800, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', borderRadius: 999, padding: '1px 6px', textTransform: 'uppercase' }}>{excedeu ? 'Limite' : 'Gargalo'}</span>}
+                    {tr(col.rotulo)}
+                    {(ehGargalo || excedeu) && <span title={excedeu ? `Acima do limite de ${limite} em produção` : tr('est2.etapa-acumulada')} style={{ fontSize: 9.5, fontWeight: 800, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', borderRadius: 999, padding: '1px 6px', textTransform: 'uppercase' }}>{excedeu ? tr('est2.limite') : tr('est2.gargalo')}</span>}
                   </span>
                   <span title={limite > 0 ? `Limite de WIP: ${limite}` : undefined} style={{ fontSize: 11, fontWeight: 700, color: (ehGargalo || excedeu) ? 'var(--v2-hot)' : 'var(--v2-ink3)', background: 'var(--v2-surface)', borderRadius: 999, padding: '1px 8px' }}>{cards.length}{limite > 0 ? `/${limite}` : ''}</span>
                 </div>
                 ) })()}
-                {col.cliente && <p style={{ margin: '0 4px 8px', fontSize: 10, color: 'var(--v2-amber)' }}>Aguarda o cliente</p>}
+                {col.cliente && <p style={{ margin: '0 4px 8px', fontSize: 10, color: 'var(--v2-amber)' }}>{tr('est2.aguarda-cliente')}</p>}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, overflowY: 'auto', minHeight: 60 }}>
                   {cards.map(p => {
                     const capa = capaDaPauta(p)
@@ -314,21 +321,21 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
                           </div>
                         )}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
-                          {formatoBadge(p.formato, (p.imagens || []).length)}
-                          {(p as any).preAprovado && <span title="Conteúdo recorrente pré-aprovado pelo cliente" style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 999, padding: '1px 6px', textTransform: 'uppercase' }}>Pré-aprovado</span>}
+                          {formatoBadge(p.formato, (p.imagens || []).length, idioma)}
+                          {(p as any).preAprovado && <span title={tr('est2.conteudo-recorrente-pre-aprova')} style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 999, padding: '1px 6px', textTransform: 'uppercase' }}>{tr('est2.pre-aprovado')}</span>}
                           {p.dataAgendada && <span style={{ fontSize: 10, color: 'var(--v2-ink2)' }}>{new Date(p.dataAgendada).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} {new Date(p.dataAgendada).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                           <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', flex: 1 }}>
-                            {p.briefing || p.legenda || 'Sem título'}
+                            {p.briefing || p.legenda || tr('est2.sem-titulo')}
                           </p>
                           {col.key !== 'pronto' && (() => { const a = idadeNaEtapa(p); return a ? (
-                            <span title="Tempo parado nesta etapa" style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 800, color: a.atrasado ? 'var(--v2-hot)' : 'var(--v2-ink3)', background: a.atrasado ? 'var(--v2-hot-bg)' : 'var(--v2-surface2)', borderRadius: 999, padding: '2px 6px', whiteSpace: 'nowrap' }}>{a.texto}</span>
+                            <span title={tr('est2.tempo-parado-nesta-etapa')} style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 800, color: a.atrasado ? 'var(--v2-hot)' : 'var(--v2-ink3)', background: a.atrasado ? 'var(--v2-hot-bg)' : 'var(--v2-surface2)', borderRadius: 999, padding: '2px 6px', whiteSpace: 'nowrap' }}>{a.texto}</span>
                           ) : null })()}
                         </div>
                         {p.sugestaoImagem && <p style={{ margin: '3px 0 0', fontSize: 10, color: 'var(--v2-ink3)' }}>Imagem: {p.sugestaoImagem.slice(0, 40)}...</p>}
                         {(p.ajusteCopy || p.ajusteCriativo) && (
-                          <p style={{ margin: '5px 0 0', fontSize: 10.5, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', borderRadius: 6, padding: '4px 6px' }}>Ajuste pedido pelo cliente</p>
+                          <p style={{ margin: '5px 0 0', fontSize: 10.5, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', borderRadius: 6, padding: '4px 6px' }}>{tr('est2.ajuste-pedido-pelo-cliente')}</p>
                         )}
                         {col.cliente && (() => { const e = tempoEspera(p.aguardandoDesde); return e ? (
                           <p style={{ margin: '5px 0 0', fontSize: 10.5, fontWeight: 700, color: e.atrasado ? 'var(--v2-hot)' : 'var(--v2-ink3)', background: e.atrasado ? 'var(--v2-hot-bg)' : 'var(--v2-surface1)', borderRadius: 6, padding: '4px 6px' }}>Aguardando {e.texto}</p>
@@ -354,20 +361,20 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
       {novaPautaModal && (
         <div onClick={fecharFora(fecharNovaPauta, { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 500, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>Nova pauta</h3>
+            <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>{tr('est2.nova-pauta-2')}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Tema / ideia da pauta *</label>
-                <textarea lang="pt-BR" value={formPauta.briefing} onChange={e => setFormPauta(f => ({ ...f, briefing: e.target.value }))} placeholder="Ex.: Post sobre cuidados com joias no inverno..."
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('est2.tema-ideia-pauta')}</label>
+                <textarea lang="pt-BR" value={formPauta.briefing} onChange={e => setFormPauta(f => ({ ...f, briefing: e.target.value }))} placeholder={tr('est2.ex-post-sobre-cuidados-joias-i')}
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Referencia de imagem (opcional)</label>
-                <textarea lang="pt-BR" value={formPauta.sugestaoImagem} onChange={e => setFormPauta(f => ({ ...f, sugestaoImagem: e.target.value }))} placeholder="Descreva a ideia visual: foto de produto, lifestyle, bastidores..."
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('est2.referencia-imagem-opcional')}</label>
+                <textarea lang="pt-BR" value={formPauta.sugestaoImagem} onChange={e => setFormPauta(f => ({ ...f, sugestaoImagem: e.target.value }))} placeholder={tr('est2.descreva-ideia-visual-foto-pro')}
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', background: 'var(--v2-surface1)', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 600, color: 'var(--v2-ink2)' }}>
-                    {enviandoRefImagem ? 'Enviando...' : '+ Anexar imagem'}
+                    {enviandoRefImagem ? tr('dash.enviando') : '+ Anexar imagem'}
                     <input type="file" accept="image/*,video/*" style={{ display: 'none' }} disabled={enviandoRefImagem} onChange={async e => {
                       if (!e.target.files?.[0]) return
                       setEnviandoRefImagem(true); setProgRefImagem(0)
@@ -399,7 +406,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
                   <button onClick={gerarLegendaNovaPauta} disabled={gerandoLegendaNova || !formPauta.briefing.trim()} type="button"
                     style={{ padding: '4px 12px', background: 'transparent', color: (gerandoLegendaNova || !formPauta.briefing.trim()) ? 'var(--v2-ink3)' : '#7c3aed', border: `1px solid ${(gerandoLegendaNova || !formPauta.briefing.trim()) ? 'var(--v2-rule)' : '#7c3aed30'}`, borderRadius: 8, fontWeight: 600, fontSize: 11, cursor: (gerandoLegendaNova || !formPauta.briefing.trim()) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z"/></svg>
-                    {gerandoLegendaNova ? 'Gerando...' : 'Criar com IA'}
+                    {gerandoLegendaNova ? tr('dash.gerando') : tr('est2.criar-com-ia')}
                   </button>
                 </div>
                 {legendaNovaMsg && <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: legendaNovaMsg.includes('Erro') || legendaNovaMsg.includes('Falha') ? 'var(--v2-hot)' : 'var(--v2-ok)' }}>{legendaNovaMsg}</p>}
@@ -410,12 +417,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
             <div style={{ marginTop: 14 }}>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Formato</label>
               <div style={{ display: 'flex', gap: 6 }}>
-                {[
-                  { key: 'feed', label: 'Feed', cor: 'var(--v2-info)' },
-                  { key: 'reel', label: 'Reel', cor: 'var(--v2-hot)' },
-                  { key: 'carrossel', label: 'Carrossel', cor: '#0891b2' },
-                  { key: 'story', label: 'Story', cor: '#7c3aed' },
-                ].map(f => (
+                {FORMATOS.filter(f => f.chave !== 'grafico').map(f => ({ key: f.chave, label: tr(f.rotulo), cor: f.cor })).map(f => (
                   <button key={f.key} type="button" onClick={() => setFormPauta(p => ({ ...p, formato: f.key }))}
                     style={{ padding: '6px 14px', borderRadius: 8, border: formPauta.formato === f.key ? `2px solid ${f.cor}` : '1px solid var(--v2-rule)', background: formPauta.formato === f.key ? `${f.cor}10` : 'var(--v2-surface)', fontSize: 12, fontWeight: formPauta.formato === f.key ? 700 : 500, color: formPauta.formato === f.key ? f.cor : 'var(--v2-ink2)', cursor: 'pointer' }}>
                     {f.label}
@@ -425,7 +427,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
               <button onClick={criarPauta} disabled={!formPauta.briefing.trim()} style={{ flex: 1, padding: '12px 0', background: formPauta.briefing.trim() ? 'var(--marca, var(--v2-amber-on))' : 'var(--v2-surface2)', color: formPauta.briefing.trim() ? 'var(--marca-texto, var(--v2-ink))' : 'var(--v2-ink3)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 14, cursor: formPauta.briefing.trim() ? 'pointer' : 'not-allowed' }}>Criar pauta</button>
-              <button onClick={fecharNovaPauta} style={{ padding: '12px 20px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={fecharNovaPauta} style={{ padding: '12px 20px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
             </div>
           </div>
         </div>
@@ -437,7 +439,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
           onAbrirComposer={onAbrirComposer}
           onSalvo={() => { setPautaModal(null); carregarPautas(planoSel) }}
           onDescartar={podeExcluir ? async () => {
-            if (!(await confirmar('Descartar esta pauta? Ela será removida permanentemente.', { titulo: 'Descartar pauta', okLabel: 'Descartar', perigo: true }))) return
+            if (!(await confirmar(tr('est2.dlg-descartar'), { titulo: tr('est2.descartar-pauta'), okLabel: tr('est2.descartar'), perigo: true }))) return
             await fetch(`/api/posts?id=${pautaModal.id}`, { method: 'DELETE' }).catch(() => {})
             setPautaModal(null); carregarPautas(planoSel)
           } : undefined} />
@@ -449,6 +451,7 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
 function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
   pauta: Pauta; onClose: () => void; onSalvo: () => void; onAbrirComposer?: (p: Pauta) => void; onDescartar?: () => void
 }) {
+  const tr = useT()
   const [briefing, setBriefing] = useState(pauta.briefing || '')
   const [sugestaoImagem, setSugestaoImagem] = useState(pauta.sugestaoImagem || '')
   const [textoImagem, setTextoImagem] = useState(pauta.textoImagem || '')
@@ -491,7 +494,7 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
       body: JSON.stringify({ postId: pauta.id, tarefaId }),
     }).then(x => x.json()).catch(() => null)
     setRelacionando(false)
-    if (!r || r.error) { setRelMsg(r?.error || 'Falha ao relacionar.'); return }
+    if (!r || r.error) { setRelMsg(r?.error || tr('est2.falha-relacionar')); return }
     setVinculada(true); setRelPainel(false)
     setRelMsg(`Vinculada à tarefa "${r.titulo || ''}".`)
   }
@@ -504,25 +507,25 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
       body: JSON.stringify({ postId: pauta.id }),
     }).then(x => x.json()).catch(() => null)
     setRelacionando(false)
-    if (!r || r.error) { setRelMsg(r?.error || 'Falha ao relacionar.'); return }
+    if (!r || r.error) { setRelMsg(r?.error || tr('est2.falha-relacionar')); return }
     if (r.resultado === 'pulada') { setRelMsg('Pautas em "Pronto" não geram tarefa (já viram post no Planner).'); return }
     setVinculada(true); setRelPainel(false)
-    setRelMsg(r.resultado === 'jaVinculada' ? 'Esta pauta já tinha uma tarefa vinculada.' : `Tarefa criada (tipo ${r.tipo}) e vinculada.`)
+    setRelMsg(r.resultado === 'jaVinculada' ? tr('est2.ja-tinha-tarefa') : `Tarefa criada (tipo ${r.tipo}) e vinculada.`)
   }
 
   async function gerarLegendaIA() {
-    setGerandoLegenda(true); setLegendaMsg('Gerando legenda...')
+    setGerandoLegenda(true); setLegendaMsg(tr('est2.gerando-legenda'))
     try {
       const r = await fetch('/api/esteira/gerar-legenda', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ clienteId: pauta.clienteId, briefing, sugestaoImagem, textoImagem, formato }),
       })
       const d = await r.json()
-      if (!r.ok) { setLegendaMsg(d?.error || 'Falha ao gerar.'); return }
+      if (!r.ok) { setLegendaMsg(d?.error || tr('est2.falha-gerar')); return }
       setLegenda(d.legenda)
-      setLegendaMsg('Legenda gerada!')
+      setLegendaMsg(tr('est2.legenda-gerada'))
       setTimeout(() => setLegendaMsg(''), 4000)
-    } catch { setLegendaMsg('Erro de conexão.') }
+    } catch { setLegendaMsg(tr('est2.erro-conexao')) }
     finally { setGerandoLegenda(false) }
   }
 
@@ -545,16 +548,16 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
       <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
         <h3 style={{ margin: '0 0 14px', fontSize: 16, color: 'var(--v2-ink)' }}>Pauta — {pauta.clienteNome}</h3>
 
-        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Briefing / ideia</label>
-        <textarea lang="pt-BR" value={briefing} onChange={e => setBriefing(e.target.value)} placeholder="Tema, ângulo, objetivo..."
+        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('est2.briefing-ideia')}</label>
+        <textarea lang="pt-BR" value={briefing} onChange={e => setBriefing(e.target.value)} placeholder={tr('est2.tema-angulo-objetivo')}
           style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, minHeight: 60, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 12 }} />
 
-        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Referencia de imagem</label>
-        <textarea lang="pt-BR" value={sugestaoImagem} onChange={e => setSugestaoImagem(e.target.value)} placeholder="Descreva a ideia visual..."
+        <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('est2.referencia-imagem')}</label>
+        <textarea lang="pt-BR" value={sugestaoImagem} onChange={e => setSugestaoImagem(e.target.value)} placeholder={tr('est2.descreva-ideia-visual')}
           style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, minHeight: 50, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', background: 'var(--v2-surface1)', borderRadius: 8, padding: '6px 12px', fontSize: 11, fontWeight: 600, color: 'var(--v2-ink2)' }}>
-            {enviandoRef ? 'Enviando...' : '+ Anexar imagem'}
+            {enviandoRef ? tr('dash.enviando') : '+ Anexar imagem'}
             <input type="file" accept="image/*,video/*" style={{ display: 'none' }} disabled={enviandoRef} onChange={async e => {
               if (!e.target.files?.[0]) return
               setEnviandoRef(true); setProgRef(0)
@@ -595,7 +598,7 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
           <button onClick={gerarLegendaIA} disabled={gerandoLegenda || !briefing.trim()} type="button"
             style={{ padding: '4px 12px', background: 'transparent', color: (gerandoLegenda || !briefing.trim()) ? 'var(--v2-ink3)' : '#7c3aed', border: `1px solid ${(gerandoLegenda || !briefing.trim()) ? 'var(--v2-rule)' : '#7c3aed30'}`, borderRadius: 8, fontWeight: 600, fontSize: 11, cursor: (gerandoLegenda || !briefing.trim()) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z"/></svg>
-            {gerandoLegenda ? 'Gerando...' : 'Criar com IA'}
+            {gerandoLegenda ? tr('dash.gerando') : tr('est2.criar-com-ia')}
           </button>
         </div>
         {legendaMsg && <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 600, color: legendaMsg.includes('Erro') || legendaMsg.includes('Falha') ? 'var(--v2-hot)' : 'var(--v2-ok)' }}>{legendaMsg}</p>}
@@ -605,12 +608,7 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
         <div style={{ marginBottom: 12 }}>
           <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>Formato</label>
           <div style={{ display: 'flex', gap: 6 }}>
-            {[
-              { key: 'feed', label: 'Feed', cor: 'var(--v2-info)' },
-              { key: 'reel', label: 'Reel', cor: 'var(--v2-hot)' },
-              { key: 'carrossel', label: 'Carrossel', cor: '#0891b2' },
-              { key: 'story', label: 'Story', cor: '#7c3aed' },
-            ].map(f => (
+            {FORMATOS.filter(f => f.chave !== 'grafico').map(f => ({ key: f.chave, label: tr(f.rotulo), cor: f.cor })).map(f => (
               <button key={f.key} type="button" onClick={() => setFormato(f.key)}
                 style={{ padding: '6px 14px', borderRadius: 8, border: formato === f.key ? `2px solid ${f.cor}` : '1px solid var(--v2-rule)', background: formato === f.key ? `${f.cor}10` : 'var(--v2-surface)', fontSize: 12, fontWeight: formato === f.key ? 700 : 500, color: formato === f.key ? f.cor : 'var(--v2-ink2)', cursor: 'pointer' }}>
                 {f.label}
@@ -622,12 +620,12 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
         {/* Conteúdo recorrente pré-aprovado */}
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, cursor: 'pointer', background: preAprovado ? 'var(--v2-ok-bg)' : 'var(--v2-surface1)', border: `1.5px solid ${preAprovado ? 'var(--v2-ok-bg)' : 'var(--v2-surface2)'}`, borderRadius: 10, padding: '10px 12px' }}>
           <input type="checkbox" checked={preAprovado} onChange={e => setPreAprovado(e.target.checked)} style={{ width: 16, height: 16, cursor: 'pointer' }} />
-          <span style={{ fontSize: 12.5, fontWeight: 600, color: preAprovado ? 'var(--v2-ok)' : 'var(--v2-ink2)' }}>Conteúdo recorrente <strong>pré-aprovado</strong> pelo cliente (dispensa aprovação — pode ir direto para Pronto)</span>
+          <span style={{ fontSize: 12.5, fontWeight: 600, color: preAprovado ? 'var(--v2-ok)' : 'var(--v2-ink2)' }}>{tr('est2.recorrente-ajuda', { pre: tr('est2.pre-aprovado-2') })}</span>
         </label>
 
         {(pauta.ajusteCopy || pauta.ajusteCriativo) && (
           <div style={{ background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, padding: '10px 12px', marginBottom: 14, fontSize: 12.5, color: 'var(--v2-hot)' }}>
-            <strong>Ajuste solicitado pelo cliente:</strong> {pauta.ajusteCopy || pauta.ajusteCriativo}
+            <strong>{tr('est2.ajuste-solicitado-pelo-cliente')}</strong> {pauta.ajusteCopy || pauta.ajusteCriativo}
           </div>
         )}
 
@@ -642,53 +640,53 @@ function PautaModal({ pauta, onClose, onSalvo, onAbrirComposer, onDescartar }: {
             pauta.formato ? `FORMATO: ${pauta.formato}` : '',
             pauta.dataAgendada ? `DATA: ${new Date(pauta.dataAgendada).toLocaleString('pt-BR')}` : '',
           ].filter(Boolean).join('\n\n')
-          navigator.clipboard.writeText(txt).then(() => toast('Instrucoes copiadas para a area de transferencia!', 'sucesso')).catch(() => toast('Não foi possível copiar. Selecione e copie manualmente.', 'erro'))
+          navigator.clipboard.writeText(txt).then(() => toast(tr('est2.instrucoes-copiadas'), 'sucesso')).catch(() => toast(tr('est2.falha-copiar'), 'erro'))
         }} style={{ width: '100%', padding: '10px 0', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: 'pointer', marginBottom: 10 }}>
           Copiar instrucoes para producao
         </button>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={() => salvar()} disabled={salvando} style={{ flex: 1, padding: '11px 0', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', minWidth: 120 }}>
-            {salvando ? 'Salvando...' : 'Salvar'}
+            {salvando ? tr('dash.salvando') : tr('comum.salvar')}
           </button>
           {onAbrirComposer && pauta.etapa === 'criativo' && (
             <button onClick={() => onAbrirComposer(pauta)} style={{ padding: '11px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
               Adicionar criativo
             </button>
           )}
-          <button onClick={abrirPainelRel} disabled={relacionando || vinculada} title="Relacionar esta pauta a uma tarefa existente (ou criar uma nova)" style={{ padding: '11px 16px', background: vinculada ? 'var(--v2-ok-bg)' : 'var(--v2-surface)', color: vinculada ? 'var(--v2-ok)' : 'var(--v2-ink)', border: `1.5px solid ${vinculada ? 'var(--v2-ok-bg)' : 'var(--v2-ink)'}`, borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: (relacionando || vinculada) ? 'default' : 'pointer', opacity: relacionando ? 0.6 : 1 }}>
-            {vinculada ? '✓ Tarefa vinculada' : relacionando ? 'Relacionando...' : 'Relacionar a tarefa'}
+          <button onClick={abrirPainelRel} disabled={relacionando || vinculada} title={tr('est2.relacionar-esta-pauta-tarefa-e')} style={{ padding: '11px 16px', background: vinculada ? 'var(--v2-ok-bg)' : 'var(--v2-surface)', color: vinculada ? 'var(--v2-ok)' : 'var(--v2-ink)', border: `1.5px solid ${vinculada ? 'var(--v2-ok-bg)' : 'var(--v2-ink)'}`, borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: (relacionando || vinculada) ? 'default' : 'pointer', opacity: relacionando ? 0.6 : 1 }}>
+            {vinculada ? '✓ Tarefa vinculada' : relacionando ? tr('est2.relacionando') : tr('est2.relacionar-tarefa')}
           </button>
-          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Fechar</button>
+          <button onClick={onClose} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.fechar')}</button>
           {onDescartar && (
             <button onClick={onDescartar} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
               Descartar
             </button>
           )}
         </div>
-        {relMsg && <p style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: (relMsg.startsWith('Falha') || relMsg.startsWith('Pautas') || relMsg.startsWith('A tarefa')) ? 'var(--v2-hot)' : 'var(--v2-ok)' }}>{relMsg}</p>}
+        {relMsg && <p style={{ margin: '8px 0 0', fontSize: 12.5, fontWeight: 700, color: (relMsg.startsWith('Falha') || relMsg.startsWith(tr('est2.pautas')) || relMsg.startsWith(tr('est2.a-tarefa'))) ? 'var(--v2-hot)' : 'var(--v2-ok)' }}>{relMsg}</p>}
 
         {/* Seletor de tarefa existente (item: relacionar a tarefa EXISTENTE, ou criar nova) */}
         {relPainel && !vinculada && (
           <div style={{ marginTop: 10, border: '1.5px solid var(--v2-rule)', borderRadius: 12, padding: 12, background: 'var(--v2-surface1)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
-              <strong style={{ fontSize: 12.5, color: 'var(--v2-ink)' }}>Relacionar a uma tarefa existente</strong>
+              <strong style={{ fontSize: 12.5, color: 'var(--v2-ink)' }}>{tr('est2.relacionar-tarefa-existente')}</strong>
               <button onClick={criarNovaTarefa} disabled={relacionando} type="button"
                 style={{ padding: '6px 12px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: relacionando ? 'default' : 'pointer', opacity: relacionando ? 0.6 : 1, whiteSpace: 'nowrap' }}>
                 + Criar tarefa nova
               </button>
             </div>
-            <input value={relBusca} onChange={e => setRelBusca(e.target.value)} placeholder="Buscar tarefa por título..." autoFocus
+            <input value={relBusca} onChange={e => setRelBusca(e.target.value)} placeholder={tr('est2.buscar-tarefa-por-titulo')} autoFocus
               style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 8 }} />
             <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {relCarregando && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Carregando tarefas...</p>}
+              {relCarregando && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('est2.carregando-tarefas')}</p>}
               {!relCarregando && relTarefas !== null && (() => {
                 const q = relBusca.trim().toLowerCase()
                 const lista = (relTarefas || []).filter((t: any) =>
                   !q || (t.titulo || '').toLowerCase().includes(q) || (t.descricao || '').toLowerCase().includes(q))
                 if (lista.length === 0) return (
                   <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>
-                    {relBusca.trim() ? 'Nenhuma tarefa encontrada.' : (pauta.clienteId ? 'Este cliente ainda não tem tarefas. Use "Criar tarefa nova".' : 'Nenhuma tarefa. Use "Criar tarefa nova".')}
+                    {relBusca.trim() ? tr('est2.sem-tarefa') : (pauta.clienteId ? 'Este cliente ainda não tem tarefas. Use "Criar tarefa nova".' : 'Nenhuma tarefa. Use "Criar tarefa nova".')}
                   </p>
                 )
                 return lista.slice(0, 40).map((t: any) => (
