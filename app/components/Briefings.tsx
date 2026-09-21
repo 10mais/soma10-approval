@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/app/components/Idioma'
 import { useEffect, useState } from 'react'
 import { confirmar } from '@/lib/toast'
 import AvatarCliente from './AvatarCliente'
@@ -11,6 +12,7 @@ type Briefing = {
   observacoes?: string; conteudo: string; criadoPor: string; criadoEm: string; atualizadoEm: string
 }
 
+// Objetivo é DADO: fica gravado no briefing e volta a aparecer assim. Não traduzir.
 const OBJETIVOS = ['Vendas / conversão', 'Geração de leads', 'Alcance / reconhecimento', 'Engajamento', 'Tráfego', 'Mensagens / WhatsApp']
 const PLATAFORMAS = ['Meta (Instagram/Facebook)', 'Google', 'TikTok', 'LinkedIn', 'YouTube']
 
@@ -19,6 +21,7 @@ const vazio = { titulo: '', marcoId: '', objetivo: OBJETIVOS[0], plataformas: ['
 type Marco = { id: string; titulo: string; clienteId: string; status: string }
 
 export default function Briefings({ clientes }: { clientes: Cliente[] }) {
+  const tr = useT()
   const [briefings, setBriefings] = useState<Briefing[]>([])
   const [marcos, setMarcos] = useState<Marco[]>([])
   const [modo, setModo] = useState<'lista' | 'editor'>('lista')
@@ -75,7 +78,7 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
   async function salvar() {
     if (!clienteId) { setErro('Selecione um cliente.'); return }
     if (!form.marcoId) { setErro('Vincule a campanha a uma etapa do Playbook.'); return }
-    if (!form.conteudo.trim()) { setErro('Gere ou escreva o conteúdo do briefing antes de salvar.'); return }
+    if (!form.conteudo.trim()) { setErro(tr('bri.gere-antes')); return }
     setSalvando(true)
     const cli = clientes.find(c => c.id === clienteId)
     const body = { ...form, clienteId, clienteNome: cli?.nome || '' }
@@ -87,7 +90,7 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
   }
 
   async function excluir(id: string) {
-    if (!(await confirmar('Excluir este briefing?', { titulo: 'Excluir briefing', okLabel: 'Excluir', perigo: true }))) return
+    if (!(await confirmar(tr('bri.dlg-excluir'), { titulo: tr('bri.excluir'), okLabel: tr('comum.excluir'), perigo: true }))) return
     await fetch(`/api/briefings?id=${id}`, { method: 'DELETE' })
     carregar()
   }
@@ -110,7 +113,7 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
     }).then(x => x.json()).catch(() => null)
     setRelacionando(false); setRelModal(false)
     if (!r || r.error) { setRelMsg(r?.error || 'Não foi possível relacionar.'); return }
-    setRelMsg(r.resultado === 'vinculadaExistente' ? 'Briefing completo anexado à tarefa existente.' : r.jaVinculada ? 'Já havia uma tarefa de campanha vinculada.' : 'Tarefa de campanha criada com o briefing completo.')
+    setRelMsg(r.resultado === 'vinculadaExistente' ? tr('bri.anexado') : r.jaVinculada ? tr('bri.ja-tinha-tarefa') : 'Tarefa de campanha criada com o briefing completo.')
     setTimeout(() => setRelMsg(''), 8000)
   }
 
@@ -126,16 +129,16 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Briefings de campanha</h2>
-            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Crie briefings de campanha com a IA, a partir do Brand Board do cliente.</p>
+            <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{tr('bri.briefings-campanha')}</h2>
+            <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('bri.crie-briefings-campanha-ia-par')}</p>
           </div>
-          <button onClick={novo} className="soma10-no-invert" style={{ padding: '10px 18px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo briefing</button>
+          <button onClick={novo} className="soma10-no-invert" style={{ padding: '10px 18px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{tr('bri.novo-briefing')}</button>
         </div>
 
         {briefings.length === 0 ? (
           <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-            <p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)' }}>Nenhum briefing ainda.</p>
-            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>Clique em "Novo briefing" para gerar o primeiro com a IA.</p>
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)' }}>{tr('bri.nenhum-briefing-ainda')}</p>
+            <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('bri.clique-novo-briefing-gerar-pri')}</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
@@ -168,43 +171,43 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
   return (
     <div style={{ maxWidth: 1000 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
-        <button onClick={() => setModo('lista')} style={{ background: 'none', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer' }}>Voltar</button>
-        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{editId ? 'Editar briefing' : 'Novo briefing'}</h2>
+        <button onClick={() => setModo('lista')} style={{ background: 'none', border: '1px solid var(--v2-rule)', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)', cursor: 'pointer' }}>{tr('aprov.voltar')}</button>
+        <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{editId ? tr('bri.editar') : tr('bri.novo')}</h2>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 18, alignItems: 'start' }}>
         {/* Coluna de parametros */}
         <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <label style={label}>Cliente *</label>
+            <label style={label}>{tr('bri.cliente')}</label>
             <select value={clienteId} onChange={e => setClienteId(e.target.value)} style={{ ...inputStyle, background: 'var(--v2-surface)' }} disabled={!!editId}>
-              <option value="">Selecione...</option>
+              <option value="">{tr('dash.selecione')}</option>
               {[...clientes].sort((a, b) => a.nome.localeCompare(b.nome, 'pt')).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
             {clienteId && !clientes.find(c => c.id === clienteId)?.segmento && (
-              <p style={{ margin: '6px 0 0', fontSize: 11, color: '#ea580c' }}>Este cliente não tem Brand Board preenchido — o briefing fica mais rico se você preencher a Marca antes.</p>
+              <p style={{ margin: '6px 0 0', fontSize: 11, color: '#ea580c' }}>{tr('bri.este-cliente-nao-tem-brand-boa')}</p>
             )}
           </div>
           <div>
-            <label style={label}>Título da campanha</label>
-            <input value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} placeholder="Ex: Black Friday 2026" style={inputStyle} />
+            <label style={label}>{tr('bri.titulo-campanha')}</label>
+            <input value={form.titulo} onChange={e => setForm(f => ({ ...f, titulo: e.target.value }))} placeholder={tr('bri.ex-black-friday-2026')} style={inputStyle} />
           </div>
           <div>
-            <label style={label}>Etapa do Playbook *</label>
+            <label style={label}>{tr('bri.etapa-playbook')}</label>
             <select value={form.marcoId} onChange={e => setForm(f => ({ ...f, marcoId: e.target.value }))} style={{ ...inputStyle, background: 'var(--v2-surface)' }} disabled={!clienteId}>
-              <option value="">{!clienteId ? 'Selecione um cliente primeiro' : marcos.length === 0 ? 'Nenhuma etapa — crie no Playbook' : 'Selecione a etapa...'}</option>
+              <option value="">{!clienteId ? 'Selecione um cliente primeiro' : marcos.length === 0 ? tr('bri.sem-etapa') : 'Selecione a etapa...'}</option>
               {marcos.map(m => <option key={m.id} value={m.id}>{m.titulo}</option>)}
             </select>
-            {clienteId && marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#ea580c' }}>Este cliente não tem etapas no Playbook. Crie uma etapa antes de salvar a campanha.</p>}
+            {clienteId && marcos.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 11, color: '#ea580c' }}>{tr('bri.este-cliente-nao-tem-etapas-pl')}</p>}
           </div>
           <div>
-            <label style={label}>Objetivo</label>
+            <label style={label}>{tr('bri.objetivo')}</label>
             <select value={form.objetivo} onChange={e => setForm(f => ({ ...f, objetivo: e.target.value }))} style={{ ...inputStyle, background: 'var(--v2-surface)' }}>
               {OBJETIVOS.map(o => <option key={o} value={o}>{o}</option>)}
             </select>
           </div>
           <div>
-            <label style={label}>Plataformas</label>
+            <label style={label}>{tr('bri.plataformas')}</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {PLATAFORMAS.map(p => {
                 const on = form.plataformas.includes(p)
@@ -213,23 +216,23 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><label style={label}>Verba</label><input value={form.verba} onChange={e => setForm(f => ({ ...f, verba: e.target.value }))} placeholder="R$ 3.000" style={inputStyle} /></div>
-            <div><label style={label}>Período</label><input value={form.periodo} onChange={e => setForm(f => ({ ...f, periodo: e.target.value }))} placeholder="2 semanas" style={inputStyle} /></div>
+            <div><label style={label}>{tr('bri.verba')}</label><input value={form.verba} onChange={e => setForm(f => ({ ...f, verba: e.target.value }))} placeholder="R$ 3.000" style={inputStyle} /></div>
+            <div><label style={label}>{tr('bri.periodo')}</label><input value={form.periodo} onChange={e => setForm(f => ({ ...f, periodo: e.target.value }))} placeholder={tr('bri.2-semanas')} style={inputStyle} /></div>
           </div>
-          <div><label style={label}>Público desta campanha</label><textarea lang="pt-BR" value={form.publico} onChange={e => setForm(f => ({ ...f, publico: e.target.value }))} placeholder="Quem queremos atingir nesta campanha..." style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
-          <div><label style={label}>Oferta / promoção</label><input value={form.oferta} onChange={e => setForm(f => ({ ...f, oferta: e.target.value }))} placeholder="Ex: 30% off, brinde, frete grátis" style={inputStyle} /></div>
-          <div><label style={label}>Observações</label><textarea lang="pt-BR" value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} placeholder="Qualquer direcionamento extra..." style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
+          <div><label style={label}>{tr('bri.publico-desta-campanha')}</label><textarea lang="pt-BR" value={form.publico} onChange={e => setForm(f => ({ ...f, publico: e.target.value }))} placeholder={tr('bri.quem-queremos-atingir-nesta-ca')} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
+          <div><label style={label}>{tr('bri.oferta-promocao')}</label><input value={form.oferta} onChange={e => setForm(f => ({ ...f, oferta: e.target.value }))} placeholder={tr('bri.ex-30-off-brinde-frete-gratis')} style={inputStyle} /></div>
+          <div><label style={label}>{tr('crm.observacoes')}</label><textarea lang="pt-BR" value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} placeholder={tr('bri.qualquer-direcionamento-extra')} style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }} /></div>
 
           <button onClick={() => gerar(false)} disabled={gerando || !clienteId} className="soma10-no-invert" style={{ padding: '11px 0', background: (gerando || !clienteId) ? 'var(--v2-surface2)' : 'var(--v2-amber-on)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: (gerando || !clienteId) ? 'not-allowed' : 'pointer' }}>
-            {gerando ? 'Gerando com IA...' : form.conteudo ? 'Gerar novamente' : 'Gerar com IA'}
+            {gerando ? tr('bri.gerando-ia') : form.conteudo ? tr('bri.gerar-novamente') : tr('bri.gerar-ia')}
           </button>
           {erro && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-hot)' }}>{erro}</p>}
         </div>
 
         {/* Coluna do conteudo */}
         <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 12, minHeight: 400 }}>
-          <label style={label}>Briefing {gerando && <span style={{ color: '#7c3aed' }}>· gerando...</span>}</label>
-          <textarea lang="pt-BR" value={form.conteudo} onChange={e => setForm(f => ({ ...f, conteudo: e.target.value }))} placeholder="O briefing gerado pela IA aparece aqui. Você também pode escrever/editar manualmente."
+          <label style={label}>Briefing {gerando && <span style={{ color: '#7c3aed' }}>{tr('bri.gerando')}</span>}</label>
+          <textarea lang="pt-BR" value={form.conteudo} onChange={e => setForm(f => ({ ...f, conteudo: e.target.value }))} placeholder={tr('bri.briefing-gerado-pela-ia-aparec')}
             style={{ width: '100%', flex: 1, minHeight: 360, padding: '14px 16px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, lineHeight: 1.6, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
 
           {form.conteudo && (
@@ -237,7 +240,7 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
               <input value={refino} onChange={e => setRefino(e.target.value)} placeholder='Peça um ajuste à IA (ex: "mais agressivo", "foco em remarketing")'
                 style={{ flex: 1, padding: '9px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12, fontFamily: 'inherit' }}
                 onKeyDown={e => { if (e.key === 'Enter' && refino.trim() && !gerando) gerar(true) }} />
-              <button onClick={() => gerar(true)} disabled={gerando || !refino.trim()} style={{ padding: '9px 16px', background: refino.trim() && !gerando ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: refino.trim() && !gerando ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: refino.trim() && !gerando ? 'pointer' : 'not-allowed' }}>Refinar</button>
+              <button onClick={() => gerar(true)} disabled={gerando || !refino.trim()} style={{ padding: '9px 16px', background: refino.trim() && !gerando ? 'var(--v2-ink)' : 'var(--v2-surface2)', color: refino.trim() && !gerando ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: refino.trim() && !gerando ? 'pointer' : 'not-allowed' }}>{tr('bri.refinar')}</button>
             </div>
           )}
 
@@ -246,12 +249,12 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
               {salvando ? 'Salvando...' : editId ? 'Salvar alterações' : 'Salvar briefing'}
             </button>
             {editId && (
-              <button onClick={abrirRelModal} disabled={relacionando} title="Criar uma tarefa nova ou vincular a uma existente, com o briefing completo" style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-ink)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: relacionando ? 'not-allowed' : 'pointer', opacity: relacionando ? 0.6 : 1, whiteSpace: 'nowrap' }}>
+              <button onClick={abrirRelModal} disabled={relacionando} title={tr('bri.criar-tarefa-nova-ou-vincular')} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-ink)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: relacionando ? 'not-allowed' : 'pointer', opacity: relacionando ? 0.6 : 1, whiteSpace: 'nowrap' }}>
                 {relacionando ? 'Relacionando...' : 'Relacionar a tarefa'}
               </button>
             )}
             {editId && (
-              <button onClick={() => excluir(editId)} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Excluir</button>
+              <button onClick={() => excluir(editId)} style={{ padding: '11px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('comum.excluir')}</button>
             )}
           </div>
           {relMsg && <p style={{ margin: '2px 0 0', fontSize: 12.5, fontWeight: 700, color: relMsg.startsWith('Não') ? 'var(--v2-hot)' : 'var(--v2-ok)' }}>{relMsg}</p>}
@@ -265,13 +268,13 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
         return (
           <div onClick={fecharFora(() => !relacionando && setRelModal(false))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
             <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 480, width: '100%', maxHeight: '86vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 20 }}>
-              <h3 style={{ margin: '0 0 4px', fontSize: 16.5, color: 'var(--v2-ink)' }}>Relacionar a tarefa</h3>
-              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>O briefing completo vai para a descrição da tarefa. Crie uma nova ou vincule a uma existente deste cliente.</p>
+              <h3 style={{ margin: '0 0 4px', fontSize: 16.5, color: 'var(--v2-ink)' }}>{tr('bri.relacionar-tarefa')}</h3>
+              <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>{tr('bri.briefing-completo-vai-descrica')}</p>
               <button onClick={() => relacionar()} disabled={relacionando} style={{ width: '100%', padding: '12px 0', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 11, fontWeight: 800, fontSize: 13.5, cursor: relacionando ? 'wait' : 'pointer', marginBottom: 14 }}>
-                {relacionando ? 'Criando...' : '+ Criar tarefa nova (campanha)'}
+                {relacionando ? tr('bri.criando') : '+ Criar tarefa nova (campanha)'}
               </button>
-              <label style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>Ou vincular a uma existente</label>
-              <input value={buscaTarefa} onChange={e => setBuscaTarefa(e.target.value)} placeholder="Buscar tarefa deste cliente..."
+              <label style={{ display: 'block', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>{tr('bri.ou-vincular-existente')}</label>
+              <input value={buscaTarefa} onChange={e => setBuscaTarefa(e.target.value)} placeholder={tr('bri.buscar-tarefa-deste-cliente')}
                 style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', marginBottom: 8 }} />
               <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {filtradas.length === 0 && <p style={{ margin: '6px 0', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhuma tarefa {clienteId ? 'deste cliente' : ''} encontrada.</p>}
@@ -282,7 +285,7 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
                   </button>
                 ))}
               </div>
-              <button onClick={() => setRelModal(false)} disabled={relacionando} style={{ marginTop: 12, alignSelf: 'flex-end', padding: '9px 18px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 9, fontWeight: 600, fontSize: 12.5, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => setRelModal(false)} disabled={relacionando} style={{ marginTop: 12, alignSelf: 'flex-end', padding: '9px 18px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 9, fontWeight: 600, fontSize: 12.5, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
             </div>
           </div>
         )

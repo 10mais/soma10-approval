@@ -11,12 +11,14 @@
 
 export type Fase = 'abordagem' | 'qualificacao' | 'interesse' | 'agendamento' | 'fechamento'
 
-export const FASES: { key: Fase; label: string; cor: string }[] = [
-  { key: 'abordagem', label: 'Abordagem', cor: '#0891b2' },
-  { key: 'qualificacao', label: 'Qualificação', cor: '#7c3aed' },
-  { key: 'interesse', label: 'Despertar interesse', cor: '#ea580c' },
-  { key: 'agendamento', label: 'Agendamento', cor: '#ca8a04' },
-  { key: 'fechamento', label: 'Fechamento', cor: '#16a34a' },
+// A CHAVE é o que fica gravado na mensagem; `rotulo` é a chave do texto no dicionário
+// (lib/i18n) — quem mostra na tela é que traduz.
+export const FASES: { key: Fase; rotulo: string; cor: string }[] = [
+  { key: 'abordagem', rotulo: 'fase.abordagem', cor: '#0891b2' },
+  { key: 'qualificacao', rotulo: 'fase.qualificacao', cor: '#7c3aed' },
+  { key: 'interesse', rotulo: 'fase.interesse', cor: '#ea580c' },
+  { key: 'agendamento', rotulo: 'fase.agendamento', cor: '#ca8a04' },
+  { key: 'fechamento', rotulo: 'fase.fechamento', cor: '#16a34a' },
 ]
 
 // `contexto` é a linha que diz QUANDO usar. Sem ela a biblioteca vira um monte

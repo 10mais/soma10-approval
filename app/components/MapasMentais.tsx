@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/app/components/Idioma'
 import { useEffect, useRef, useState } from 'react'
 import { v4 as uuid } from 'uuid'
 import { confirmar, toast } from '@/lib/toast'
@@ -17,6 +18,7 @@ const LARG = 170, ALT = 46 // largura fixa do nó e altura aproximada (p/ centro
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v))
 
 export default function MapasMentais({ clientes = [] }: { clientes?: ClienteLite[] }) {
+  const tr = useT()
   const [mapas, setMapas] = useState<MapaMeta[]>([])
   const [carregando, setCarregando] = useState(true)
   const [abertoId, setAbertoId] = useState<string | null>(null)
@@ -33,18 +35,18 @@ export default function MapasMentais({ clientes = [] }: { clientes?: ClienteLite
 
   async function criarDoZero() {
     const r = await fetch('/api/mapas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ titulo: '' }) }).then(x => x.json()).catch(() => null)
-    if (r?.ok) { setNovoModal(false); carregar(); setAbertoId(r.mapa.id) } else toast('Falha ao criar mapa.', 'erro')
+    if (r?.ok) { setNovoModal(false); carregar(); setAbertoId(r.mapa.id) } else toast(tr('mapa.falha-criar'), 'erro')
   }
   async function gerarIA() {
     if (!tema.trim() || gerando) return
     setGerando(true)
     const r = await fetch('/api/mapas/gerar-ia', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tema: tema.trim() }) }).then(x => x.json()).catch(() => null)
     setGerando(false)
-    if (r?.ok) { setNovoModal(false); setModoIA(false); setTema(''); carregar(); setAbertoId(r.id) } else toast(r?.error || 'Falha ao gerar com IA.', 'erro')
+    if (r?.ok) { setNovoModal(false); setModoIA(false); setTema(''); carregar(); setAbertoId(r.id) } else toast(r?.error || tr('mapa.falha-ia'), 'erro')
   }
   function abrirNovo() { setModoIA(false); setTema(''); setNovoModal(true) }
   async function excluir(id: string) {
-    if (!(await confirmar('Excluir este mapa mental?', { titulo: 'Excluir mapa', okLabel: 'Excluir', perigo: true }))) return
+    if (!(await confirmar(tr('mapa.dlg-excluir'), { titulo: tr('mapa.excluir-mapa'), okLabel: tr('comum.excluir'), perigo: true }))) return
     await fetch(`/api/mapas?id=${id}`, { method: 'DELETE' }).catch(() => {})
     setMapas(ms => ms.filter(m => m.id !== id))
   }
@@ -55,15 +57,15 @@ export default function MapasMentais({ clientes = [] }: { clientes?: ClienteLite
     <div style={{ maxWidth: 900 }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Mapas mentais</h2>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Organize ideias em nós e conexões — brainstorm, estratégia, planejamento.</p>
+          <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{tr('mapa.mapas-mentais')}</h2>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('mapa.organize-ideias-nos-conexoes-b')}</p>
         </div>
-        <button onClick={abrirNovo} style={{ padding: '10px 18px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>+ Novo mapa</button>
+        <button onClick={abrirNovo} style={{ padding: '10px 18px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{tr('mapa.novo-mapa')}</button>
       </div>
-      {carregando ? <p style={{ color: 'var(--v2-ink3)' }}>Carregando...</p> : mapas.length === 0 ? (
+      {carregando ? <p style={{ color: 'var(--v2-ink3)' }}>{tr('conta.carregando')}</p> : mapas.length === 0 ? (
         <div onClick={abrirNovo} style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', cursor: 'pointer' }}>
-          <p style={{ margin: '0 0 4px', fontSize: 14, color: 'var(--v2-ink3)' }}>Nenhum mapa ainda.</p>
-          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Clique para criar o primeiro.</p>
+          <p style={{ margin: '0 0 4px', fontSize: 14, color: 'var(--v2-ink3)' }}>{tr('mapa.nenhum-mapa-ainda')}</p>
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('mapa.clique-criar-primeiro')}</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
@@ -75,7 +77,7 @@ export default function MapasMentais({ clientes = [] }: { clientes?: ClienteLite
                 <span style={{ width: 34, height: 34, borderRadius: 9, background: '#f3e8ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="6" cy="6" r="3" /><circle cx="18" cy="18" r="3" /><circle cx="6" cy="18" r="3" /><path d="M9 6h6a3 3 0 0 1 3 3v6M6 9v6" /></svg>
                 </span>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo?.trim() || 'Sem título'}</p>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo?.trim() || tr('mapa.sem-titulo')}</p>
               </div>
               {(cli || m.clienteNome) && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
@@ -86,7 +88,7 @@ export default function MapasMentais({ clientes = [] }: { clientes?: ClienteLite
                 </div>
               )}
               <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)' }}>{m.nosQtd || 0} nó(s) · {new Date(m.atualizadoEm).toLocaleDateString('pt-BR')}</p>
-              <button onClick={e => { e.stopPropagation(); excluir(m.id) }} style={{ marginTop: 8, background: 'none', border: 'none', color: '#c00', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>Excluir</button>
+              <button onClick={e => { e.stopPropagation(); excluir(m.id) }} style={{ marginTop: 8, background: 'none', border: 'none', color: '#c00', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{tr('comum.excluir')}</button>
             </div>
           )})}
         </div>
@@ -95,27 +97,27 @@ export default function MapasMentais({ clientes = [] }: { clientes?: ClienteLite
       {novoModal && (
         <div onClick={fecharFora(() => !gerando && setNovoModal(false))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 460, width: '100%', padding: 22 }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>Novo mapa mental</h3>
+            <h3 style={{ margin: '0 0 16px', fontSize: 16, color: 'var(--v2-ink)' }}>{tr('mapa.novo-mapa-mental')}</h3>
             {!modoIA ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <button onClick={criarDoZero} style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', padding: '14px 16px', background: 'var(--v2-surface1)', border: '1.5px solid var(--v2-rule)', borderRadius: 12, cursor: 'pointer' }}>
                   <span style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg></span>
-                  <span><span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)' }}>Começar do zero</span><span style={{ display: 'block', fontSize: 12, color: 'var(--v2-ink3)' }}>Um mapa em branco com o nó central</span></span>
+                  <span><span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)' }}>{tr('mapa.comecar-zero')}</span><span style={{ display: 'block', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('mapa.mapa-branco-central')}</span></span>
                 </button>
                 <button onClick={() => setModoIA(true)} style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', padding: '14px 16px', background: '#faf5ff', border: '1.5px solid #e9d5ff', borderRadius: 12, cursor: 'pointer' }}>
                   <span style={{ width: 38, height: 38, borderRadius: 10, background: '#f3e8ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6L12 3z" /></svg></span>
-                  <span><span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)' }}>Gerar com IA</span><span style={{ display: 'block', fontSize: 12, color: 'var(--v2-ink3)' }}>Descreva um tema e a IA monta o mapa</span></span>
+                  <span><span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)' }}>{tr('mapa.gerar-ia')}</span><span style={{ display: 'block', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('mapa.descreva-tema-ia-monta-mapa')}</span></span>
                 </button>
               </div>
             ) : (
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', marginBottom: 6 }}>Sobre o que é o mapa?</label>
-                <textarea lang="pt-BR" value={tema} onChange={e => setTema(e.target.value)} autoFocus placeholder="Ex.: Estrutura organizacional da Clínica Norah · Plano de marketing 2026 · Onboarding de novo cliente…"
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('mapa.sobre-que-mapa')}</label>
+                <textarea lang="pt-BR" value={tema} onChange={e => setTema(e.target.value)} autoFocus placeholder={tr('mapa.ex-estrutura-organizacional-cl')}
                   style={{ width: '100%', minHeight: 90, padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
-                <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>A IA cria os ramos e subtópicos. Você ajusta tudo depois.</p>
+                <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('mapa.ia-cria-ramos-subtopicos-voce')}</p>
                 <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-                  <button onClick={gerarIA} disabled={!tema.trim() || gerando} style={{ flex: 1, padding: '11px 0', background: tema.trim() ? 'var(--marca, var(--v2-amber-on))' : 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: tema.trim() && !gerando ? 'pointer' : 'not-allowed' }}>{gerando ? 'Gerando…' : 'Gerar mapa'}</button>
-                  <button onClick={() => setModoIA(false)} disabled={gerando} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Voltar</button>
+                  <button onClick={gerarIA} disabled={!tema.trim() || gerando} style={{ flex: 1, padding: '11px 0', background: tema.trim() ? 'var(--marca, var(--v2-amber-on))' : 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: tema.trim() && !gerando ? 'pointer' : 'not-allowed' }}>{gerando ? tr('mapa.gerando') : tr('mapa.gerar-mapa')}</button>
+                  <button onClick={() => setModoIA(false)} disabled={gerando} style={{ padding: '11px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('aprov.voltar')}</button>
                 </div>
               </div>
             )}
@@ -127,6 +129,7 @@ export default function MapasMentais({ clientes = [] }: { clientes?: ClienteLite
 }
 
 function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: ClienteLite[]; onVoltar: () => void }) {
+  const tr = useT()
   const [titulo, setTitulo] = useState('')
   const [nos, setNos] = useState<No[]>([])
   const [conexoes, setConexoes] = useState<Conexao[]>([])
@@ -178,7 +181,7 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
   }
   function desfazer() {
     const anterior = historico.current.pop()
-    if (!anterior) { toast('Nada para desfazer.', 'info'); return }
+    if (!anterior) { toast(tr('mapa.nada-desfazer'), 'info'); return }
     setNos(anterior.nos); setConexoes(anterior.conexoes)
     setSelId(null); setEditId(null); setConectarDe(null)
   }
@@ -290,7 +293,7 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
   // ENTER = irmão (nó ligado ao MESMO pai do selecionado)
   function criarIrmao(no: No) {
     const conPai = conexoes.find(c => c.para === no.id)
-    if (!conPai) { toast('O nó raiz é o ponto de partida — use Tab para criar ramos.', 'info'); return }
+    if (!conPai) { toast(tr('mapa.raiz-use-tab'), 'info'); return }
     snapshot()
     const nid = uuid()
     setNos(ns => [...ns, { id: nid, texto: '', x: no.x, y: no.y + ALT + 24, cor: no.cor }])
@@ -299,11 +302,11 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
   }
   async function excluirNo(nid: string) {
     // Raiz é o ponto de partida — não pode ser excluída (evita ficar sem/2 centros)
-    if (!conexoes.some(c => c.para === nid)) { toast('O nó raiz não pode ser excluído — é o ponto de partida do mapa.', 'info'); return }
+    if (!conexoes.some(c => c.para === nid)) { toast(tr('mapa.raiz-nao-exclui'), 'info'); return }
     // Coleta a sub-árvore (o nó + todos os descendentes) — apagar não deixa órfãos
     const remover = new Set<string>([nid]); const fila = [nid]
     while (fila.length) { const cur = fila.shift()!; for (const c of conexoes) if (c.de === cur && !remover.has(c.para)) { remover.add(c.para); fila.push(c.para) } }
-    if (remover.size > 1 && !(await confirmar(`Excluir este nó e seus ${remover.size - 1} sub-nó(s)? Toda a ramificação será removida.`, { titulo: 'Excluir nó', okLabel: 'Excluir', perigo: true }))) return
+    if (remover.size > 1 && !(await confirmar(`Excluir este nó e seus ${remover.size - 1} sub-nó(s)? Toda a ramificação será removida.`, { titulo: tr('mapa.excluir-no'), okLabel: tr('comum.excluir'), perigo: true }))) return
     snapshot()
     setNos(ns => ns.filter(n => !remover.has(n.id)))
     setConexoes(cs => cs.filter(c => !remover.has(c.de) && !remover.has(c.para)))
@@ -405,7 +408,7 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
     setSelId(null); setEditId(null); setConectarDe(null)
   }
 
-  if (carregando) return <p style={{ color: 'var(--v2-ink3)' }}>Carregando mapa...</p>
+  if (carregando) return <p style={{ color: 'var(--v2-ink3)' }}>{tr('mapa.carregando-mapa')}</p>
 
   // Colapso: esconde os descendentes de qualquer nó colapsado.
   const filhosMap: Record<string, string[]> = {}
@@ -426,10 +429,10 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-        <button onClick={onVoltar} title="Voltar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-ink3)', display: 'flex', alignItems: 'center', padding: 4 }}>
+        <button onClick={onVoltar} title={tr('aprov.voltar')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--v2-ink3)', display: 'flex', alignItems: 'center', padding: 4 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
         </button>
-        <input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Título do mapa" style={{ flex: 1, minWidth: 140, maxWidth: 320, border: 'none', outline: 'none', fontSize: 17, fontWeight: 800, color: 'var(--v2-ink)', fontFamily: 'inherit', background: 'transparent' }} />
+        <input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder={tr('mapa.titulo-mapa')} style={{ flex: 1, minWidth: 140, maxWidth: 320, border: 'none', outline: 'none', fontSize: 17, fontWeight: 800, color: 'var(--v2-ink)', fontFamily: 'inherit', background: 'transparent' }} />
 
         {/* Atribuir a um cliente (fixa a logomarca) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -438,26 +441,24 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
               <AvatarCliente logo={cliente.logo} nome={cliente.nome} clienteId={cliente.id} />
             </span>
           )}
-          <select value={clienteId} onChange={e => setClienteId(e.target.value)} title="Atribuir a um cliente" style={{ padding: '7px 10px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)', color: clienteId ? 'var(--v2-ink)' : 'var(--v2-ink3)', maxWidth: 160 }}>
-            <option value="">Sem cliente</option>
+          <select value={clienteId} onChange={e => setClienteId(e.target.value)} title={tr('mapa.atribuir-cliente')} style={{ padding: '7px 10px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)', color: clienteId ? 'var(--v2-ink)' : 'var(--v2-ink3)', maxWidth: 160 }}>
+            <option value="">{tr('mapa.sem-cliente')}</option>
             {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         </div>
 
-        {salvo === 'salvando' && <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>salvando…</span>}
-        {salvo === 'ok' && <span style={{ fontSize: 11.5, color: 'var(--v2-ok)', fontWeight: 600 }}>salvo</span>}
+        {salvo === 'salvando' && <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>{tr('mapa.salvando')}</span>}
+        {salvo === 'ok' && <span style={{ fontSize: 11.5, color: 'var(--v2-ok)', fontWeight: 600 }}>{tr('mapa.salvo')}</span>}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 3, background: 'var(--v2-surface2)', borderRadius: 9, padding: 3 }}>
-          {([['mapa', 'Mapa mental'], ['organograma', 'Organograma'], ['lista', 'Lista']] as const).map(([k, l]) => (
-            <button key={k} onClick={() => aplicarLayout(k)} title={k === 'mapa' ? 'Ligações curvas, fluxo horizontal' : k === 'organograma' ? 'Ligações retas, ramificação vertical' : 'Lista indentada'} style={{ padding: '6px 12px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: layout === k ? 'var(--v2-surface)' : 'transparent', color: layout === k ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: layout === k ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
+          {([['mapa', tr('mapa.mapa-mental')], ['organograma', tr('mapa.organograma')], ['lista', 'Lista']] as const).map(([k, l]) => (
+            <button key={k} onClick={() => aplicarLayout(k)} title={k === 'mapa' ? tr('mapa.curvas') : k === 'organograma' ? tr('mapa.retas') : tr('mapa.lista-indentada')} style={{ padding: '6px 12px', borderRadius: 7, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, background: layout === k ? 'var(--v2-surface)' : 'transparent', color: layout === k ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: layout === k ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{l}</button>
           ))}
         </div>
         {/* Auto-organizar: reflui os espaços conforme os ramos são criados */}
         <button onClick={() => setAutoArrumar(v => !v)} title={autoArrumar ? 'Auto-organizar ligado — desligar' : 'Auto-organizar os espaços conforme cria ramos'} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 9, border: autoArrumar ? '1.5px solid var(--marca, var(--v2-amber-on))' : '1.5px solid var(--v2-surface2)', background: autoArrumar ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', color: autoArrumar ? 'var(--v2-amber)' : 'var(--v2-ink2)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></svg>
-          Auto
-        </button>
-        <button onClick={() => aplicarLayout(layout)} title="Organizar agora" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Organizar</button>
-        <button onClick={() => addNo()} style={{ padding: '8px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>+ Nó</button>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /></svg>{tr('mapa.auto')}</button>
+        <button onClick={() => aplicarLayout(layout)} title={tr('mapa.organizar-agora')} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 11px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('mapa.organizar')}</button>
+        <button onClick={() => addNo()} style={{ padding: '8px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>{tr('mapa.no')}</button>
         <ExportarMenu titulo={titulo} nos={nos} conexoes={conexoes} layout={layout} desabilitado={nos.length === 0} />
       </div>
 
@@ -508,17 +509,17 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
                 style={{ position: 'absolute', left: no.x, top: no.y, width: raiz ? LARG + 22 : LARG, minHeight: ALT, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 8, background: raiz ? 'var(--v2-ink)' : 'var(--v2-surface)', borderRadius: 22, padding: raiz ? '11px 18px' : '8px 14px', boxShadow: selecionado ? '0 0 0 2px #3b82f6, 0 6px 16px rgba(0,0,0,0.14)' : (raiz ? '0 5px 18px rgba(0,0,0,0.20)' : '0 2px 8px rgba(0,0,0,0.08)'), border: alvo ? '2px dashed #7c3aed' : (raiz ? 'none' : '1px solid #ececf0'), cursor: editando ? 'text' : 'grab' }}>
                 {!raiz && <span style={{ width: 10, height: 10, borderRadius: '50%', background: no.cor || CORES[0], flexShrink: 0 }} />}
                 {editando
-                  ? <textarea lang="pt-BR" value={no.texto} autoFocus onChange={e => setNo(no.id, { texto: e.target.value })} onPointerDown={e => e.stopPropagation()} onBlur={() => finalizarNo(no)} placeholder="Ideia…"
+                  ? <textarea lang="pt-BR" value={no.texto} autoFocus onChange={e => setNo(no.id, { texto: e.target.value })} onPointerDown={e => e.stopPropagation()} onBlur={() => finalizarNo(no)} placeholder={tr('mapa.ideia')}
                       onKeyDown={e => {
                         // 1º Enter só CONFIRMA o texto; o 2º Enter (nó já selecionado) cria o irmão via atalho global.
                         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); finalizarNo(no) }
                         else if (e.key === 'Tab') { e.preventDefault(); criarFilho(no) } // Tab = novo filho (regra inalterada)
                       }}
                       style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: raiz ? 13.5 : 12.5, fontWeight: raiz ? 800 : 400, lineHeight: 1.35, fontFamily: 'inherit', color: raiz ? 'var(--v2-surface)' : 'var(--v2-ink)', background: 'transparent', minHeight: 30 }} rows={2} />
-                  : <span style={{ flex: 1, fontSize: raiz ? 13.5 : 12.5, fontWeight: raiz ? 800 : 400, lineHeight: 1.35, color: raiz ? 'var(--v2-surface)' : (no.texto ? 'var(--v2-ink)' : 'var(--v2-ink3)'), wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{no.texto || (raiz ? 'Ideia central' : 'Ideia…')}</span>}
+                  : <span style={{ flex: 1, fontSize: raiz ? 13.5 : 12.5, fontWeight: raiz ? 800 : 400, lineHeight: 1.35, color: raiz ? 'var(--v2-surface)' : (no.texto ? 'var(--v2-ink)' : 'var(--v2-ink3)'), wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{no.texto || (raiz ? tr('mapa.ideia-central') : 'Ideia…')}</span>}
                 {/* Botão de ocultar/mostrar ramificação (só em nós com filhos) */}
                 {pai && !editando && (
-                  <button onPointerDown={e => e.stopPropagation()} onClick={() => alternarColapso(no)} title={no.colapsado ? 'Mostrar ramificação' : 'Ocultar ramificação'}
+                  <button onPointerDown={e => e.stopPropagation()} onClick={() => alternarColapso(no)} title={no.colapsado ? tr('mapa.mostrar-ramificacao') : tr('mapa.ocultar-ramificacao')}
                     style={{ position: 'absolute', ...(colapBottom ? { bottom: -12, left: '50%', transform: 'translateX(-50%)' } : { right: -12, top: '50%', transform: 'translateY(-50%)' }), width: 22, height: 22, borderRadius: '50%', background: no.colapsado ? 'var(--marca, var(--v2-amber-on))' : 'var(--v2-surface)', border: '1.5px solid ' + (no.colapsado ? 'var(--marca, var(--v2-amber-on))' : '#d0d0d5'), color: no.colapsado ? 'var(--v2-ink)' : 'var(--v2-ink2)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 5px rgba(0,0,0,0.14)', padding: 0, fontSize: 13, fontWeight: 900, lineHeight: 1, zIndex: 2 }}>
                     {no.colapsado ? '+' : '−'}
                   </button>
@@ -531,27 +532,27 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
         {/* Barra flutuante do nó selecionado (coordenadas de tela) */}
         {sel && !editId && (
           <div style={{ position: 'absolute', left: clamp(pan.x + sel.x * zoom, 6, (canvasRef.current?.clientWidth || 600) - 210), top: Math.max(6, pan.y + sel.y * zoom - 46), zIndex: 5, display: 'flex', alignItems: 'center', gap: 2, background: 'var(--v2-surface)', borderRadius: 12, boxShadow: '0 6px 22px rgba(0,0,0,0.16)', border: '1px solid var(--v2-rule)', padding: 4 }}>
-            <TBtn title="Editar texto" onClick={() => setEditId(sel.id)}>
+            <TBtn title={tr('mapa.editar-texto')} onClick={() => setEditId(sel.id)}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /></svg>
             </TBtn>
-            <TBtn title="Cor" onClick={() => cicloCor(sel)}>
+            <TBtn title={tr('mapa.cor')} onClick={() => cicloCor(sel)}>
               <span style={{ width: 16, height: 16, borderRadius: '50%', background: sel.cor || CORES[0], border: '2px solid var(--v2-surface)', boxShadow: '0 0 0 1px #ddd' }} />
             </TBtn>
-            <TBtn title="Adicionar nó ligado" onClick={() => addNo(sel)}>
+            <TBtn title={tr('mapa.adicionar-ligado')} onClick={() => addNo(sel)}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
             </TBtn>
-            <TBtn title={conectarDe === sel.id ? 'Clique em outro nó (ou aqui p/ cancelar)' : 'Conectar a outro nó'} cor={conectarDe === sel.id ? '#7c3aed' : 'var(--v2-ink2)'} onClick={() => setConectarDe(conectarDe === sel.id ? null : sel.id)}>
+            <TBtn title={conectarDe === sel.id ? tr('mapa.clique-outro-no') : tr('mapa.conectar-no')} cor={conectarDe === sel.id ? '#7c3aed' : 'var(--v2-ink2)'} onClick={() => setConectarDe(conectarDe === sel.id ? null : sel.id)}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.5 1.5" /><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.5-1.5" /></svg>
             </TBtn>
             {temFilho(sel.id) && <>
               <div style={{ width: 1, height: 18, background: 'var(--v2-surface2)', margin: '0 2px' }} />
-              <TBtn title={sel.colapsado ? 'Mostrar ramificação' : 'Ocultar ramificação'} onClick={() => alternarColapso(sel)}>
+              <TBtn title={sel.colapsado ? tr('mapa.mostrar-ramificacao') : tr('mapa.ocultar-ramificacao')} onClick={() => alternarColapso(sel)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d={sel.colapsado ? 'M12 5v14M5 12h14' : 'M5 12h14'} /></svg>
               </TBtn>
             </>}
             {temPai(sel.id) && <>
               <div style={{ width: 1, height: 18, background: 'var(--v2-surface2)', margin: '0 2px' }} />
-              <TBtn title="Excluir nó" cor="var(--v2-hot)" onClick={() => excluirNo(sel.id)}>
+              <TBtn title={tr('mapa.excluir')} cor="var(--v2-hot)" onClick={() => excluirNo(sel.id)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" /></svg>
               </TBtn>
             </>}
@@ -560,15 +561,15 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
 
         {/* Controles de zoom */}
         <div style={{ position: 'absolute', right: 12, bottom: 12, zIndex: 5, display: 'flex', flexDirection: 'column', gap: 4, background: 'var(--v2-surface)', borderRadius: 10, boxShadow: '0 4px 14px rgba(0,0,0,0.12)', border: '1px solid var(--v2-rule)', padding: 4 }}>
-          <button onClick={() => zoomBotao(1.2)} title="Aproximar" style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 18, color: 'var(--v2-ink2)', borderRadius: 7 }}>+</button>
+          <button onClick={() => zoomBotao(1.2)} title={tr('mapa.aproximar')} style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 18, color: 'var(--v2-ink2)', borderRadius: 7 }}>+</button>
           <span style={{ textAlign: 'center', fontSize: 10.5, color: 'var(--v2-ink3)', fontWeight: 700 }}>{Math.round(zoom * 100)}%</span>
-          <button onClick={() => zoomBotao(1 / 1.2)} title="Afastar" style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 20, color: 'var(--v2-ink2)', borderRadius: 7 }}>−</button>
-          <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }) }} title="Redefinir zoom" style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--v2-ink3)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={() => zoomBotao(1 / 1.2)} title={tr('mapa.afastar')} style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 20, color: 'var(--v2-ink2)', borderRadius: 7 }}>−</button>
+          <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }) }} title={tr('mapa.redefinir-zoom')} style={{ width: 30, height: 30, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--v2-ink3)', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></svg>
           </button>
         </div>
       </div>
-      <p style={{ margin: '8px 2px 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>Arraste os nós · role para zoom · duplo-clique edita · <b style={{ color: 'var(--v2-ink3)' }}>Enter</b> confirma o texto (Enter de novo cria um irmão), <b style={{ color: 'var(--v2-ink3)' }}>Tab</b> cria filho, <b style={{ color: 'var(--v2-ink3)' }}>Delete</b> apaga o nó · o botão <b style={{ color: 'var(--v2-ink3)' }}>−</b> oculta a ramificação · <b style={{ color: 'var(--v2-ink3)' }}>Auto</b> mantém tudo organizado · <b style={{ color: 'var(--v2-ink3)' }}>Ctrl+Z</b> desfaz.</p>
+      <p style={{ margin: '8px 2px 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>{tr('mapa.ajuda-teclas', { enter: 'Enter', tab: 'Tab', del: 'Delete', menos: '−', auto: 'Auto', desfazer: 'Ctrl+Z' })}</p>
     </div>
   )
 }
@@ -576,13 +577,14 @@ function Editor({ id, clientes = [], onVoltar }: { id: string; clientes?: Client
 // Botão "Exportar" + menu (PDF / PNG / SVG). Exporta a partir dos DADOS do mapa
 // (lib/mapaSvg), não da tela — o zoom/pan atual não afeta o arquivo gerado.
 function ExportarMenu({ titulo, nos, conexoes, layout, desabilitado }: { titulo: string; nos: No[]; conexoes: Conexao[]; layout: 'mapa' | 'organograma' | 'lista'; desabilitado: boolean }) {
+  const tr = useT()
   const [aberto, setAberto] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const mapa = { titulo, nos, conexoes, layout }
 
   async function exportar(fn: () => void | Promise<void>) {
     setAberto(false); setOcupado(true)
-    try { await fn() } catch (e: any) { toast(e?.message || 'Não foi possível exportar o mapa.', 'erro') }
+    try { await fn() } catch (e: any) { toast(e?.message || tr('mapa.falha-exportar'), 'erro') }
     finally { setOcupado(false) }
   }
 
@@ -591,17 +593,17 @@ function ExportarMenu({ titulo, nos, conexoes, layout, desabilitado }: { titulo:
   return (
     <div style={{ position: 'relative' }}>
       <button onClick={() => setAberto(v => !v)} disabled={desabilitado || ocupado}
-        title={desabilitado ? 'Adicione ao menos um nó para exportar' : 'Exportar para enviar ao cliente'}
+        title={desabilitado ? tr('mapa.add-no-exportar') : tr('mapa.exportar-cliente')}
         style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--v2-surface)', color: desabilitado ? 'var(--v2-ink3)' : 'var(--v2-ink)', border: '1.5px solid var(--v2-rule)', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: desabilitado ? 'default' : 'pointer' }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
-        {ocupado ? 'Exportando…' : 'Exportar'}
+        {ocupado ? tr('mapa.exportando') : tr('mapa.exportar')}
       </button>
       {aberto && !desabilitado && (
         <div onClick={fecharFora(() => setAberto(false))} style={{ position: 'fixed', inset: 0, zIndex: 40 }}>
           <div onClick={e => e.stopPropagation()} style={{ position: 'absolute', right: 12, top: 100, background: 'var(--v2-surface)', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.18)', border: '1px solid var(--v2-rule)', overflow: 'hidden', minWidth: 180, zIndex: 41 }}>
-            <button style={item} onClick={() => exportar(() => exportarPdf(mapa))}><b>PDF</b> — uma página pronta</button>
-            <button style={item} onClick={() => exportar(() => exportarPng(mapa))}><b>PNG</b> — imagem</button>
-            <button style={item} onClick={() => exportar(() => exportarSvg(mapa))}><b>SVG</b> — vetor</button>
+            <button style={item} onClick={() => exportar(() => exportarPdf(mapa))}><b>PDF</b>{tr('mapa.pagina-pronta')}</button>
+            <button style={item} onClick={() => exportar(() => exportarPng(mapa))}><b>PNG</b>{tr('mapa.imagem')}</button>
+            <button style={item} onClick={() => exportar(() => exportarSvg(mapa))}><b>SVG</b>{tr('mapa.vetor')}</button>
           </div>
         </div>
       )}

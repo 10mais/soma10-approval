@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/app/components/Idioma'
 import { useEffect, useMemo, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import {
@@ -11,11 +12,11 @@ import {
 // (semeado por perfil e editável aqui). Ver lib/bibliotecaVendas.ts.
 
 type Aba = 'objecoes' | 'cadencias' | 'roteiros' | 'reaquecimento'
-const ABAS: { key: Aba; label: string }[] = [
-  { key: 'objecoes', label: 'Objeções' },
-  { key: 'cadencias', label: 'Cadência de Mensagens' },
-  { key: 'roteiros', label: 'Roteiro de Qualificação' },
-  { key: 'reaquecimento', label: 'Reaquecimento de Base' },
+const ABAS: { key: Aba; rotulo: string }[] = [
+  { key: 'objecoes', rotulo: 'bib.objecoes' },
+  { key: 'cadencias', rotulo: 'bib.cadencia' },
+  { key: 'roteiros', rotulo: 'bib.roteiro-qualificacao' },
+  { key: 'reaquecimento', rotulo: 'bib.reaquec-base' },
 ]
 
 const novoId = () => Math.random().toString(36).slice(2)
@@ -25,12 +26,13 @@ const rotulo: React.CSSProperties = { display: 'block', fontSize: 11, fontWeight
 
 // Copiar é o botão mais usado da tela: quem atende vive colando no WhatsApp.
 function BotaoCopiar({ texto }: { texto: string }) {
+  const tr = useT()
   const [copiado, setCopiado] = useState(false)
   return (
     <button
-      onClick={() => navigator.clipboard?.writeText(texto).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 1500) }).catch(() => toast('Não consegui copiar. Selecione o texto e copie à mão.', 'erro'))}
+      onClick={() => navigator.clipboard?.writeText(texto).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 1500) }).catch(() => toast(tr('bib.falha-copiar'), 'erro'))}
       style={{ marginLeft: 'auto', flexShrink: 0, padding: '5px 11px', background: copiado ? 'var(--v2-ok)' : 'var(--v2-surface1)', color: copiado ? 'var(--v2-surface)' : 'var(--v2-ink2)', border: 'none', borderRadius: 7, fontWeight: 700, fontSize: 11, cursor: 'pointer' }}>
-      {copiado ? 'Copiado!' : 'Copiar'}
+      {copiado ? tr('bib.copiado') : tr('bib.copiar')}
     </button>
   )
 }
@@ -39,15 +41,16 @@ function BotaoCopiar({ texto }: { texto: string }) {
 function ItemMsg({ item, editando, aoMudar, aoExcluir, faixa }: {
   item: Item; editando: boolean; aoMudar: (i: Item) => void; aoExcluir: () => void; faixa?: React.ReactNode
 }) {
+  const tr = useT()
   if (editando) return (
     <div style={{ ...card, display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        <input value={item.titulo} onChange={e => aoMudar({ ...item, titulo: e.target.value })} placeholder="Título" style={{ ...campo, fontWeight: 700 }} />
+        <input value={item.titulo} onChange={e => aoMudar({ ...item, titulo: e.target.value })} placeholder={tr('bib.titulo')} style={{ ...campo, fontWeight: 700 }} />
         {faixa}
-        <button onClick={aoExcluir} title="Excluir" style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 17 }}>×</button>
+        <button onClick={aoExcluir} title={tr('comum.excluir')} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 17 }}>×</button>
       </div>
-      <input value={item.contexto} onChange={e => aoMudar({ ...item, contexto: e.target.value })} placeholder="Quando usar (uma linha)" style={campo} />
-      <textarea lang="pt-BR" value={item.texto} onChange={e => aoMudar({ ...item, texto: e.target.value })} placeholder="Mensagem pronta..." style={{ ...campo, minHeight: 64, resize: 'vertical' }} />
+      <input value={item.contexto} onChange={e => aoMudar({ ...item, contexto: e.target.value })} placeholder={tr('bib.quando-usar-linha')} style={campo} />
+      <textarea lang="pt-BR" value={item.texto} onChange={e => aoMudar({ ...item, texto: e.target.value })} placeholder={tr('bib.mensagem-pronta')} style={{ ...campo, minHeight: 64, resize: 'vertical' }} />
     </div>
   )
   return (
@@ -64,6 +67,7 @@ function ItemMsg({ item, editando, aoMudar, aoExcluir, faixa }: {
 }
 
 export default function BibliotecaVendasTela({ podeEditar }: { podeEditar: boolean }) {
+  const tr = useT()
   const [b, setB] = useState<Biblioteca>(vazia())
   const [carregando, setCarregando] = useState(true)
   const [editando, setEditando] = useState(false)
@@ -97,8 +101,8 @@ export default function BibliotecaVendasTela({ podeEditar }: { podeEditar: boole
     setSalvando(true)
     const r = await fetch('/api/crm/biblioteca', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then(x => x.json()).catch(() => null)
     setSalvando(false)
-    if (r?.ok) { setB(r.biblioteca); setEditando(false); toast('Biblioteca salva.', 'sucesso') }
-    else toast(r?.error || 'Não consegui salvar.', 'erro')
+    if (r?.ok) { setB(r.biblioteca); setEditando(false); toast(tr('bib.salva'), 'sucesso') }
+    else toast(r?.error || tr('bib.falha-salvar'), 'erro')
   }
 
   const objAtual = b.objecoes.find(c => c.id === selObj)
@@ -113,7 +117,7 @@ export default function BibliotecaVendasTela({ podeEditar }: { podeEditar: boole
     return itens.filter(i => `${i.titulo} ${i.contexto} ${i.texto}`.toLowerCase().includes(q))
   }
 
-  if (carregando) return <p style={{ color: 'var(--v2-ink3)' }}>Carregando...</p>
+  if (carregando) return <p style={{ color: 'var(--v2-ink3)' }}>{tr('conta.carregando')}</p>
 
   const seletor = (itens: { id: string; nome: string }[], sel: string, aoSelecionar: (id: string) => void) => (
     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -131,24 +135,24 @@ export default function BibliotecaVendasTela({ podeEditar }: { podeEditar: boole
     <div style={{ maxWidth: 880 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)' }}>Biblioteca de Vendas</h3>
-          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>O que dizer, quando dizer e o que responder — pronto para copiar.</p>
+          <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)' }}>{tr('bib.biblioteca-vendas')}</h3>
+          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('bib.que-dizer-quando-dizer-que-res')}</p>
         </div>
         <span style={{ flex: 1 }} />
         {podeEditar && (editando ? (
           <>
             <button onClick={salvar} disabled={salvando} style={{ padding: '8px 16px', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>{salvando ? 'Salvando...' : 'Salvar'}</button>
-            <button onClick={() => { carregar(); setEditando(false) }} style={{ padding: '8px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Cancelar</button>
+            <button onClick={() => { carregar(); setEditando(false) }} style={{ padding: '8px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
           </>
         ) : (
-          <button onClick={() => setEditando(true)} style={{ padding: '8px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Editar</button>
+          <button onClick={() => setEditando(true)} style={{ padding: '8px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('comum.editar')}</button>
         ))}
       </div>
 
       {bibliotecaVazia(b) && !editando && (
         <div style={{ ...card, textAlign: 'center', padding: 34 }}>
-          <p style={{ margin: '0 0 6px', fontSize: 13.5, fontWeight: 700, color: 'var(--v2-ink2)' }}>A biblioteca deste nicho ainda está vazia.</p>
-          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>A estrutura está pronta: clique em <b>Editar</b> e monte as objeções, cadências e roteiros da sua operação.</p>
+          <p style={{ margin: '0 0 6px', fontSize: 13.5, fontWeight: 700, color: 'var(--v2-ink2)' }}>{tr('bib.biblioteca-deste-nicho-ainda-e')}</p>
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('bib.estrutura-pronta', { botao: tr('bib.mais-playbook') })}</p>
         </div>
       )}
 
@@ -159,28 +163,28 @@ export default function BibliotecaVendasTela({ podeEditar }: { podeEditar: boole
             flex: 1, minWidth: 130, padding: '8px 10px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12.5, fontWeight: 700,
             background: aba === a.key ? 'var(--v2-surface)' : 'transparent', color: aba === a.key ? 'var(--v2-ink)' : 'var(--v2-ink3)',
             boxShadow: aba === a.key ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
-          }}>{a.label}</button>
+          }}>{tr(a.rotulo)}</button>
         ))}
       </div>
 
       {!bibliotecaVazia(b) && (
-        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar nesta aba..." style={{ ...campo, marginBottom: 12 }} />
+        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder={tr('bib.buscar-nesta-aba')} style={{ ...campo, marginBottom: 12 }} />
       )}
 
       {/* OBJEÇÕES — categoria → 10 respostas */}
       {aba === 'objecoes' && (<>
         {seletor(b.objecoes, selObj, setSelObj)}
         {editando && (
-          <button onClick={() => { const c: CategoriaObjecao = { id: novoId(), nome: 'Nova categoria', respostas: [] }; setB(x => ({ ...x, objecoes: [...x.objecoes, c] })); setSelObj(c.id) }}
-            style={{ padding: '6px 12px', background: 'var(--v2-surface1)', border: '1px dashed var(--v2-rule2)', borderRadius: 999, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer', marginBottom: 12 }}>+ Categoria</button>
+          <button onClick={() => { const c: CategoriaObjecao = { id: novoId(), nome: tr('bib.nova-categoria'), respostas: [] }; setB(x => ({ ...x, objecoes: [...x.objecoes, c] })); setSelObj(c.id) }}
+            style={{ padding: '6px 12px', background: 'var(--v2-surface1)', border: '1px dashed var(--v2-rule2)', borderRadius: 999, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer', marginBottom: 12 }}>{tr('bib.categoria')}</button>
         )}
         {objAtual && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {editando && (
               <div style={{ display: 'flex', gap: 6 }}>
                 <input value={objAtual.nome} onChange={e => setB(x => ({ ...x, objecoes: x.objecoes.map(c => c.id === objAtual.id ? { ...c, nome: e.target.value } : c) }))} style={{ ...campo, fontWeight: 700 }} />
-                <button onClick={async () => { if (await confirmar(`Excluir a categoria "${objAtual.nome}" e as respostas dela?`, { titulo: 'Excluir categoria', okLabel: 'Excluir', perigo: true })) { setB(x => ({ ...x, objecoes: x.objecoes.filter(c => c.id !== objAtual.id) })); setSelObj('') } }}
-                  style={{ padding: '8px 12px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>Excluir categoria</button>
+                <button onClick={async () => { if (await confirmar(`Excluir a categoria "${objAtual.nome}" e as respostas dela?`, { titulo: 'Excluir categoria', okLabel: tr('comum.excluir'), perigo: true })) { setB(x => ({ ...x, objecoes: x.objecoes.filter(c => c.id !== objAtual.id) })); setSelObj('') } }}
+                  style={{ padding: '8px 12px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>{tr('bib.excluir-categoria')}</button>
               </div>
             )}
             {filtra(objAtual.respostas).map(r => (
@@ -191,7 +195,7 @@ export default function BibliotecaVendasTela({ podeEditar }: { podeEditar: boole
             {!filtra(objAtual.respostas).length && <p style={{ fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhuma resposta {busca ? 'para esta busca' : 'nesta categoria'}.</p>}
             {editando && (
               <button onClick={() => setB(x => ({ ...x, objecoes: x.objecoes.map(c => c.id === objAtual.id ? { ...c, respostas: [...c.respostas, { id: novoId(), titulo: '', contexto: '', texto: '' }] } : c) }))}
-                style={{ padding: '8px 14px', background: 'var(--v2-surface1)', border: '1px dashed var(--v2-rule2)', borderRadius: 8, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer' }}>+ Resposta</button>
+                style={{ padding: '8px 14px', background: 'var(--v2-surface1)', border: '1px dashed var(--v2-rule2)', borderRadius: 8, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer' }}>{tr('bib.resposta')}</button>
             )}
           </div>
         )}
@@ -201,16 +205,16 @@ export default function BibliotecaVendasTela({ podeEditar }: { podeEditar: boole
       {aba === 'cadencias' && (<>
         {seletor(b.cadencias, selCad, setSelCad)}
         {editando && (
-          <button onClick={() => { const c: Cadencia = { id: novoId(), nome: 'Novo playbook', mensagens: [] }; setB(x => ({ ...x, cadencias: [...x.cadencias, c] })); setSelCad(c.id) }}
+          <button onClick={() => { const c: Cadencia = { id: novoId(), nome: tr('bib.novo-playbook'), mensagens: [] }; setB(x => ({ ...x, cadencias: [...x.cadencias, c] })); setSelCad(c.id) }}
             style={{ padding: '6px 12px', background: 'var(--v2-surface1)', border: '1px dashed var(--v2-rule2)', borderRadius: 999, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer', marginBottom: 12 }}>+ Playbook</button>
         )}
         {cadAtual && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {editando ? (
               <div style={{ display: 'flex', gap: 6 }}>
-                <input value={cadAtual.nome} onChange={e => setB(x => ({ ...x, cadencias: x.cadencias.map(c => c.id === cadAtual.id ? { ...c, nome: e.target.value } : c) }))} placeholder="Tipo de serviço" style={{ ...campo, fontWeight: 700 }} />
-                <button onClick={async () => { if (await confirmar(`Excluir o playbook "${cadAtual.nome}"?`, { titulo: 'Excluir playbook', okLabel: 'Excluir', perigo: true })) { setB(x => ({ ...x, cadencias: x.cadencias.filter(c => c.id !== cadAtual.id) })); setSelCad('') } }}
-                  style={{ padding: '8px 12px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>Excluir</button>
+                <input value={cadAtual.nome} onChange={e => setB(x => ({ ...x, cadencias: x.cadencias.map(c => c.id === cadAtual.id ? { ...c, nome: e.target.value } : c) }))} placeholder={tr('bib.tipo-servico')} style={{ ...campo, fontWeight: 700 }} />
+                <button onClick={async () => { if (await confirmar(`Excluir o playbook "${cadAtual.nome}"?`, { titulo: tr('bib.excluir-playbook'), okLabel: tr('comum.excluir'), perigo: true })) { setB(x => ({ ...x, cadencias: x.cadencias.filter(c => c.id !== cadAtual.id) })); setSelCad('') } }}
+                  style={{ padding: '8px 12px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>{tr('comum.excluir')}</button>
               </div>
             ) : cadAtual.descricao && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{cadAtual.descricao}</p>}
 
@@ -221,11 +225,11 @@ export default function BibliotecaVendasTela({ podeEditar }: { podeEditar: boole
                   faixa={editando
                     ? <select value={(m as MsgCadencia).fase} onChange={e => setB(x => ({ ...x, cadencias: x.cadencias.map(c => c.id === cadAtual.id ? { ...c, mensagens: c.mensagens.map(y => y.id === m.id ? { ...y, fase: e.target.value as Fase } : y) } : c) }))}
                         style={{ ...campo, width: 'auto', flexShrink: 0, background: 'var(--v2-surface)' }}>
-                        {FASES.map(x => <option key={x.key} value={x.key}>{x.label}</option>)}
+                        {FASES.map(x => <option key={x.key} value={x.key}>{tr(x.rotulo)}</option>)}
                       </select>
                     : <>
                         <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--v2-surface)', background: 'var(--v2-ink)', borderRadius: 999, padding: '2px 8px' }}>{i + 1}</span>
-                        <span style={{ fontSize: 10.5, fontWeight: 800, color: f.cor, background: `${f.cor}18`, borderRadius: 999, padding: '2px 9px' }}>{f.label}</span>
+                        <span style={{ fontSize: 10.5, fontWeight: 800, color: f.cor, background: `${f.cor}18`, borderRadius: 999, padding: '2px 9px' }}>{tr(f.rotulo)}</span>
                       </>}
                   aoMudar={it => setB(x => ({ ...x, cadencias: x.cadencias.map(c => c.id === cadAtual.id ? { ...c, mensagens: c.mensagens.map(y => y.id === it.id ? { ...y, ...it } : y) } : c) }))}
                   aoExcluir={() => setB(x => ({ ...x, cadencias: x.cadencias.map(c => c.id === cadAtual.id ? { ...c, mensagens: c.mensagens.filter(y => y.id !== m.id) } : c) }))} />
@@ -233,7 +237,7 @@ export default function BibliotecaVendasTela({ podeEditar }: { podeEditar: boole
             })}
             {editando && (
               <button onClick={() => setB(x => ({ ...x, cadencias: x.cadencias.map(c => c.id === cadAtual.id ? { ...c, mensagens: [...c.mensagens, { id: novoId(), titulo: '', contexto: '', texto: '', fase: 'abordagem' as Fase }] } : c) }))}
-                style={{ padding: '8px 14px', background: 'var(--v2-surface1)', border: '1px dashed var(--v2-rule2)', borderRadius: 8, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer' }}>+ Mensagem</button>
+                style={{ padding: '8px 14px', background: 'var(--v2-surface1)', border: '1px dashed var(--v2-rule2)', borderRadius: 8, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer' }}>{tr('bib.mensagem')}</button>
             )}
           </div>
         )}
@@ -243,16 +247,16 @@ export default function BibliotecaVendasTela({ podeEditar }: { podeEditar: boole
       {aba === 'roteiros' && (<>
         {seletor(b.roteiros, selRot, setSelRot)}
         {editando && (
-          <button onClick={() => { const r: Roteiro = { id: novoId(), nome: 'Novo roteiro', perguntas: [] }; setB(x => ({ ...x, roteiros: [...x.roteiros, r] })); setSelRot(r.id) }}
-            style={{ padding: '6px 12px', background: 'var(--v2-surface1)', border: '1px dashed var(--v2-rule2)', borderRadius: 999, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer', marginBottom: 12 }}>+ Roteiro</button>
+          <button onClick={() => { const r: Roteiro = { id: novoId(), nome: tr('bib.novo-roteiro'), perguntas: [] }; setB(x => ({ ...x, roteiros: [...x.roteiros, r] })); setSelRot(r.id) }}
+            style={{ padding: '6px 12px', background: 'var(--v2-surface1)', border: '1px dashed var(--v2-rule2)', borderRadius: 999, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer', marginBottom: 12 }}>{tr('bib.roteiro')}</button>
         )}
         {rotAtual && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {editando ? (
               <div style={{ display: 'flex', gap: 6 }}>
-                <input value={rotAtual.nome} onChange={e => setB(x => ({ ...x, roteiros: x.roteiros.map(r => r.id === rotAtual.id ? { ...r, nome: e.target.value } : r) }))} placeholder="Nicho" style={{ ...campo, fontWeight: 700 }} />
-                <button onClick={async () => { if (await confirmar(`Excluir o roteiro "${rotAtual.nome}"?`, { titulo: 'Excluir roteiro', okLabel: 'Excluir', perigo: true })) { setB(x => ({ ...x, roteiros: x.roteiros.filter(r => r.id !== rotAtual.id) })); setSelRot('') } }}
-                  style={{ padding: '8px 12px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>Excluir</button>
+                <input value={rotAtual.nome} onChange={e => setB(x => ({ ...x, roteiros: x.roteiros.map(r => r.id === rotAtual.id ? { ...r, nome: e.target.value } : r) }))} placeholder={tr('bib.nicho')} style={{ ...campo, fontWeight: 700 }} />
+                <button onClick={async () => { if (await confirmar(`Excluir o roteiro "${rotAtual.nome}"?`, { titulo: tr('bib.excluir-roteiro'), okLabel: tr('comum.excluir'), perigo: true })) { setB(x => ({ ...x, roteiros: x.roteiros.filter(r => r.id !== rotAtual.id) })); setSelRot('') } }}
+                  style={{ padding: '8px 12px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>{tr('comum.excluir')}</button>
               </div>
             ) : rotAtual.descricao && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{rotAtual.descricao}</p>}
 
@@ -263,15 +267,15 @@ export default function BibliotecaVendasTela({ podeEditar }: { podeEditar: boole
                   {editando ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <input value={p.pergunta} onChange={e => setB(x => ({ ...x, roteiros: x.roteiros.map(r => r.id === rotAtual.id ? { ...r, perguntas: r.perguntas.map(y => y.id === p.id ? { ...y, pergunta: e.target.value } : y) } : r) }))} placeholder="Pergunta" style={{ ...campo, fontWeight: 700 }} />
+                        <input value={p.pergunta} onChange={e => setB(x => ({ ...x, roteiros: x.roteiros.map(r => r.id === rotAtual.id ? { ...r, perguntas: r.perguntas.map(y => y.id === p.id ? { ...y, pergunta: e.target.value } : y) } : r) }))} placeholder={tr('bib.pergunta-2')} style={{ ...campo, fontWeight: 700 }} />
                         <button onClick={() => setB(x => ({ ...x, roteiros: x.roteiros.map(r => r.id === rotAtual.id ? { ...r, perguntas: r.perguntas.filter(y => y.id !== p.id) } : r) }))} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 17 }}>×</button>
                       </div>
-                      <input value={p.contexto} onChange={e => setB(x => ({ ...x, roteiros: x.roteiros.map(r => r.id === rotAtual.id ? { ...r, perguntas: r.perguntas.map(y => y.id === p.id ? { ...y, contexto: e.target.value } : y) } : r) }))} placeholder="Por que perguntar isso" style={campo} />
+                      <input value={p.contexto} onChange={e => setB(x => ({ ...x, roteiros: x.roteiros.map(r => r.id === rotAtual.id ? { ...r, perguntas: r.perguntas.map(y => y.id === p.id ? { ...y, contexto: e.target.value } : y) } : r) }))} placeholder={tr('bib.por-que-perguntar-isso')} style={campo} />
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                        <div><label style={rotulo}>Se sim</label><input value={p.seSim || ''} onChange={e => setB(x => ({ ...x, roteiros: x.roteiros.map(r => r.id === rotAtual.id ? { ...r, perguntas: r.perguntas.map(y => y.id === p.id ? { ...y, seSim: e.target.value } : y) } : r) }))} style={campo} /></div>
-                        <div><label style={rotulo}>Se não</label><input value={p.seNao || ''} onChange={e => setB(x => ({ ...x, roteiros: x.roteiros.map(r => r.id === rotAtual.id ? { ...r, perguntas: r.perguntas.map(y => y.id === p.id ? { ...y, seNao: e.target.value } : y) } : r) }))} style={campo} /></div>
+                        <div><label style={rotulo}>{tr('bib.se-sim')}</label><input value={p.seSim || ''} onChange={e => setB(x => ({ ...x, roteiros: x.roteiros.map(r => r.id === rotAtual.id ? { ...r, perguntas: r.perguntas.map(y => y.id === p.id ? { ...y, seSim: e.target.value } : y) } : r) }))} style={campo} /></div>
+                        <div><label style={rotulo}>{tr('bib.se-nao')}</label><input value={p.seNao || ''} onChange={e => setB(x => ({ ...x, roteiros: x.roteiros.map(r => r.id === rotAtual.id ? { ...r, perguntas: r.perguntas.map(y => y.id === p.id ? { ...y, seNao: e.target.value } : y) } : r) }))} style={campo} /></div>
                       </div>
-                      <div><label style={rotulo}>Ponto de parada</label><input value={p.parada || ''} onChange={e => setB(x => ({ ...x, roteiros: x.roteiros.map(r => r.id === rotAtual.id ? { ...r, perguntas: r.perguntas.map(y => y.id === p.id ? { ...y, parada: e.target.value } : y) } : r) }))} placeholder="Quando NÃO seguir" style={campo} /></div>
+                      <div><label style={rotulo}>{tr('bib.ponto-parada')}</label><input value={p.parada || ''} onChange={e => setB(x => ({ ...x, roteiros: x.roteiros.map(r => r.id === rotAtual.id ? { ...r, perguntas: r.perguntas.map(y => y.id === p.id ? { ...y, parada: e.target.value } : y) } : r) }))} placeholder={tr('bib.quando-nao-seguir')} style={campo} /></div>
                     </div>
                   ) : (
                     <>
@@ -282,9 +286,9 @@ export default function BibliotecaVendasTela({ podeEditar }: { podeEditar: boole
                       </div>
                       {p.contexto && <p style={{ margin: '0 0 8px', fontSize: 11.5, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>{p.contexto}</p>}
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        {p.seSim && <span style={{ fontSize: 11.5, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 8, padding: '5px 9px' }}><b>Se sim:</b> {p.seSim}</span>}
-                        {p.seNao && <span style={{ fontSize: 11.5, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', borderRadius: 8, padding: '5px 9px' }}><b>Se não:</b> {p.seNao}</span>}
-                        {p.parada && <span style={{ fontSize: 11.5, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', borderRadius: 8, padding: '5px 9px' }}><b>Pare:</b> {p.parada}</span>}
+                        {p.seSim && <span style={{ fontSize: 11.5, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 8, padding: '5px 9px' }}><b>{tr('bib.se-sim-2')}</b> {p.seSim}</span>}
+                        {p.seNao && <span style={{ fontSize: 11.5, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', borderRadius: 8, padding: '5px 9px' }}><b>{tr('bib.se-nao-2')}</b> {p.seNao}</span>}
+                        {p.parada && <span style={{ fontSize: 11.5, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', borderRadius: 8, padding: '5px 9px' }}><b>{tr('bib.pare')}</b> {p.parada}</span>}
                       </div>
                     </>
                   )}
@@ -292,7 +296,7 @@ export default function BibliotecaVendasTela({ podeEditar }: { podeEditar: boole
               ))}
             {editando && (
               <button onClick={() => setB(x => ({ ...x, roteiros: x.roteiros.map(r => r.id === rotAtual.id ? { ...r, perguntas: [...r.perguntas, { id: novoId(), pergunta: '', contexto: '' }] } : r) }))}
-                style={{ padding: '8px 14px', background: 'var(--v2-surface1)', border: '1px dashed var(--v2-rule2)', borderRadius: 8, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer' }}>+ Pergunta</button>
+                style={{ padding: '8px 14px', background: 'var(--v2-surface1)', border: '1px dashed var(--v2-rule2)', borderRadius: 8, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer' }}>{tr('bib.pergunta')}</button>
             )}
           </div>
         )}
@@ -301,7 +305,7 @@ export default function BibliotecaVendasTela({ podeEditar }: { podeEditar: boole
       {/* REAQUECIMENTO — duas trilhas: leads que nunca fecharam × clientes antigos */}
       {aba === 'reaquecimento' && (<>
         <div style={{ display: 'flex', gap: 4, background: 'var(--v2-surface1)', borderRadius: 9, padding: 3, marginBottom: 12, maxWidth: 380 }}>
-          {([['leads', 'Reaquecimento de Leads'], ['clientes', 'Resgate de Clientes']] as const).map(([k, label]) => (
+          {([['leads', tr('bib.reaquec-leads')], ['clientes', 'Resgate de Clientes']] as const).map(([k, label]) => (
             <button key={k} onClick={() => { setTrilha(k); setSelSeq('') }} style={{
               flex: 1, padding: '7px 10px', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 12, fontWeight: 700,
               background: trilha === k ? 'var(--v2-surface)' : 'transparent', color: trilha === k ? 'var(--v2-ink)' : 'var(--v2-ink3)',
@@ -310,23 +314,23 @@ export default function BibliotecaVendasTela({ podeEditar }: { podeEditar: boole
           ))}
         </div>
         <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--v2-ink3)' }}>
-          {trilha === 'leads' ? 'Quem levantou a mão e nunca fechou.' : 'Quem já foi cliente e parou — nova oferta ou pesquisa para reabrir a conversa.'}
+          {trilha === 'leads' ? tr('bib.reaquec-lead-ajuda') : tr('bib.reaquec-base-ajuda')}
         </p>
         {seletor(b.reaquecimento[trilha], selSeq, setSelSeq)}
         {editando && (
-          <button onClick={() => { const s: Sequencia = { id: novoId(), nome: 'Nova sequência', quando: '', mensagens: [] }; setB(x => ({ ...x, reaquecimento: { ...x.reaquecimento, [trilha]: [...x.reaquecimento[trilha], s] } })); setSelSeq(s.id) }}
-            style={{ padding: '6px 12px', background: 'var(--v2-surface1)', border: '1px dashed var(--v2-rule2)', borderRadius: 999, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer', marginBottom: 12 }}>+ Sequência</button>
+          <button onClick={() => { const s: Sequencia = { id: novoId(), nome: tr('bib.nova-sequencia'), quando: '', mensagens: [] }; setB(x => ({ ...x, reaquecimento: { ...x.reaquecimento, [trilha]: [...x.reaquecimento[trilha], s] } })); setSelSeq(s.id) }}
+            style={{ padding: '6px 12px', background: 'var(--v2-surface1)', border: '1px dashed var(--v2-rule2)', borderRadius: 999, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer', marginBottom: 12 }}>{tr('bib.sequencia')}</button>
         )}
         {seqAtual && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {editando ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div style={{ display: 'flex', gap: 6 }}>
-                  <input value={seqAtual.nome} onChange={e => setB(x => ({ ...x, reaquecimento: { ...x.reaquecimento, [trilha]: x.reaquecimento[trilha].map(s => s.id === seqAtual.id ? { ...s, nome: e.target.value } : s) } }))} placeholder="Nome da sequência" style={{ ...campo, fontWeight: 700 }} />
-                  <button onClick={async () => { if (await confirmar(`Excluir a sequência "${seqAtual.nome}"?`, { titulo: 'Excluir sequência', okLabel: 'Excluir', perigo: true })) { setB(x => ({ ...x, reaquecimento: { ...x.reaquecimento, [trilha]: x.reaquecimento[trilha].filter(s => s.id !== seqAtual.id) } })); setSelSeq('') } }}
-                    style={{ padding: '8px 12px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>Excluir</button>
+                  <input value={seqAtual.nome} onChange={e => setB(x => ({ ...x, reaquecimento: { ...x.reaquecimento, [trilha]: x.reaquecimento[trilha].map(s => s.id === seqAtual.id ? { ...s, nome: e.target.value } : s) } }))} placeholder={tr('bib.nome-sequencia')} style={{ ...campo, fontWeight: 700 }} />
+                  <button onClick={async () => { if (await confirmar(`Excluir a sequência "${seqAtual.nome}"?`, { titulo: tr('bib.excluir-sequencia'), okLabel: tr('comum.excluir'), perigo: true })) { setB(x => ({ ...x, reaquecimento: { ...x.reaquecimento, [trilha]: x.reaquecimento[trilha].filter(s => s.id !== seqAtual.id) } })); setSelSeq('') } }}
+                    style={{ padding: '8px 12px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>{tr('comum.excluir')}</button>
                 </div>
-                <input value={seqAtual.quando} onChange={e => setB(x => ({ ...x, reaquecimento: { ...x.reaquecimento, [trilha]: x.reaquecimento[trilha].map(s => s.id === seqAtual.id ? { ...s, quando: e.target.value } : s) } }))} placeholder="Gatilho: quando usar esta sequência" style={campo} />
+                <input value={seqAtual.quando} onChange={e => setB(x => ({ ...x, reaquecimento: { ...x.reaquecimento, [trilha]: x.reaquecimento[trilha].map(s => s.id === seqAtual.id ? { ...s, quando: e.target.value } : s) } }))} placeholder={tr('bib.gatilho-quando-usar-esta-seque')} style={campo} />
               </div>
             ) : seqAtual.quando && (
               <span style={{ fontSize: 11.5, fontWeight: 700, color: '#7c3aed', background: '#7c3aed18', borderRadius: 999, padding: '4px 11px', alignSelf: 'flex-start' }}>{seqAtual.quando}</span>
@@ -339,7 +343,7 @@ export default function BibliotecaVendasTela({ podeEditar }: { podeEditar: boole
             ))}
             {editando && (
               <button onClick={() => setB(x => ({ ...x, reaquecimento: { ...x.reaquecimento, [trilha]: x.reaquecimento[trilha].map(s => s.id === seqAtual.id ? { ...s, mensagens: [...s.mensagens, { id: novoId(), titulo: '', contexto: '', texto: '' }] } : s) } }))}
-                style={{ padding: '8px 14px', background: 'var(--v2-surface1)', border: '1px dashed var(--v2-rule2)', borderRadius: 8, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer' }}>+ Mensagem</button>
+                style={{ padding: '8px 14px', background: 'var(--v2-surface1)', border: '1px dashed var(--v2-rule2)', borderRadius: 8, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer' }}>{tr('bib.mensagem')}</button>
             )}
           </div>
         )}
