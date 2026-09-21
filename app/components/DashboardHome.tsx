@@ -1,4 +1,5 @@
 'use client'
+import { useT, useArea } from '@/app/components/Idioma'
 import { useEffect, useMemo, useState } from 'react'
 import AvatarCliente from './AvatarCliente'
 import { fecharFora } from '@/lib/fecharModal'
@@ -17,14 +18,15 @@ const META_MIN = 12
 const META_BOA = 15
 const META_EXC = 18
 
-const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+// Nome do mês pelo dicionário (lib/i18n, 'mes.1'…'mes.12').
+const nomeMes = (m: number, tr: (c: string) => string) => tr(`mes.${m + 1}`)
 
-function faixaStatus(qtd: number): { label: string; cor: string; bg: string } {
-  if (qtd >= META_EXC) return { label: 'Destaque', cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' }
-  if (qtd >= META_BOA) return { label: 'Excelente', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' }
-  if (qtd >= META_MIN) return { label: 'Saudável', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' }
-  if (qtd >= 8) return { label: 'Atenção', cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' }
-  return { label: 'Crítico', cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)' }
+function faixaStatus(qtd: number, tr: (c: string) => string): { label: string; cor: string; bg: string } {
+  if (qtd >= META_EXC) return { label: tr('painel.destaque'), cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' }
+  if (qtd >= META_BOA) return { label: tr('painel.excelente'), cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' }
+  if (qtd >= META_MIN) return { label: tr('painel.saudavel'), cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' }
+  if (qtd >= 8) return { label: tr('painel.atencao'), cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' }
+  return { label: tr('painel.critico'), cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)' }
 }
 
 function barPct(qtd: number): number { return Math.min(100, Math.round((qtd / META_EXC) * 100)) }
@@ -61,6 +63,8 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
   perfilTelefonia?: boolean
   lojaAtiva?: string
 }) {
+  const tr = useT()
+  const area = useArea()
   const agora = new Date()
   const mesAtual = agora.getMonth()
   const anoAtual = agora.getFullYear()
@@ -114,8 +118,8 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
 
   // Atalhos rápidos para as abas principais.
   const atalhos: { aba: string; label: string }[] = [
-    { aba: 'studio', label: 'Studio' }, { aba: 'tarefas', label: 'Tarefas' }, { aba: 'playbook', label: 'Playbook' },
-    { aba: 'planner', label: 'Planner' }, { aba: 'crm', label: 'CRM' }, { aba: 'conversao', label: 'Conversão & Retenção' },
+    { aba: 'studio', label: area('studio') }, { aba: 'tarefas', label: area('tarefas') }, { aba: 'playbook', label: area('playbook') },
+    { aba: 'planner', label: area('planner') }, { aba: 'crm', label: area('crm') }, { aba: 'conversao', label: tr('painel.conversao-retencao') },
   ]
 
   // Apenas clientes externos com social media
@@ -248,15 +252,15 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--v2-ink)' }}>Painel — Varejo</h1>
-          <p style={{ margin: '4px 0 0', color: 'var(--v2-ink3)', fontSize: 14 }}>{lojaAtiva ? 'Loja selecionada' : 'Todas as lojas (rede)'} · {MESES[mesAtual]} de {anoAtual}</p>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('painel.painel-varejo')}</h1>
+          <p style={{ margin: '4px 0 0', color: 'var(--v2-ink3)', fontSize: 14 }}>{lojaAtiva ? tr('painel.loja-selecionada') : tr('painel.todas-lojas')} · {tr('painel.mes-de-ano', { mes: nomeMes(mesAtual, tr), ano: anoAtual })}</p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
           {[
-            { label: 'Vendas hoje', valor: String(vendasHojeTel.length), cor: 'var(--v2-ink)' },
-            { label: 'Faturamento hoje', valor: brl(totalHojeTel), cor: 'var(--v2-ok)' },
-            { label: 'Ticket médio (hoje)', valor: brl(ticketTel), cor: 'var(--v2-ink)' },
-            { label: 'Estoque baixo', valor: String(baixoEstoqueTel.length), cor: baixoEstoqueTel.length ? 'var(--v2-hot)' : 'var(--v2-ok)' },
+            { label: tr('painel.vendas-hoje'), valor: String(vendasHojeTel.length), cor: 'var(--v2-ink)' },
+            { label: tr('painel.faturamento-hoje'), valor: brl(totalHojeTel), cor: 'var(--v2-ok)' },
+            { label: tr('painel.ticket-medio'), valor: brl(ticketTel), cor: 'var(--v2-ink)' },
+            { label: tr('painel.estoque-baixo'), valor: String(baixoEstoqueTel.length), cor: baixoEstoqueTel.length ? 'var(--v2-hot)' : 'var(--v2-ok)' },
           ].map(k => (
             <div key={k.label} style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, padding: 16 }}>
               <div style={{ fontSize: 12, color: 'var(--v2-ink3)', fontWeight: 600 }}>{k.label}</div>
@@ -264,15 +268,15 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
             </div>
           ))}
         </div>
-        <div style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>Faturamento no mês: <strong style={{ color: 'var(--v2-ink)' }}>{brl(receitaMesTel)}</strong> · {vendasMesTel.length} venda(s)</div>
+        <div style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('painel.faturamento-mes')}<strong style={{ color: 'var(--v2-ink)' }}>{brl(receitaMesTel)}</strong> · {vendasMesTel.length} venda(s)</div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
           <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, padding: 18 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--v2-ink)' }}>Mais vendidos no mês</h2>
-              {onIr && <button onClick={() => onIr('vendas')} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Ir ao PDV</button>}
+              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('painel.mais-vendidos-mes')}</h2>
+              {onIr && <button onClick={() => onIr('vendas')} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('painel.ir-ao-pdv')}</button>}
             </div>
-            {topProdutosTel.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13, margin: 0 }}>Nenhuma venda no mês ainda.</p> : (
+            {topProdutosTel.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13, margin: 0 }}>{tr('painel.nenhuma-venda-mes-ainda')}</p> : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {topProdutosTel.map((p, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -287,10 +291,10 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
 
           <div style={{ background: baixoEstoqueTel.length ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', border: `1px solid ${baixoEstoqueTel.length ? 'var(--v2-amber-bg)' : 'var(--v2-surface2)'}`, borderRadius: 14, padding: 18 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: baixoEstoqueTel.length ? 'var(--v2-amber)' : 'var(--v2-ink)' }}>Estoque baixo</h2>
-              {onIr && <button onClick={() => onIr('produtos')} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Ver estoque</button>}
+              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: baixoEstoqueTel.length ? 'var(--v2-amber)' : 'var(--v2-ink)' }}>{tr('painel.estoque-baixo')}</h2>
+              {onIr && <button onClick={() => onIr('produtos')} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('painel.ver-estoque')}</button>}
             </div>
-            {baixoEstoqueTel.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13, margin: 0 }}>Tudo acima do mínimo.</p> : (
+            {baixoEstoqueTel.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13, margin: 0 }}>{tr('painel.tudo-acima-minimo')}</p> : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {baixoEstoqueTel.slice(0, 6).map(p => (
                   <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#7c2d12' }}>
@@ -304,7 +308,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {([['vendas', 'PDV / Vendas'], ['produtos', 'Produtos'], ['crm', 'CRM'], ['rentabilidade', 'Financeiro']] as const).map(([aba, label]) => (
+          {([['vendas', tr('painel.pdv-vendas')], ['produtos', area('produtos')], ['crm', area('crm')], ['rentabilidade', tr('lead.financeiro')]] as const).map(([aba, label]) => (
             onIr ? <button key={aba} onClick={() => onIr(aba)} style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', cursor: 'pointer' }}>{label}</button> : null
           ))}
         </div>
@@ -316,15 +320,15 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--v2-ink)' }}>Painel — Operação</h1>
-          <p style={{ margin: '4px 0 0', color: 'var(--v2-ink3)', fontSize: 14 }}>{MESES[mesAtual]} de {anoAtual}</p>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('painel.painel-operacao')}</h1>
+          <p style={{ margin: '4px 0 0', color: 'var(--v2-ink3)', fontSize: 14 }}>{tr('painel.mes-de-ano', { mes: nomeMes(mesAtual, tr), ano: anoAtual })}</p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
           {[
-            { label: 'Próximas saídas', valor: String(proximasSaidas.length), cor: 'var(--v2-ink)' },
-            { label: 'Reservas no mês', valor: String(reservasDoMes.length), cor: 'var(--v2-ink)' },
-            { label: 'Ocupação média', valor: `${ocupacaoMedia}%`, cor: ocupacaoMedia >= 60 ? 'var(--v2-ok)' : ocupacaoMedia >= 35 ? 'var(--v2-amber)' : 'var(--v2-hot)' },
-            { label: 'A receber', valor: brl(aReceber), cor: 'var(--v2-ok)' },
+            { label: tr('painel.proximas-saidas'), valor: String(proximasSaidas.length), cor: 'var(--v2-ink)' },
+            { label: tr('painel.reservas-mes'), valor: String(reservasDoMes.length), cor: 'var(--v2-ink)' },
+            { label: tr('painel.ocupacao-media'), valor: `${ocupacaoMedia}%`, cor: ocupacaoMedia >= 60 ? 'var(--v2-ok)' : ocupacaoMedia >= 35 ? 'var(--v2-amber)' : 'var(--v2-hot)' },
+            { label: tr('painel.a-receber'), valor: brl(aReceber), cor: 'var(--v2-ok)' },
           ].map(k => (
             <div key={k.label} style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, padding: 16 }}>
               <div style={{ fontSize: 12, color: 'var(--v2-ink3)', fontWeight: 600 }}>{k.label}</div>
@@ -332,15 +336,15 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
             </div>
           ))}
         </div>
-        <div style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>Receita reservada no mês: <strong style={{ color: 'var(--v2-ink)' }}>{brl(receitaMes)}</strong></div>
+        <div style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('painel.receita-reservada-mes')}<strong style={{ color: 'var(--v2-ink)' }}>{brl(receitaMes)}</strong></div>
 
         <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, padding: 18 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--v2-ink)' }}>Próximas saídas</h2>
-            {onIr && <button onClick={() => onIr('viagens')} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Ver viagens</button>}
+            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('painel.proximas-saidas')}</h2>
+            {onIr && <button onClick={() => onIr('viagens')} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('painel.ver-viagens')}</button>}
           </div>
           {proximasSaidas.length === 0 ? (
-            <p style={{ color: 'var(--v2-ink3)', fontSize: 13, margin: 0 }}>Nenhuma saída futura programada.</p>
+            <p style={{ color: 'var(--v2-ink3)', fontSize: 13, margin: 0 }}>{tr('painel.nenhuma-saida-futura-programad')}</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {proximasSaidas.slice(0, 6).map(e => {
@@ -366,7 +370,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
 
         {saidasBaixaOcup.length > 0 && (
           <div style={{ background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 14, padding: 16 }}>
-            <h2 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 800, color: 'var(--v2-amber)' }}>Baixa ocupação — saídas em até 21 dias</h2>
+            <h2 style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 800, color: 'var(--v2-amber)' }}>{tr('painel.baixa-ocupacao-saidas-ate-21-d')}</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {saidasBaixaOcup.slice(0, 6).map(e => {
                 const cap = capacidadeDe(e.veiculoId); const pax = paxDaViagem(e.id)
@@ -377,7 +381,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
         )}
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {([['viagens', 'Viagens'], ['reservas', 'Reservas'], ['frota', 'Frota'], ['crm', 'CRM'], ['rentabilidade', 'Financeiro']] as const).map(([aba, label]) => (
+          {([['viagens', 'Viagens'], ['reservas', 'Reservas'], ['frota', 'Frota'], ['crm', area('crm')], ['rentabilidade', tr('lead.financeiro')]] as const).map(([aba, label]) => (
             onIr ? <button key={aba} onClick={() => onIr(aba)} style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', cursor: 'pointer' }}>{label}</button> : null
           ))}
         </div>
@@ -388,12 +392,12 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
   if (perfilClinica) {
     return (
       <div>
-        <h2 style={{ margin: '0 0 16px', fontSize: 20, color: 'var(--v2-ink)' }}>Painel — {MESES[mesAtual]} {anoAtual}</h2>
+        <h2 style={{ margin: '0 0 16px', fontSize: 20, color: 'var(--v2-ink)' }}>{tr('painel.titulo-mes', { mes: nomeMes(mesAtual, tr), ano: anoAtual })}</h2>
 
         {/* Atalhos */}
         {onIr && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-            {[{ aba: 'agenda', label: 'Agenda' }, { aba: 'crm', label: 'CRM' }, { aba: 'tarefas', label: 'Tarefas' }].map(a => (
+            {[{ aba: 'agenda', label: area('agenda') }, { aba: 'crm', label: area('crm') }, { aba: 'tarefas', label: area('tarefas') }].map(a => (
               <button key={a.aba} onClick={() => onIr(a.aba)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 999, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 {a.label}
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M9 7h8v8" /></svg>
@@ -405,12 +409,12 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
         {/* KPIs da clínica */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 24 }}>
           {([
-            { label: 'Atendimentos hoje', valor: agsHoje.length, cor: 'var(--v2-ink)' },
-            { label: 'Aguardando confirmação', valor: aguardandoConfirmacao.length, cor: aguardandoConfirmacao.length > 0 ? 'var(--v2-amber)' : 'var(--v2-ok)' },
-            { label: 'Pacientes ativos', valor: pacientesAtivos.length, cor: 'var(--v2-info)' },
+            { label: tr('painel.atendimentos-hoje'), valor: agsHoje.length, cor: 'var(--v2-ink)' },
+            { label: tr('ag.st-aguardando'), valor: aguardandoConfirmacao.length, cor: aguardandoConfirmacao.length > 0 ? 'var(--v2-amber)' : 'var(--v2-ok)' },
+            { label: tr('painel.pacientes-ativos'), valor: pacientesAtivos.length, cor: 'var(--v2-info)' },
             // Número que pede ação: abre a lista inteira do mês (o cartão ao lado
             // mostra só os primeiros), com ficha e WhatsApp de cada paciente.
-            { label: 'Aniversariantes do mês', valor: aniversariantes.length, cor: '#7c3aed', acao: aniversariantes.length > 0 ? (() => setAnivAberto(true)) : undefined, dica: 'Ver todos os aniversariantes do mês' },
+            { label: tr('painel.aniversariantes'), valor: aniversariantes.length, cor: '#7c3aed', acao: aniversariantes.length > 0 ? (() => setAnivAberto(true)) : undefined, dica: tr('painel.ver-aniversariantes') },
           ] as { label: string; valor: number; cor: string; acao?: () => void; dica?: string }[]).map(kpi => (
             <div key={kpi.label} onClick={kpi.acao} title={kpi.dica}
               role={kpi.acao ? 'button' : undefined} tabIndex={kpi.acao ? 0 : undefined}
@@ -418,7 +422,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
               style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '18px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', cursor: kpi.acao ? 'pointer' : 'default' }}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>{kpi.label}</p>
               <p style={{ margin: '6px 0 0', fontSize: 28, fontWeight: 800, color: kpi.cor }}>{kpi.valor}</p>
-              {kpi.acao && <p style={{ margin: '2px 0 0', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-info)' }}>Ver lista</p>}
+              {kpi.acao && <p style={{ margin: '2px 0 0', fontSize: 11.5, fontWeight: 700, color: 'var(--v2-info)' }}>{tr('painel.ver-lista')}</p>}
             </div>
           ))}
         </div>
@@ -427,15 +431,15 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
           {/* Próximas 24h */}
           <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>Agendamentos das próximas 24h</h3>
-              {onIr && <button onClick={() => onIr('agenda')} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Abrir agenda</button>}
+              <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>{tr('painel.agendamentos-proximas-24h')}</h3>
+              {onIr && <button onClick={() => onIr('agenda')} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{tr('painel.abrir-agenda')}</button>}
             </div>
-            {ags24.filter(a => a.status !== 'cancelado').length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhum agendamento nas próximas 24 horas.</p>}
+            {ags24.filter(a => a.status !== 'cancelado').length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('painel.nenhum-agendamento-nas-proxima')}</p>}
             {ags24.filter(a => a.status !== 'cancelado').slice(0, 10).map(a => (
               <div key={a.id} onClick={() => onIr?.('agenda')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid var(--v2-surface1)', cursor: onIr ? 'pointer' : 'default' }}>
                 <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)', flexShrink: 0 }}>{ehHoje(a.dataInicio) ? '' : 'amanhã '}{new Date(a.dataInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                 <span style={{ flex: 1, fontSize: 12.5, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.pacienteNome}{a.servico ? ` · ${a.servico}` : ''}</span>
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: a.status === 'confirmado' ? 'var(--v2-ok)' : 'var(--v2-amber)', flexShrink: 0 }}>{a.status === 'confirmado' ? 'Confirmado' : 'Aguardando'}</span>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: a.status === 'confirmado' ? 'var(--v2-ok)' : 'var(--v2-amber)', flexShrink: 0 }}>{a.status === 'confirmado' ? tr('ag.st-confirmado') : tr('painel.aguardando')}</span>
               </div>
             ))}
           </div>
@@ -443,17 +447,17 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
           {/* Aniversariantes do mês */}
           <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>Aniversariantes de {MESES[mesAtual]}</h3>
+              <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>{tr('painel.aniversariantes-de', { mes: nomeMes(mesAtual, tr) })}</h3>
               {aniversariantes.length > 0 && <button onClick={() => setAnivAberto(true)} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Ver todos ({aniversariantes.length})</button>}
             </div>
-            {aniversariantes.length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhum aniversariante este mês (preencha o nascimento no cadastro do paciente).</p>}
+            {aniversariantes.length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('painel.nenhum-aniversariante-este-mes')}</p>}
             {aniversariantes.slice(0, 12).map(c => (
               <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid var(--v2-surface1)' }}>
                 <span style={{ fontSize: 12, fontWeight: 800, color: '#7c3aed', flexShrink: 0 }}>{c.nascimento!.slice(8, 10)}/{c.nascimento!.slice(5, 7)}</span>
-                <button onClick={() => abrirFicha(c.id)} title="Abrir a ficha do paciente (dados e histórico)"
+                <button onClick={() => abrirFicha(c.id)} title={tr('painel.abrir-ficha-paciente-dados-his')}
                   style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, fontSize: 12.5, color: 'var(--v2-ink)', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</button>
                 {c.telefone && (
-                  <button onClick={() => abrirConversa(c.telefone)} title="Abrir a conversa no WhatsApp (Mensagens do CRM)"
+                  <button onClick={() => abrirConversa(c.telefone)} title={tr('painel.abrir-conversa-whatsapp-mensag')}
                     style={{ display: 'inline-flex', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}><IconWhats /></button>
                 )}
               </div>
@@ -463,8 +467,8 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
 
         {/* Tarefas da semana */}
         <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20 }}>
-          <h3 style={{ margin: '0 0 14px', fontSize: 15, color: 'var(--v2-ink)' }}>Tarefas da semana</h3>
-          {tarefasSemana.length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nada vencendo nos próximos 7 dias.</p>}
+          <h3 style={{ margin: '0 0 14px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('painel.tarefas-semana')}</h3>
+          {tarefasSemana.length === 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('painel.nada-vencendo-nos-proximos-7-d')}</p>}
           {tarefasSemana.map(t => { const atras = emDias(t.prazo) < 0; return (
             <div key={t.id} onClick={() => onIr?.('tarefas')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid var(--v2-surface1)', cursor: onIr ? 'pointer' : 'default' }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: atras ? 'var(--v2-hot)' : 'var(--v2-amber-on)', flexShrink: 0 }} />
@@ -482,26 +486,26 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
           <div onClick={fecharFora(() => setAnivAberto(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
             <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 560, width: '100%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: 22 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)' }}>Aniversariantes de {MESES[mesAtual]}</h3>
+                <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)' }}>{tr('painel.aniversariantes-de', { mes: nomeMes(mesAtual, tr) })}</h3>
                 <span style={{ fontSize: 12, fontWeight: 800, color: '#7c3aed' }}>{aniversariantes.length}</span>
                 <span style={{ flex: 1 }} />
                 <button onClick={() => setAnivAberto(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--v2-ink3)', lineHeight: 1 }}>×</button>
               </div>
-              <p style={{ margin: '4px 0 12px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Clique no nome para abrir a ficha do paciente (dados e histórico de atendimentos). O ícone verde abre a conversa no WhatsApp.</p>
-              <input value={buscaAniv} onChange={e => setBuscaAniv(e.target.value)} placeholder="Buscar por nome ou telefone"
+              <p style={{ margin: '4px 0 12px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('painel.clique-nome-abrir-ficha-pacien')}</p>
+              <input value={buscaAniv} onChange={e => setBuscaAniv(e.target.value)} placeholder={tr('painel.buscar-por-nome-ou-telefone')}
                 style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--v2-rule)', borderRadius: 10, fontSize: 13, outline: 'none' }} />
               <div style={{ overflowY: 'auto', marginTop: 6 }}>
-                {anivFiltrados.length === 0 && <p style={{ margin: '12px 0 0', fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhum aniversariante com esse nome ou telefone.</p>}
+                {anivFiltrados.length === 0 && <p style={{ margin: '12px 0 0', fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('painel.nenhum-aniversariante-esse-nom')}</p>}
                 {anivFiltrados.map(c => (
                   <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: '1px solid var(--v2-surface1)' }}>
                     <span style={{ fontSize: 12, fontWeight: 800, color: '#7c3aed', flexShrink: 0, minWidth: 38 }}>{c.nascimento!.slice(8, 10)}/{c.nascimento!.slice(5, 7)}</span>
-                    <button onClick={() => abrirFicha(c.id)} title="Abrir a ficha do paciente (dados e histórico)"
+                    <button onClick={() => abrirFicha(c.id)} title={tr('painel.abrir-ficha-paciente-dados-his')}
                       style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
                       <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</span>
                       <span style={{ display: 'block', fontSize: 11.5, color: 'var(--v2-ink3)' }}>{c.telefone || 'sem telefone'}{c.tipo && c.tipo !== 'paciente' ? ` · ${c.tipo}` : ''}{c.ativo === false ? ' · inativo' : ''}</span>
                     </button>
                     {c.telefone && (
-                      <button onClick={() => abrirConversa(c.telefone)} title="Abrir a conversa no WhatsApp (Mensagens do CRM)"
+                      <button onClick={() => abrirConversa(c.telefone)} title={tr('painel.abrir-conversa-whatsapp-mensag')}
                         style={{ display: 'inline-flex', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0 }}><IconWhats /></button>
                     )}
                   </div>
@@ -516,7 +520,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 16px', fontSize: 20, color: 'var(--v2-ink)' }}>Painel — {MESES[mesAtual]} {anoAtual}</h2>
+      <h2 style={{ margin: '0 0 16px', fontSize: 20, color: 'var(--v2-ink)' }}>{tr('painel.titulo-mes', { mes: nomeMes(mesAtual, tr), ano: anoAtual })}</h2>
 
       {/* Atalhos rápidos */}
       {onIr && (
@@ -533,10 +537,10 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14, marginBottom: 24 }}>
         {[
-          { label: 'Clientes ativos', valor: clientes.filter(c => c.tipo !== 'interno').length, cor: 'var(--v2-ink)' },
-          { label: 'Posts no mês', valor: postsMes.length, cor: 'var(--v2-ok)' },
-          { label: 'Pautas na esteira', valor: pautasEsteira, cor: 'var(--v2-info)' },
-          { label: 'Falhas pendentes', valor: falhasPendentes, cor: falhasPendentes > 0 ? 'var(--v2-hot)' : 'var(--v2-ok)' },
+          { label: tr('painel.clientes-ativos'), valor: clientes.filter(c => c.tipo !== 'interno').length, cor: 'var(--v2-ink)' },
+          { label: tr('painel.posts-mes'), valor: postsMes.length, cor: 'var(--v2-ok)' },
+          { label: tr('painel.pautas-esteira'), valor: pautasEsteira, cor: 'var(--v2-info)' },
+          { label: tr('painel.falhas-pendentes'), valor: falhasPendentes, cor: falhasPendentes > 0 ? 'var(--v2-hot)' : 'var(--v2-ok)' },
         ].map(kpi => (
           <div key={kpi.label} style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '18px 20px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>{kpi.label}</p>
@@ -549,8 +553,8 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 14, marginBottom: 20 }}>
         {/* Ações da semana */}
         <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <h3 style={{ margin: '0 0 14px', fontSize: 15, color: 'var(--v2-ink)' }}>Ações da semana</h3>
-          {!temSemana && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nada vencendo nos próximos 7 dias. Tudo em dia.</p>}
+          <h3 style={{ margin: '0 0 14px', fontSize: 15, color: 'var(--v2-ink)' }}>{tr('painel.acoes-semana')}</h3>
+          {!temSemana && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('painel.nada-vencendo-nos-proximos-7-d-2')}</p>}
           {entregasAtrasadas.length > 0 && (
             <button onClick={() => onIr?.('studio')} style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6, background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, cursor: onIr ? 'pointer' : 'default' }}>
               <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-hot)' }}>{entregasAtrasadas.length} entrega(s) ATRASADA(s) — data venceu sem post entregue</span>
@@ -563,14 +567,14 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
           )}
           {entregasAtrasadas.map(p => (
             <div key={p.id} onClick={() => onIr?.('studio')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid var(--v2-surface1)', cursor: onIr ? 'pointer' : 'default' }}>
-              <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>ENTREGA</span>
+              <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>{tr('painel.entrega')}</span>
               <span style={{ flex: 1, fontSize: 12.5, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.clienteNome} · post de {dataCurta(p.dataAgendada)}</span>
               <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-hot)', flexShrink: 0 }}>{diasDeAtraso(p) === 0 ? 'venceu hoje' : `há ${diasDeAtraso(p)}d`}</span>
             </div>
           ))}
           {entregasEmRisco.map(p => (
             <div key={p.id} onClick={() => onIr?.('studio')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid var(--v2-surface1)', cursor: onIr ? 'pointer' : 'default' }}>
-              <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>ENTREGA</span>
+              <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>{tr('painel.entrega')}</span>
               <span style={{ flex: 1, fontSize: 12.5, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.clienteNome} · vence {dataCurta(p.dataAgendada)} e ainda está &quot;{p.status === 'rascunho' ? 'rascunho' : 'em ajuste'}&quot;</span>
               <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-amber)', flexShrink: 0 }}>{dataCurta(p.dataAgendada)}</span>
             </div>
@@ -584,7 +588,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
           ) })}
           {marcosSemana.map(m => { const atras = emDias(m.dataFim) < 0; return (
             <div key={m.id} onClick={() => onIr?.('playbook')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', borderTop: '1px solid var(--v2-surface1)', cursor: onIr ? 'pointer' : 'default' }}>
-              <span style={{ fontSize: 9, fontWeight: 800, color: '#6d28d9', background: '#ede9fe', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>MARCO</span>
+              <span style={{ fontSize: 9, fontWeight: 800, color: '#6d28d9', background: '#ede9fe', borderRadius: 4, padding: '2px 5px', flexShrink: 0 }}>{tr('painel.marco')}</span>
               <span style={{ flex: 1, fontSize: 12.5, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}{m.clienteNome ? ` · ${m.clienteNome}` : ''}</span>
               <span style={{ fontSize: 11, fontWeight: 700, color: atras ? 'var(--v2-hot)' : 'var(--v2-amber)', flexShrink: 0 }}>{atras ? 'atrasado' : dataCurta(m.dataFim)}</span>
             </div>
@@ -594,10 +598,10 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
         {/* Andamento do Playbook */}
         <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>Andamento do Playbook</h3>
-            {onIr && <button onClick={() => onIr('playbook')} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>Abrir</button>}
+            <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>{tr('painel.andamento-playbook')}</h3>
+            {onIr && <button onClick={() => onIr('playbook')} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{tr('dash.abrir')}</button>}
           </div>
-          {pbTotal === 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhum marco cadastrado ainda.</p>}
+          {pbTotal === 0 && <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('painel.nenhum-marco-cadastrado-ainda')}</p>}
           {pbTotal > 0 && <>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
               <span style={{ fontSize: 26, fontWeight: 800, color: 'var(--v2-ink)' }}>{pbPct}%</span>
@@ -607,7 +611,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
               <div style={{ height: '100%', width: `${pbPct}%`, background: 'var(--v2-ok)', borderRadius: 999, transition: 'width .3s' }} />
             </div>
             {pbAndamento.length > 0 && <>
-              <p style={{ margin: '0 0 6px', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Em andamento</p>
+              <p style={{ margin: '0 0 6px', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{tr('painel.andamento')}</p>
               {pbAndamento.map(m => (
                 <div key={m.id} onClick={() => m.clienteId ? onVerCliente(m.clienteId) : onIr?.('playbook')} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderTop: '1px solid var(--v2-surface1)', cursor: 'pointer' }}>
                   <span style={{ flex: 1, fontSize: 12.5, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.titulo}</span>
@@ -623,7 +627,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
       {clientesOrdenados.length > 0 && (
         <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>Meta de postagens — {MESES[mesAtual]} <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--v2-ink3)' }}>(publicadas + programadas)</span></h3>
+            <h3 style={{ margin: 0, fontSize: 15, color: 'var(--v2-ink)' }}>{tr('painel.meta-postagens', { mes: nomeMes(mesAtual, tr) })} <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--v2-ink3)' }}>{tr('painel.publicadas-programadas')}</span></h3>
             <div style={{ display: 'flex', gap: 10, fontSize: 10, color: 'var(--v2-ink3)' }}>
               <span>Min: {META_MIN}</span><span>|</span><span>Bom: {META_BOA}</span><span>|</span><span>Exc: {META_EXC}+</span>
             </div>
@@ -631,7 +635,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {clientesOrdenados.map(c => {
               const qtd = contagemPorCliente[c.id] || 0
-              const fx = faixaStatus(qtd)
+              const fx = faixaStatus(qtd, tr)
               return (
                 <div key={c.id} onClick={() => onVerCliente(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
                   <div style={{ width: 26, height: 26, borderRadius: '50%', overflow: 'hidden', background: c.corPrimaria || '#eee', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 10, color: c.corSecundaria || '#111', flexShrink: 0 }}>
@@ -656,7 +660,7 @@ export default function DashboardHome({ clientes, posts, onVerCliente, onIr, per
       {temAlertas && (
         <div style={{ background: 'var(--v2-hot-bg)', border: '1px solid var(--v2-hot-bg)', borderRadius: 14, marginBottom: 20, overflow: 'hidden' }}>
           <button onClick={() => setAlertasAberto(v => !v)} style={{ width: '100%', padding: '14px 18px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-hot)' }}>Precisa de atenção</span>
+            <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-hot)' }}>{tr('painel.precisa-atencao')}</span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--v2-hot)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: alertasAberto ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}><path d="M6 9l6 6 6-6" /></svg>
           </button>
           {alertasAberto && (

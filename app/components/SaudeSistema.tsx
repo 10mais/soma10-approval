@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/app/components/Idioma'
 import { useEffect, useState, useCallback } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 
@@ -18,21 +19,22 @@ type Dados = {
 // numa instância de cliente (clinica/gestao) eles são opcionais não contratados.
 const ESSENCIAIS_AGENCIA = ['redis', 'blob', 'auth', 'anthropic', 'meta']
 const ESSENCIAIS_INSTANCIA = ['redis', 'blob', 'auth']
+// Guarda a CHAVE do texto; quem mostra é que traduz (lib/i18n).
 const ACAO_LABEL: Record<string, string> = {
-  cliente_excluido: 'Cliente excluído',
-  colaborador_criado: 'Colaborador criado',
-  colaborador_excluido: 'Colaborador excluído',
-  senha_resetada: 'Senha redefinida',
-  permissoes_papel_alteradas: 'Permissões por papel alteradas',
-  permissoes_granular_alteradas: 'Permissões detalhadas alteradas',
-  backup_restaurado: 'Backup restaurado',
-  '2fa_ativado': 'Verificação em 2 fatores ativada',
-  '2fa_desativado': 'Verificação em 2 fatores desativada',
-  '2fa_resetado': 'Verificação em 2 fatores resetada (admin)',
-  dados_exportados: 'Dados do cliente exportados (LGPD)',
-  dados_apagados: 'Dados do cliente apagados (LGPD)',
-  cliente_suspenso: 'Cliente suspenso (inadimplência)',
-  cliente_reativado: 'Cliente reativado',
+  cliente_excluido: 'saude.ac-cliente-excluido',
+  colaborador_criado: 'saude.ac-colaborador-criado',
+  colaborador_excluido: 'saude.ac-colaborador-excluido',
+  senha_resetada: 'saude.ac-senha-redefinida',
+  permissoes_papel_alteradas: 'saude.ac-permissoes-papel',
+  permissoes_granular_alteradas: 'saude.ac-permissoes-detalhadas',
+  backup_restaurado: 'saude.ac-backup-restaurado',
+  '2fa_ativado': 'saude.ac-2fa-ativada',
+  '2fa_desativado': 'saude.ac-2fa-desativada',
+  '2fa_resetado': 'saude.ac-2fa-resetada',
+  dados_exportados: 'saude.ac-dados-exportados',
+  dados_apagados: 'saude.ac-dados-apagados',
+  cliente_suspenso: 'saude.ac-cliente-suspenso',
+  cliente_reativado: 'saude.ac-cliente-reativado',
   '2fa_global_ligado': '2FA global LIGADO (login exige código)',
   '2fa_global_desligado': '2FA global desligado',
 }
@@ -56,6 +58,7 @@ function formatarKB(bytes: number): string {
 }
 
 export default function SaudeSistema() {
+  const tr = useT()
   const [dados, setDados] = useState<Dados | null>(null)
   const [carregando, setCarregando] = useState(true)
   const [erroFetch, setErroFetch] = useState(false)
@@ -91,10 +94,10 @@ export default function SaudeSistema() {
         setRenderImg(`data:image/png;base64,${r.imagemBase64}`)
         setRenderInfo(`Motor: ${r.motor} · ${r.ms}ms · ${(r.bytes / 1024).toFixed(0)} KB`)
       } else {
-        setRenderErro(r?.error || 'Falha ao renderizar.')
+        setRenderErro(r?.error || tr('saude.falha-render'))
       }
     } catch {
-      setRenderErro('Não foi possível chamar o teste de render.')
+      setRenderErro(tr('saude.falha-teste-render'))
     } finally {
       setRenderBusy(false)
     }
@@ -102,12 +105,12 @@ export default function SaudeSistema() {
 
   useEffect(() => { fetch('/api/seguranca').then(r => r.json()).then(d => { if (d && !d.error) setG2fa(!!d.doisFatores) }).catch(() => {}) }, [])
   async function alternar2FAGlobal(v: boolean) {
-    if (v && !window.confirm('LIGAR a exigência de 2FA no login para TODOS?\n\nSó ligue DEPOIS de a Meta/Facebook aprovar o app — enquanto o App Review estiver em análise, o login de teste do revisor NÃO pode pedir código, senão a verificação falha.')) return
+    if (v && !window.confirm(tr('saude.dlg-ligar-2fa'))) return
     setG2faBusy(true)
     const r = await fetch('/api/seguranca', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ doisFatores: v }) }).then(x => x.json()).catch(() => null)
     setG2faBusy(false)
-    if (r?.ok) { setG2fa(!!r.doisFatores); toast(v ? '2FA global LIGADO — o login passa a exigir código.' : '2FA global desligado — login sem código.', 'sucesso') }
-    else toast('Não foi possível alterar.', 'erro')
+    if (r?.ok) { setG2fa(!!r.doisFatores); toast(v ? tr('saude.2fa-ligado') : '2FA global desligado — login sem código.', 'sucesso') }
+    else toast(tr('saude.falha-alterar'), 'erro')
   }
 
   const carregar = useCallback(() => {
@@ -128,9 +131,9 @@ export default function SaudeSistema() {
     reader.onload = () => {
       try {
         const j = JSON.parse(String(reader.result))
-        if (!j?._meta) { toast('Este arquivo não parece um backup válido.', 'erro'); return }
+        if (!j?._meta) { toast(tr('saude.arquivo-invalido'), 'erro'); return }
         setBkp(j); setSelPath(''); setConf(''); setSimRes(null); setEscopoCliente('')
-      } catch { toast('Não foi possível ler o arquivo.', 'erro') }
+      } catch { toast(tr('saude.falha-ler-arquivo'), 'erro') }
     }
     reader.readAsText(f)
   }
@@ -143,8 +146,8 @@ export default function SaudeSistema() {
     const body = selPath ? { pathname: selPath, simular: true } : { dados: bkp, simular: true }
     const r = await fetch('/api/backup/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => null)
     setSimulando(false)
-    if (r?.ok) { setSimRes({ contagens: r.contagens || {}, clientesNoBackup: r.clientesNoBackup }); toast('Simulação concluída — nada foi gravado.', 'sucesso') }
-    else toast(r?.error || 'Falha na simulação.', 'erro')
+    if (r?.ok) { setSimRes({ contagens: r.contagens || {}, clientesNoBackup: r.clientesNoBackup }); toast(tr('saude.simulacao-ok'), 'sucesso') }
+    else toast(r?.error || tr('saude.falha-simulacao'), 'erro')
   }
 
   async function restaurar() {
@@ -153,24 +156,24 @@ export default function SaudeSistema() {
     const nomeEscopo = escopoCliente ? (simRes?.clientesNoBackup?.find(c => c.id === escopoCliente)?.nome || escopoCliente) : ''
     const aviso = escopoCliente
       ? `Restaurar SÓ o cliente "${nomeEscopo}" deste backup? Os registros dele (cadastro, posts, tarefas, marcos, planos) voltam à versão do backup. O resto do sistema não é tocado.`
-      : 'Restaurar este backup COMPLETO? Os registros do backup vão SOBRESCREVER os atuais. Não apaga o que foi criado depois, mas não dá para desfazer o que for sobrescrito.'
-    if (!(await confirmar(aviso, { titulo: escopoCliente ? 'Restaurar 1 cliente' : 'Restaurar backup', okLabel: 'Restaurar agora', perigo: true }))) return
+      : tr('saude.dlg-restaurar-tudo')
+    if (!(await confirmar(aviso, { titulo: escopoCliente ? tr('saude.restaurar-1-cliente') : tr('saude.restaurar-backup'), okLabel: tr('saude.restaurar-agora'), perigo: true }))) return
     setRestaurando(true)
     const fonte = selPath ? { pathname: selPath } : { dados: bkp }
     const body = { ...fonte, confirmar: 'RESTAURAR', ...(escopoCliente ? { clienteId: escopoCliente } : {}) }
     const r = await fetch('/api/backup/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(x => x.json()).catch(() => null)
     setRestaurando(false)
-    if (r?.ok) { toast(escopoCliente ? `Cliente "${nomeEscopo}" restaurado do backup.` : 'Backup restaurado com sucesso.', 'sucesso'); setBkp(null); setSelPath(''); setConf(''); setSimRes(null); setEscopoCliente(''); carregar() }
-    else toast(r?.error || 'Falha ao restaurar.', 'erro')
+    if (r?.ok) { toast(escopoCliente ? `Cliente "${nomeEscopo}" restaurado do backup.` : tr('saude.backup-restaurado-ok'), 'sucesso'); setBkp(null); setSelPath(''); setConf(''); setSimRes(null); setEscopoCliente(''); carregar() }
+    else toast(r?.error || tr('saude.falha-restaurar'), 'erro')
   }
 
   function copiarHealth() {
     const url = `${location.origin}/api/health`
-    navigator.clipboard?.writeText(url).then(() => toast('URL de monitoramento copiada.', 'sucesso')).catch(() => toast(url, 'info'))
+    navigator.clipboard?.writeText(url).then(() => toast(tr('saude.url-copiada'), 'sucesso')).catch(() => toast(url, 'info'))
   }
 
-  if (carregando && !dados) return <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>Verificando o sistema...</p>
-  if (erroFetch) return <p style={{ fontSize: 13, color: '#e11' }}>Não foi possível carregar o diagnóstico.</p>
+  if (carregando && !dados) return <p style={{ fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('saude.verificando-sistema')}</p>
+  if (erroFetch) return <p style={{ fontSize: 13, color: '#e11' }}>{tr('saude.nao-foi-possivel-carregar-diag')}</p>
   if (!dados) return null
 
   const essenciaisOff = dados.integracoes.filter(i => ESSENCIAIS.includes(i.chave) && !i.ligado)
@@ -187,17 +190,17 @@ export default function SaudeSistema() {
           fontSize: 13, fontWeight: 800,
         }}>
           <span style={{ width: 9, height: 9, borderRadius: '50%', background: essenciaisOff.length ? '#e74c3c' : '#27ae60', display: 'inline-block' }} />
-          {essenciaisOff.length ? `${essenciaisOff.length} essencial(is) faltando` : 'Essenciais no ar'}
+          {essenciaisOff.length ? `${essenciaisOff.length} essencial(is) faltando` : tr('saude.essenciais-no-ar')}
         </div>
         <button onClick={carregar} disabled={carregando} style={{ padding: '7px 14px', background: 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
-          {carregando ? 'Atualizando...' : 'Atualizar'}
+          {carregando ? tr('saude.atualizando') : tr('saude.atualizar')}
         </button>
         <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>Verificado {tempoRelativo(dados.ts)}</span>
       </div>
 
       {/* Integrações */}
       <div>
-        <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Integrações</h4>
+        <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('dash.integracoes')}</h4>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 8 }}>
           {dados.integracoes.map(i => {
             const essencial = ESSENCIAIS.includes(i.chave)
@@ -207,7 +210,7 @@ export default function SaudeSistema() {
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.label}</div>
                   <div style={{ fontSize: 11, color: i.ligado ? '#2a9d5c' : (essencial ? '#c0392b' : 'var(--v2-ink3)') }}>
-                    {i.ligado ? 'Configurado' : (essencial ? 'FALTANDO' : 'Não configurado')}{i.obs ? ` · ${i.obs}` : ''}
+                    {i.ligado ? tr('dash.configurado') : (essencial ? tr('saude.faltando') : tr('saude.nao-configurado'))}{i.obs ? ` · ${i.obs}` : ''}
                   </div>
                 </div>
               </div>
@@ -218,47 +221,47 @@ export default function SaudeSistema() {
 
       {/* Monitoramento de uptime (turnkey) */}
       <div>
-        <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Monitoramento de uptime</h4>
-        <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--v2-ink3)' }}>Cole esta URL num monitor gratuito (ex.: UptimeRobot, BetterStack) — ele te avisa se o site cair. Responde 200 quando tudo está no ar, 503 se o banco cai.</p>
+        <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('saude.monitoramento-uptime')}</h4>
+        <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('saude.cole-esta-url-num-monitor-grat')}</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <code style={{ fontSize: 12, background: 'var(--v2-surface1)', padding: '7px 10px', borderRadius: 8, color: 'var(--v2-ink)' }}>{typeof location !== 'undefined' ? `${location.origin}/api/health` : '/api/health'}</code>
-          <button onClick={copiarHealth} style={{ padding: '7px 12px', background: 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>Copiar</button>
+          <button onClick={copiarHealth} style={{ padding: '7px 12px', background: 'var(--v2-surface2)', color: 'var(--v2-ink)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('dash.copiar')}</button>
         </div>
       </div>
 
       {/* Motor de criativos (novo) — prova do render Chrome headless (Fase 0) */}
       <div>
-        <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Motor de criativos (novo)</h4>
-        <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--v2-ink3)' }}>Teste do render de alta qualidade (Chrome headless). Gera uma imagem de exemplo 1080×1350 — se ela aparecer nítida, com margem e sem cortes, o motor novo funciona neste ambiente.</p>
+        <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('saude.motor-criativos-novo')}</h4>
+        <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('saude.teste-render-alta-qualidade-ch')}</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={testarRender} disabled={renderBusy} style={{ padding: '8px 16px', background: renderBusy ? 'var(--v2-surface2)' : 'var(--v2-ink)', color: renderBusy ? 'var(--v2-ink3)' : 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: renderBusy ? 'default' : 'pointer' }}>
-            {renderBusy ? 'Renderizando…' : 'Testar render'}
+            {renderBusy ? tr('saude.renderizando') : tr('saude.testar-render')}
           </button>
           {renderInfo && <span style={{ fontSize: 11.5, color: '#2a9d5c', fontWeight: 700 }}>{renderInfo}</span>}
           {renderErro && <span style={{ fontSize: 11.5, color: '#e11', fontWeight: 700 }}>{renderErro}</span>}
         </div>
         {renderImg && (
-          <img src={renderImg} alt="Teste de render" style={{ marginTop: 12, width: 260, height: 'auto', borderRadius: 12, border: '1px solid var(--v2-rule)', display: 'block' }} />
+          <img src={renderImg} alt={tr('saude.teste-render')} style={{ marginTop: 12, width: 260, height: 'auto', borderRadius: 12, border: '1px solid var(--v2-rule)', display: 'block' }} />
         )}
       </div>
 
       {/* Segurança de acesso — interruptor GLOBAL do 2FA */}
       <div>
-        <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Segurança de acesso</h4>
+        <h4 style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('saude.seguranca-acesso')}</h4>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 14px', borderRadius: 10, border: `1px solid ${g2fa ? 'var(--v2-amber-bg)' : 'var(--v2-surface2)'}`, background: g2fa ? 'var(--v2-amber-bg)' : 'var(--v2-surface1)' }}>
           <div style={{ flex: 1, minWidth: 220 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink)' }}>Exigir verificação em 2 fatores no login (global)</div>
-            <div style={{ fontSize: 11.5, color: '#a15656', marginTop: 2, lineHeight: 1.5 }}>⚠️ Só LIGUE após a aprovação da Meta/Facebook. Enquanto o App Review estiver em análise, o login de teste do revisor não pode pedir código — senão a verificação falha. Com isto desligado, o 2FA fica pronto mas o login não exige código.</div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--v2-ink)' }}>{tr('saude.exigir-verificacao-2-fatores-l')}</div>
+            <div style={{ fontSize: 11.5, color: '#a15656', marginTop: 2, lineHeight: 1.5 }}>{tr('saude.so-ligue-apos-aprovacao-meta-f')}</div>
           </div>
           <button onClick={() => alternar2FAGlobal(!g2fa)} disabled={g2fa === null || g2faBusy} style={{ padding: '8px 18px', borderRadius: 999, border: 'none', fontWeight: 800, fontSize: 12.5, cursor: g2fa === null || g2faBusy ? 'default' : 'pointer', background: g2fa ? 'var(--v2-ok)' : 'var(--v2-surface2)', color: g2fa ? 'var(--v2-surface)' : 'var(--v2-ink2)' }}>
-            {g2fa === null ? '…' : g2fa ? 'Ligado' : 'Desligado'}
+            {g2fa === null ? '…' : g2fa ? tr('saude.ligado') : tr('saude.desligado')}
           </button>
         </div>
       </div>
 
       {/* Backup */}
       <div>
-        <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Último backup</h4>
+        <h4 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('saude.ultimo-backup')}</h4>
         {dados.ultimoBackup ? (
           <div style={{ fontSize: 12.5, color: 'var(--v2-ink2)' }}>
             <strong style={{ color: 'var(--v2-ink)' }}>{dados.ultimoBackup.pathname.replace('backups/', '')}</strong>
@@ -266,7 +269,7 @@ export default function SaudeSistema() {
             {dados.ultimoBackup.em ? ` · ${tempoRelativo(dados.ultimoBackup.em)}` : ''}
           </div>
         ) : (
-          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhum backup encontrado ainda (o cron roda diariamente às 6h).</p>
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('saude.nenhum-backup-encontrado-ainda')}</p>
         )}
       </div>
 
@@ -276,12 +279,12 @@ export default function SaudeSistema() {
           Auditoria — quem fez o quê {dados.auditoria.length ? `(${dados.auditoria.length})` : ''}
         </h4>
         {!dados.auditoria.length ? (
-          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>Nenhuma ação sensível registrada ainda.</p>
+          <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('saude.nenhuma-acao-sensivel-registra')}</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 320, overflowY: 'auto' }}>
             {dados.auditoria.map(a => (
               <div key={a.id} style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '8px 11px', borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface1)' }}>
-                <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-info)', flexShrink: 0 }}>{ACAO_LABEL[a.acao] || a.acao}</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-info)', flexShrink: 0 }}>{ACAO_LABEL[a.acao] ? tr(ACAO_LABEL[a.acao]) : a.acao}</span>
                 {a.alvo && <span style={{ fontSize: 12, color: 'var(--v2-ink)' }}>· {a.alvo}</span>}
                 <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)', marginLeft: 'auto', flexShrink: 0 }}>{a.ator} · {tempoRelativo(a.criadoEm)}</span>
               </div>
@@ -296,7 +299,7 @@ export default function SaudeSistema() {
           Erros recentes {temErros ? `(${dados.erros.length})` : ''}
         </h4>
         {!temErros ? (
-          <p style={{ margin: 0, fontSize: 12.5, color: '#2a9d5c' }}>Nenhum erro registrado nos últimos 14 dias.</p>
+          <p style={{ margin: 0, fontSize: 12.5, color: '#2a9d5c' }}>{tr('saude.nenhum-erro-registrado-nos-ult')}</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 340, overflowY: 'auto' }}>
             {dados.erros.map(e => (
@@ -314,17 +317,17 @@ export default function SaudeSistema() {
 
       {/* Zona de risco — restaurar backup */}
       <div style={{ border: '1.5px solid var(--v2-hot-bg)', borderRadius: 12, padding: 16, background: '#fef7f7' }}>
-        <h4 style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 800, color: 'var(--v2-hot)' }}>Zona de risco — Restaurar backup</h4>
-        <p style={{ margin: '0 0 12px', fontSize: 12, color: '#a15656' }}>Recuperação de desastre. Sobrescreve os registros atuais com os do backup (não apaga o que foi criado depois). Use só se precisar recuperar dados perdidos.</p>
+        <h4 style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 800, color: 'var(--v2-hot)' }}>{tr('saude.zona-risco-restaurar-backup')}</h4>
+        <p style={{ margin: '0 0 12px', fontSize: 12, color: '#a15656' }}>{tr('saude.recuperacao-desastre-sobrescre')}</p>
 
         {/* Primário: backup gerenciado (lido no servidor, sem limite de tamanho) */}
-        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#7a4a4a', marginBottom: 4 }}>Backup gerenciado (diário)</label>
+        <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#7a4a4a', marginBottom: 4 }}>{tr('saude.backup-gerenciado-diario')}</label>
         <select value={selPath} onChange={e => { setSelPath(e.target.value); setBkp(null); setConf(''); setSimRes(null); setEscopoCliente('') }} style={{ width: '100%', maxWidth: 320, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e0c0c0', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)', marginBottom: 10 }}>
-          <option value="">Escolher um backup…</option>
+          <option value="">{tr('saude.escolher-backup')}</option>
           {(dados.backups || []).map(b => <option key={b.pathname} value={b.pathname}>{b.pathname.replace('backups/', '').replace('.json', '')} · {formatarKB(b.tamanho)}</option>)}
         </select>
 
-        <div style={{ fontSize: 11.5, color: '#a15656', margin: '0 0 6px' }}>ou envie um arquivo baixado (Config → Geral · até ~4,5MB):</div>
+        <div style={{ fontSize: 11.5, color: '#a15656', margin: '0 0 6px' }}>{tr('saude.ou-envie-arquivo-baixado-confi')}</div>
         <input type="file" accept="application/json,.json" onChange={onArquivoBackup} style={{ fontSize: 12.5, marginBottom: 10, display: 'block' }} />
         {bkp && cont && (
           <div style={{ marginBottom: 10, fontSize: 12, color: 'var(--v2-ink2)' }}>
@@ -336,20 +339,20 @@ export default function SaudeSistema() {
         {(bkp || selPath) && (
           <div style={{ marginTop: 6, marginBottom: 10 }}>
             <button onClick={simularRestore} disabled={simulando} style={{ padding: '8px 14px', background: 'var(--v2-surface)', color: '#7a4a4a', border: '1.5px solid #e0c0c0', borderRadius: 8, fontWeight: 800, fontSize: 12.5, cursor: simulando ? 'wait' : 'pointer' }}>
-              {simulando ? 'Simulando…' : 'Simular restauração (não grava nada)'}
+              {simulando ? tr('saude.simulando') : tr('saude.simular')}
             </button>
             {simRes && (
               <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 9, border: '1px solid #e0c0c0', background: 'var(--v2-surface)', fontSize: 12, color: 'var(--v2-ink2)' }}>
-                <div style={{ fontWeight: 800, color: 'var(--v2-ink)', marginBottom: 4 }}>O que este backup restauraria:</div>
+                <div style={{ fontWeight: 800, color: 'var(--v2-ink)', marginBottom: 4 }}>{tr('saude.que-este-backup-restauraria')}</div>
                 {Object.entries(simRes.contagens).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k.replace('crm:', 'crm ')}`).join(' · ') || 'nada (backup vazio)'}
                 {!!simRes.clientesNoBackup?.length && (
                   <div style={{ marginTop: 10 }}>
-                    <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#7a4a4a', marginBottom: 4 }}>Escopo da restauração</label>
+                    <label style={{ display: 'block', fontSize: 11.5, fontWeight: 700, color: '#7a4a4a', marginBottom: 4 }}>{tr('saude.escopo-restauracao')}</label>
                     <select value={escopoCliente} onChange={e => { setEscopoCliente(e.target.value); setConf('') }} style={{ width: '100%', maxWidth: 320, padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0c0c0', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--v2-surface)' }}>
-                      <option value="">Tudo (restauração completa)</option>
+                      <option value="">{tr('saude.tudo-restauracao-completa')}</option>
                       {simRes.clientesNoBackup.map(c => <option key={c.id} value={c.id}>Só o cliente: {c.nome}</option>)}
                     </select>
-                    {escopoCliente && <p style={{ margin: '5px 0 0', fontSize: 11, color: '#a15656' }}>Volta só este cliente (cadastro, posts, tarefas, marcos, planos) à versão do backup. Nada mais é tocado.</p>}
+                    {escopoCliente && <p style={{ margin: '5px 0 0', fontSize: 11, color: '#a15656' }}>{tr('saude.volta-so-este-cliente-cadastro')}</p>}
                   </div>
                 )}
               </div>
@@ -359,9 +362,9 @@ export default function SaudeSistema() {
 
         {(bkp || selPath) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
-            <span style={{ fontSize: 12, color: 'var(--v2-ink2)' }}>Para confirmar, digite <b>RESTAURAR</b>:</span>
+            <span style={{ fontSize: 12, color: 'var(--v2-ink2)' }}>{tr('saude.confirmar-digite')}<b>RESTAURAR</b>:</span>
             <input value={conf} onChange={e => setConf(e.target.value)} placeholder="RESTAURAR" style={{ padding: '7px 10px', borderRadius: 8, border: '1.5px solid #e0c0c0', fontSize: 12.5, width: 130, fontFamily: 'inherit' }} />
-            <button onClick={restaurar} disabled={conf !== 'RESTAURAR' || restaurando} style={{ padding: '8px 16px', background: conf === 'RESTAURAR' ? 'var(--v2-hot)' : 'var(--v2-surface2)', color: conf === 'RESTAURAR' ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12.5, cursor: conf === 'RESTAURAR' && !restaurando ? 'pointer' : 'not-allowed' }}>{restaurando ? 'Restaurando…' : 'Restaurar backup'}</button>
+            <button onClick={restaurar} disabled={conf !== 'RESTAURAR' || restaurando} style={{ padding: '8px 16px', background: conf === 'RESTAURAR' ? 'var(--v2-hot)' : 'var(--v2-surface2)', color: conf === 'RESTAURAR' ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12.5, cursor: conf === 'RESTAURAR' && !restaurando ? 'pointer' : 'not-allowed' }}>{restaurando ? tr('saude.restaurando') : tr('saude.restaurar-backup')}</button>
           </div>
         )}
       </div>

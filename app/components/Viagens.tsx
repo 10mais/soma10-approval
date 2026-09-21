@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/app/components/Idioma'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import { LayoutVeiculo, capacidadeLayout } from '@/lib/layoutVeiculo'
@@ -38,16 +39,16 @@ type Form = Omit<Viagem, 'id' | 'valorPacote' | 'descontoPadrao' | 'valorFechado
   id?: string; tipo: TipoViagem; valorPacote: string; valorFechado: string; descontoPadrao: string; despesas: DespesaForm[]
 }
 
-const TIPOS: { key: TipoViagem; label: string; ajuda: string }[] = [
-  { key: 'pacote', label: 'Pacote', ajuda: 'Vende poltrona a poltrona — valor por cliente.' },
-  { key: 'fretamento', label: 'Fretamento', ajuda: 'Um contratante leva o veículo inteiro — valor fechado.' },
+const TIPOS: { key: TipoViagem; rotulo: string; ajuda: string }[] = [
+  { key: 'pacote', rotulo: 'via.pacote', ajuda: 'via.ajuda-pacote' },
+  { key: 'fretamento', rotulo: 'via.fretamento', ajuda: 'via.ajuda-fretamento' },
 ]
 
-const STATUS: { key: string; label: string; cor: string; bg: string }[] = [
-  { key: 'planejada', label: 'Planejada', cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' },
-  { key: 'aberta', label: 'Aberta (vendas)', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' },
-  { key: 'realizada', label: 'Realizada', cor: 'var(--v2-ink2)', bg: 'var(--v2-surface2)' },
-  { key: 'cancelada', label: 'Cancelada', cor: 'var(--v2-ink3)', bg: 'var(--v2-surface1)' },
+const STATUS: { key: string; rotulo: string; cor: string; bg: string }[] = [
+  { key: 'planejada', rotulo: 'via.st-planejada', cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' },
+  { key: 'aberta', rotulo: 'via.aberta-vendas', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' },
+  { key: 'realizada', rotulo: 'via.st-realizada', cor: 'var(--v2-ink2)', bg: 'var(--v2-surface2)' },
+  { key: 'cancelada', rotulo: 'via.cancelada', cor: 'var(--v2-ink3)', bg: 'var(--v2-surface1)' },
 ]
 const stInfo = (s: string) => STATUS.find(x => x.key === s) || STATUS[1]
 const fmtBRL = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -58,6 +59,7 @@ const vazio = (): Form => ({ titulo: '', tipo: 'pacote', pacoteId: '', roteiro: 
 const despesasParaForm = (arr?: Despesa[]): DespesaForm[] => (arr || []).map(d => ({ id: d.id, descricao: d.descricao, valor: d.valor ? String(d.valor) : '' }))
 
 export default function Viagens({ podeEditar = true, podeExcluir = false }: { podeEditar?: boolean; podeExcluir?: boolean }) {
+  const tr = useT()
   const [lista, setLista] = useState<Viagem[]>([])
   const [veiculos, setVeiculos] = useState<Veiculo[]>([])
   const [carregando, setCarregando] = useState(true)
@@ -97,7 +99,7 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
       if (!pacoteId) return { ...f, pacoteId: '' }
       const p = pacotes.find(x => x.id === pacoteId)
       if (!p) return { ...f, pacoteId: '' }
-      if (!f.dataIda) { toast('Informe a data de ida antes de escolher o pacote — o roteiro nasce a partir dela.', 'erro'); return f }
+      if (!f.dataIda) { toast(tr('via.informe-ida-pacote'), 'erro'); return f }
       const c = copiarPacoteParaViagem(p, f.dataIda, () => uuid())
       return {
         ...f, pacoteId,
@@ -155,13 +157,13 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
   // véspera — melhor descobrir aqui e deixar o dono decidir.
   async function exportarLista(v: Viagem) {
     const d = await fetch(`/api/viagens/manifesto?id=${v.id}&check=1`).then(r => r.json()).catch(() => null)
-    if (!d) { toast('Falha ao conferir a lista.', 'erro'); return }
-    if (!d.total) { toast('Esta viagem ainda não tem passageiros.', 'erro'); return }
+    if (!d) { toast(tr('via.falha-conferir'), 'erro'); return }
+    if (!d.total) { toast(tr('via.sem-passageiros'), 'erro'); return }
     if (d.incompletos) {
       const quem = (d.quem || []).slice(0, 3).map((q: any) => `${q.nome} (falta ${q.falta})`).join('; ')
       const ok = await confirmar(
         `${d.incompletos} de ${d.total} passageiro(s) estão incompletos para a lista${d.internacional ? ' internacional' : ' do DAER/ANTT'}.\n\n${quem}${d.quem?.length > 3 ? '…' : ''}\n\nBaixar assim mesmo? As pendências saem marcadas na última coluna.`,
-        { titulo: 'Lista incompleta', okLabel: 'Baixar assim mesmo', cancelLabel: 'Voltar e completar', perigo: true },
+        { titulo: tr('via.lista-incompleta'), okLabel: tr('via.baixar-assim'), cancelLabel: 'Voltar e completar', perigo: true },
       )
       if (!ok) return
     }
@@ -197,9 +199,9 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
 
   async function salvar() {
     if (!form || salvando) return
-    if (!form.titulo.trim()) { toast('Informe o título da viagem.', 'erro'); return }
-    if (!form.dataIda) { toast('Informe a data de ida.', 'erro'); return }
-    if (form.tipo === 'fretamento' && !(form.contratante || '').trim()) { toast('No fretamento, informe quem contratou o veículo.', 'erro'); return }
+    if (!form.titulo.trim()) { toast(tr('via.informe-titulo'), 'erro'); return }
+    if (!form.dataIda) { toast(tr('via.informe-ida'), 'erro'); return }
+    if (form.tipo === 'fretamento' && !(form.contratante || '').trim()) { toast(tr('via.quem-contratou'), 'erro'); return }
     // Cancelar nunca é barrado — viagem cancelada LIBERA o ônibus (regra da rota).
     if (form.status !== 'cancelada' && conflitoDoForm.length) { toast(`Este veículo já está na viagem "${conflitoDoForm[0].titulo}" nessas datas. Escolha outro veículo ou ajuste as datas.`, 'erro'); return }
     setSalvando(true)
@@ -219,12 +221,12 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
     const r = await fetch('/api/viagens', { method: form.id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).then(x => x.json()).catch(() => null)
     setSalvando(false)
     if (r?.ok) { toast(form.id ? 'Viagem atualizada.' : 'Viagem criada.', 'sucesso'); setForm(null); carregar() }
-    else toast(r?.error || 'Falha ao salvar.', 'erro')
+    else toast(r?.error || tr('via.falha-salvar'), 'erro')
   }
   async function excluir(e: Viagem) {
-    if (!(await confirmar(`Excluir a viagem "${e.titulo}"?`, { titulo: 'Excluir viagem', okLabel: 'Excluir', perigo: true }))) return
+    if (!(await confirmar(`Excluir a viagem "${e.titulo}"?`, { titulo: tr('via.excluir-viagem'), okLabel: tr('comum.excluir'), perigo: true }))) return
     const r = await fetch('/api/viagens', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: e.id }) }).then(x => x.json()).catch(() => null)
-    if (r?.ok) { toast('Viagem excluída.', 'sucesso'); carregar() } else toast(r?.error || 'Falha ao excluir.', 'erro')
+    if (r?.ok) { toast('Viagem excluída.', 'sucesso'); carregar() } else toast(r?.error || tr('via.falha-excluir'), 'erro')
   }
 
   const inputStyle: React.CSSProperties = { padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }
@@ -233,14 +235,14 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-        <h2 style={{ margin: 0, fontSize: 20, color: 'var(--v2-ink)' }}>Viagens</h2>
+        <h2 style={{ margin: 0, fontSize: 20, color: 'var(--v2-ink)' }}>{tr('via.viagens')}</h2>
         <span style={{ flex: 1 }} />
         {aba === 'pacote' && podeEditar && (
           <button onClick={() => setModelosAberto(true)} style={{ padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10, color: 'var(--v2-ink2)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
             Modelos de pacote{pacotes.length ? ` (${pacotes.length})` : ''}
           </button>
         )}
-        {podeEditar && <button onClick={abrirNovo} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ {aba === 'fretamento' ? 'Fretamento' : 'Viagem'}</button>}
+        {podeEditar && <button onClick={abrirNovo} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ {aba === 'fretamento' ? tr('via.fretamento') : 'Viagem'}</button>}
       </div>
 
       {/* Os dois negócios da operadora, lado a lado */}
@@ -251,17 +253,17 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
           return (
             <button key={t.key} type="button" onClick={() => setAba(t.key)}
               style={{ padding: '7px 14px', borderRadius: 9, border: 'none', background: on ? 'var(--v2-ink)' : 'transparent', color: on ? 'var(--v2-surface)' : 'var(--v2-ink3)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
-              {t.label}{n ? ` (${n})` : ''}
+              {tr(t.rotulo)}{n ? ` (${n})` : ''}
             </button>
           )
         })}
       </div>
       <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--v2-ink3)' }}>{TIPOS.find(t => t.key === aba)?.ajuda}</p>
 
-      {carregando ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13 }}>Carregando...</p>
+      {carregando ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13 }}>{tr('conta.carregando')}</p>
         : visiveis.length === 0 ? (
           <p style={{ color: 'var(--v2-ink3)', fontSize: 13 }}>
-            {aba === 'fretamento' ? 'Nenhum fretamento cadastrado.' : 'Nenhuma viagem de pacote cadastrada.'}
+            {aba === 'fretamento' ? tr('via.sem-fretamento') : tr('via.sem-viagem-pacote')}
           </p>
         )
         : (
@@ -272,8 +274,8 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
                 <div key={e.id} onClick={() => podeEditar && abrirEditar(e)} style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', cursor: podeEditar ? 'pointer' : 'default' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--v2-ink)' }}>{e.titulo}</span>
-                    {e.tipo === 'fretamento' && <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>Fretamento</span>}
-                    <span style={{ fontSize: 10, fontWeight: 800, color: st.cor, background: st.bg, borderRadius: 999, padding: '2px 8px' }}>{st.label}</span>
+                    {e.tipo === 'fretamento' && <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>{tr('via.fretamento')}</span>}
+                    <span style={{ fontSize: 10, fontWeight: 800, color: st.cor, background: st.bg, borderRadius: 999, padding: '2px 8px' }}>{tr(st.rotulo)}</span>
                     <span style={{ flex: 1 }} />
                     <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ok)' }}>
                       {e.tipo === 'fretamento' ? `${fmtBRL(e.valorFechado || 0)} fechado` : `${fmtBRL(e.valorPacote)}/pessoa`}
@@ -303,17 +305,17 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
       {form && (
         <div onClick={fecharFora(fecharForm, { perguntar: false })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={ev => ev.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 540, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 22 }}>
-            <h3 style={{ margin: '0 0 14px', fontSize: 16.5, color: 'var(--v2-ink)' }}>{form.id ? 'Editar viagem' : 'Nova viagem'}</h3>
+            <h3 style={{ margin: '0 0 14px', fontSize: 16.5, color: 'var(--v2-ink)' }}>{form.id ? tr('via.editar-viagem') : tr('via.nova-viagem')}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {/* Tipo de viagem — muda o modelo de cobrança e a venda de poltrona */}
               <div>
-                <label style={labelStyle}>Tipo de viagem</label>
+                <label style={labelStyle}>{tr('via.tipo-viagem')}</label>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {TIPOS.map(t => {
                     const on = form.tipo === t.key
                     return (
                       <button key={t.key} type="button" onClick={() => setForm(f => f && ({ ...f, tipo: t.key, ...(t.key === 'fretamento' ? { pacoteId: '' } : {}) }))}
-                        style={{ flex: 1, padding: '9px 12px', borderRadius: 10, border: on ? '1.5px solid var(--v2-ink)' : '1px solid var(--v2-surface2)', background: on ? 'var(--v2-ink)' : 'var(--v2-surface)', color: on ? 'var(--v2-surface)' : 'var(--v2-ink2)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{t.label}</button>
+                        style={{ flex: 1, padding: '9px 12px', borderRadius: 10, border: on ? '1.5px solid var(--v2-ink)' : '1px solid var(--v2-surface2)', background: on ? 'var(--v2-ink)' : 'var(--v2-surface)', color: on ? 'var(--v2-surface)' : 'var(--v2-ink2)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{tr(t.rotulo)}</button>
                     )
                   })}
                 </div>
@@ -324,21 +326,21 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
               <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--v2-ink)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={!!form.internacional} onChange={e => setForm(f => f && ({ ...f, internacional: e.target.checked }))} style={{ width: 16, height: 16 }} />
                 Viagem internacional
-                <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>— a ficha do passageiro passa a pedir passaporte, validade e nacionalidade</span>
+                <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('via.ficha-passageiro-passa-pedir-p')}</span>
               </label>
 
               {/* Pacote: escolher um modelo pronto OU cadastrar um novo na aba Pacotes */}
               {form.tipo === 'pacote' && (
                 <div>
-                  <label style={labelStyle}>Pacote</label>
+                  <label style={labelStyle}>{tr('via.pacote')}</label>
                   <select value={form.pacoteId || ''} onChange={e => aplicarPacote(e.target.value)} style={{ ...inputStyle, width: '100%', background: 'var(--v2-surface)' }}>
-                    <option value="">Sem pacote (montar do zero)</option>
+                    <option value="">{tr('via.sem-pacote-montar-zero')}</option>
                     {pacotes.map(p => <option key={p.id} value={p.id}>{p.nome}{p.dias ? ` · ${p.dias} dia(s)` : ''}{p.valorBase ? ` · ${fmtBRL(p.valorBase)}` : ''}</option>)}
                   </select>
                   <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>
                     {pacotes.length === 0
-                      ? 'Nenhum pacote cadastrado ainda — cadastre em Pacotes para reaproveitar roteiro, inclusos e valor.'
-                      : 'Escolher um pacote COPIA roteiro, inclusos e valor para esta viagem. Depois disso os dois seguem independentes.'}
+                      ? tr('via.sem-pacote-cadastrado')
+                      : tr('via.pacote-copia')}
                   </p>
                 </div>
               )}
@@ -346,25 +348,25 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
               {/* Fretamento: quem contratou o veículo */}
               {form.tipo === 'fretamento' && (
                 <div>
-                  <label style={labelStyle}>Contratante</label>
-                  <input value={form.contratante || ''} onChange={e => setForm(f => f && ({ ...f, contratante: e.target.value }))} placeholder="Ex.: Escola São José / Prefeitura de Santo Ângelo" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
+                  <label style={labelStyle}>{tr('via.contratante')}</label>
+                  <input value={form.contratante || ''} onChange={e => setForm(f => f && ({ ...f, contratante: e.target.value }))} placeholder={tr('via.ex-escola-sao-jose-prefeitura')} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
                 </div>
               )}
 
-              <input value={form.titulo} onChange={e => setForm(f => f && ({ ...f, titulo: e.target.value }))} placeholder="Título (ex.: Foz do Iguaçu — Julho)" style={{ ...inputStyle, fontSize: 14 }} />
-              <input value={form.roteiro} onChange={e => setForm(f => f && ({ ...f, roteiro: e.target.value }))} placeholder="Roteiro (cidades/pontos)" style={inputStyle} />
+              <input value={form.titulo} onChange={e => setForm(f => f && ({ ...f, titulo: e.target.value }))} placeholder={tr('via.titulo-ex-foz-iguacu-julho')} style={{ ...inputStyle, fontSize: 14 }} />
+              <input value={form.roteiro} onChange={e => setForm(f => f && ({ ...f, roteiro: e.target.value }))} placeholder={tr('via.roteiro-cidades-pontos')} style={inputStyle} />
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: 130 }}><label style={labelStyle}>Ida</label><input type="date" value={form.dataIda} onChange={e => mudarDataIda(e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
-                <div style={{ flex: 1, minWidth: 130 }}><label style={labelStyle}>Volta</label><input type="date" value={form.dataVolta} onChange={e => setForm(f => f && ({ ...f, dataVolta: e.target.value }))} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
+                <div style={{ flex: 1, minWidth: 130 }}><label style={labelStyle}>{tr('via.ida')}</label><input type="date" value={form.dataIda} onChange={e => mudarDataIda(e.target.value)} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
+                <div style={{ flex: 1, minWidth: 130 }}><label style={labelStyle}>{tr('via.volta')}</label><input type="date" value={form.dataVolta} onChange={e => setForm(f => f && ({ ...f, dataVolta: e.target.value }))} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: 130 }}><label style={labelStyle}>Horário de saída</label><input type="time" value={form.horaSaida || ''} onChange={e => setForm(f => f && ({ ...f, horaSaida: e.target.value }))} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
-                <div style={{ flex: 1, minWidth: 130 }}><label style={labelStyle}>Horário de retorno</label><input type="time" value={form.horaRetorno || ''} onChange={e => setForm(f => f && ({ ...f, horaRetorno: e.target.value }))} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
+                <div style={{ flex: 1, minWidth: 130 }}><label style={labelStyle}>{tr('via.horario-saida')}</label><input type="time" value={form.horaSaida || ''} onChange={e => setForm(f => f && ({ ...f, horaSaida: e.target.value }))} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
+                <div style={{ flex: 1, minWidth: 130 }}><label style={labelStyle}>{tr('via.horario-retorno')}</label><input type="time" value={form.horaRetorno || ''} onChange={e => setForm(f => f && ({ ...f, horaRetorno: e.target.value }))} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} /></div>
               </div>
               <div>
-                <label style={labelStyle}>Veículo</label>
+                <label style={labelStyle}>{tr('via.veiculo')}</label>
                 <select value={form.veiculoId} onChange={e => setForm(f => f && ({ ...f, veiculoId: e.target.value }))} style={{ ...inputStyle, width: '100%', background: 'var(--v2-surface)' }}>
-                  <option value="">Sem veículo definido</option>
+                  <option value="">{tr('via.sem-veiculo-definido')}</option>
                   {veiculos.filter(o => o.condicao === 'disponivel').map(o => {
                     const conf = conflitoDoVeiculo(o.id)
                     return (
@@ -374,7 +376,7 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
                     )
                   })}
                 </select>
-                {!form.dataIda && <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Preencha a data de ida para o sistema conferir a agenda de cada veículo.</p>}
+                {!form.dataIda && <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('via.preencha-data-ida-sistema-conf')}</p>}
                 {conflitoDoForm.length > 0 && (
                   <p style={{ margin: '6px 0 0', fontSize: 12, fontWeight: 700, color: 'var(--v2-hot)' }}>
                     Este veículo já está na viagem &quot;{conflitoDoForm[0].titulo}&quot; nessas datas — escolha outro ou ajuste as datas.
@@ -386,39 +388,39 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
                   <div style={{ flex: 1, minWidth: 130 }}>
                     <label style={labelStyle}>Valor fechado (R$)</label>
                     <input type="number" min={0} step="0.01" value={form.valorFechado} onChange={e => setForm(f => f && ({ ...f, valorFechado: e.target.value }))} placeholder="0,00" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
-                    <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>Valor da viagem inteira — não multiplica por passageiro.</p>
+                    <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>{tr('via.valor-viagem-inteira-nao-multi')}</p>
                   </div>
                 ) : (
                   <div style={{ flex: 1, minWidth: 130 }}>
                     <label style={labelStyle}>Valor por cliente (R$)</label>
                     <input type="number" min={0} step="0.01" value={form.valorPacote} onChange={e => setForm(f => f && ({ ...f, valorPacote: e.target.value }))} placeholder="0,00" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
-                    <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>Multiplicado pelo nº de passageiros da reserva.</p>
+                    <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>{tr('via.multiplicado-pelo-passageiros')}</p>
                   </div>
                 )}
                 <div style={{ flex: 1, minWidth: 130 }}>
-                  <label style={labelStyle}>Situação</label>
+                  <label style={labelStyle}>{tr('lead.situacao')}</label>
                   <select value={form.status} onChange={e => setForm(f => f && ({ ...f, status: e.target.value }))} style={{ ...inputStyle, width: '100%', background: 'var(--v2-surface)' }}>
-                    {STATUS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+                    {STATUS.map(s => <option key={s.key} value={s.key}>{tr(s.rotulo)}</option>)}
                   </select>
                 </div>
               </div>
               {/* Motoristas */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                  <label style={{ ...labelStyle, marginBottom: 0 }}>Motoristas</label>
+                  <label style={{ ...labelStyle, marginBottom: 0 }}>{tr('via.motoristas')}</label>
                   {motoristasCad.length > 0 && (
                     <select value="" onChange={e => { const u = motoristasCad.find(m => m.email === e.target.value); if (u) addMotCad(u) }} style={{ ...inputStyle, padding: '6px 10px', fontSize: 12, background: 'var(--v2-surface)' }}>
-                      <option value="">+ Do cadastro…</option>
+                      <option value="">{tr('via.cadastro')}</option>
                       {motoristasCad.filter(m => !(form.motoristas || []).some(x => x.email === m.email)).map(m => <option key={m.email} value={m.email}>{m.nome}{m.cnh ? ` (CNH ${m.cnh})` : ''}</option>)}
                     </select>
                   )}
-                  <button type="button" onClick={addMot} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Manual</button>
+                  <button type="button" onClick={addMot} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{tr('via.manual')}</button>
                 </div>
                 {motoristasCad.length === 0 && <p style={{ margin: '0 0 6px', fontSize: 11, color: 'var(--v2-ink3)' }}>Cadastre motoristas em Colaboradores (Tipo = Motorista) para escolhê-los aqui.</p>}
                 {(form.motoristas || []).map((m, i) => (
                   <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-                    <input value={m.nome} onChange={e => setMot(i, { nome: e.target.value })} placeholder="Nome" style={{ ...inputStyle, flex: 2 }} />
-                    <input value={m.cnh || ''} onChange={e => setMot(i, { cnh: e.target.value })} placeholder="CNH" style={{ ...inputStyle, flex: 1, minWidth: 80 }} />
+                    <input value={m.nome} onChange={e => setMot(i, { nome: e.target.value })} placeholder={tr('crm.nome')} style={{ ...inputStyle, flex: 2 }} />
+                    <input value={m.cnh || ''} onChange={e => setMot(i, { cnh: e.target.value })} placeholder={tr('dash.cnh')} style={{ ...inputStyle, flex: 1, minWidth: 80 }} />
                     <button type="button" onClick={() => rmMot(i)} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 18 }}>×</button>
                   </div>
                 ))}
@@ -426,17 +428,17 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
               {/* Inclusos: itens editáveis, uma linha por tópico */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <label style={{ ...labelStyle, marginBottom: 0 }}>Inclusos no pacote</label>
+                  <label style={{ ...labelStyle, marginBottom: 0 }}>{tr('via.inclusos-pacote')}</label>
                   <span style={{ flex: 1 }} />
-                  <button type="button" onClick={addIncluso} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Item</button>
+                  <button type="button" onClick={addIncluso} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{tr('via.item')}</button>
                 </div>
-                {(form.inclusos || []).length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum item. Cada linha é um tópico do que está incluso.</p>}
+                {(form.inclusos || []).length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('via.nenhum-item-cada-linha-topico')}</p>}
                 {(form.inclusos || []).map((inc, i) => (
                   <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'center' }}>
                     <span style={{ color: 'var(--v2-ink3)', fontSize: 16, lineHeight: 1 }}>•</span>
                     <input value={inc} onChange={e => setIncluso(i, e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addIncluso() } }}
-                      placeholder="Ex.: Hospedagem 2 diárias com café da manhã" style={{ ...inputStyle, flex: 1 }} />
+                      placeholder={tr('via.ex-hospedagem-2-diarias-cafe-m')} style={{ ...inputStyle, flex: 1 }} />
                     <button type="button" onClick={() => rmIncluso(i)} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 18 }}>×</button>
                   </div>
                 ))}
@@ -444,14 +446,14 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
               {/* Despesas → break-even da viagem (opcional) */}
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <label style={{ ...labelStyle, marginBottom: 0 }}>Despesas da viagem</label>
+                  <label style={{ ...labelStyle, marginBottom: 0 }}>{tr('via.despesas-viagem')}</label>
                   <span style={{ flex: 1 }} />
-                  <button type="button" onClick={addDespesa} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ Despesa</button>
+                  <button type="button" onClick={addDespesa} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{tr('via.despesa')}</button>
                 </div>
-                {form.despesas.length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Opcional: lance combustível, pedágio, hotel do motorista… para ver o break-even desta viagem.</p>}
+                {form.despesas.length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('via.opcional-lance-combustivel-ped')}</p>}
                 {form.despesas.map(d => (
                   <div key={d.id} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
-                    <input value={d.descricao} onChange={e => setDespesa(d.id, { descricao: e.target.value })} placeholder="Ex.: Combustível" style={{ ...inputStyle, flex: 1, minWidth: 120 }} />
+                    <input value={d.descricao} onChange={e => setDespesa(d.id, { descricao: e.target.value })} placeholder={tr('via.ex-combustivel')} style={{ ...inputStyle, flex: 1, minWidth: 120 }} />
                     <input type="number" min={0} step="0.01" value={d.valor} onChange={e => setDespesa(d.id, { valor: e.target.value })} placeholder="R$ 0,00" style={{ ...inputStyle, width: 110 }} />
                     <button type="button" onClick={() => rmDespesa(d.id)} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 18 }}>×</button>
                   </div>
@@ -463,24 +465,24 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
                       <> · valor fechado {fmtBRL(Number(form.valorFechado) || 0)} → resultado{' '}
                         <strong style={{ color: financeiro.resultado >= 0 ? 'var(--v2-ok)' : 'var(--v2-hot)' }}>{fmtBRL(financeiro.resultado)}</strong></>
                     ) : financeiro.be !== undefined ? (
-                      <> · Break-even: <strong>{fmtBRL(financeiro.be)}</strong>/passageiro (ônibus cheio: {financeiro.lugares} lug.)
+                      <>{tr('via.break-even')}<strong>{fmtBRL(financeiro.be)}</strong>/passageiro (ônibus cheio: {financeiro.lugares} lug.)
                         {Number(form.valorPacote) > 0 && (
                           <> · com {fmtBRL(Number(form.valorPacote))}/pessoa e lotação cheia, resultado{' '}
                             <strong style={{ color: financeiro.resultado >= 0 ? 'var(--v2-ok)' : 'var(--v2-hot)' }}>{fmtBRL(financeiro.resultado)}</strong></>
                         )}</>
                     ) : (
-                      <> · escolha o veículo para calcular o break-even por passageiro.</>
+                      <>{tr('via.escolha-veiculo-calcular-break')}</>
                     )}
                   </div>
                 )}
               </div>
-              <textarea lang="pt-BR" value={form.observacoes} onChange={e => setForm(f => f && ({ ...f, observacoes: e.target.value }))} placeholder="Observações" rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+              <textarea lang="pt-BR" value={form.observacoes} onChange={e => setForm(f => f && ({ ...f, observacoes: e.target.value }))} placeholder={tr('crm.observacoes')} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 16, alignItems: 'center' }}>
-              {form.id && podeExcluir && <button onClick={() => { const e = lista.find(x => x.id === form.id); if (e) excluir(e) }} style={{ padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, color: 'var(--v2-hot)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginRight: 'auto' }}>Excluir</button>}
+              {form.id && podeExcluir && <button onClick={() => { const e = lista.find(x => x.id === form.id); if (e) excluir(e) }} style={{ padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, color: 'var(--v2-hot)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginRight: 'auto' }}>{tr('comum.excluir')}</button>}
               <span style={{ flex: form.id ? undefined : 1 }} />
-              <button onClick={fecharForm} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={salvar} disabled={salvando} style={{ padding: '10px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: salvando ? 'wait' : 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar'}</button>
+              <button onClick={fecharForm} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
+              <button onClick={salvar} disabled={salvando} style={{ padding: '10px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: salvando ? 'wait' : 'pointer' }}>{salvando ? tr('dash.salvando') : tr('comum.salvar')}</button>
             </div>
           </div>
         </div>
@@ -499,7 +501,7 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
               <span style={{ flex: 1 }} />
               <button onClick={() => { setModelosAberto(false); carregar() }}
-                style={{ padding: '8px 14px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>Fechar</button>
+                style={{ padding: '8px 14px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>{tr('comum.fechar')}</button>
             </div>
             <PacotesViagem podeEditar={podeEditar} podeExcluir={podeExcluir} />
           </div>
