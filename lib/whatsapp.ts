@@ -430,10 +430,74 @@ export async function atualizarMensagem(telefone: string, msgId: string, patch: 
       if (o?.id !== msgId) continue
       const idx = -(raw.length - i) // índice negativo real na lista
       await redis.lset(chaveMsgsWa(tel, lojaId), idx, JSON.stringify({ ...o, ...patch }))
+      await marcarMudancaWa() // a mídia chegou depois: a tela precisa redesenhar o balão
       return true
     }
   } catch (e: any) { console.warn('[wa-midia] falha ao atualizar msg:', e?.message || String(e)) }
   return false
+}
+
+// ── AO VIVO (lib/waPresenca explica o desenho) ─────────────────────────────
+// Contador de mudanças: sobe a cada mensagem gravada. O navegador pergunta só
+// este número a cada poucos segundos e recarrega quando ele muda — antes a lista
+// de conversas só atualizava com F5 e a conversa aberta a cada 15 s.
+export const CHAVE_VERSAO_WA = 'wa:versao'
+export async function marcarMudancaWa(): Promise<void> {
+  try { await redis.incr(CHAVE_VERSAO_WA) } catch { /* ao vivo é conforto: nunca derruba o fluxo */ }
+}
+export const chaveDigitandoWa = (tel: string) => `wa:digitando:${soDigitos(tel)}`
+
+// "Digitando…": o WhatsApp só avisa a presença de quem a gente ASSINOU. O
+// sendPresence do Evolution assina (presenceSubscribe) antes de mandar a nossa
+// presença — mandamos 'paused', que não mostra nada do lado do cliente.
+// Corpo nos dois formatos do Evolution v2 (plano e `options`).
+export async function assinarPresencaWhatsApp(telefone: string, destinoJid?: string, instancia?: string): Promise<boolean> {
+  const tel = soDigitos(telefone)
+  if (!tel || !evolutionConfiguradoInst(instancia)) return false
+  try {
+    const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
+    const numero = destinoJid || tel
+    const r = await fetch(`${base}/chat/sendPresence/${instanciaEvolution(instancia)}`, {
+      method: 'POST',
+      headers: { apikey: normalizarChaveEvolution(process.env.EVOLUTION_API_KEY), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number: numero, presence: 'paused', delay: 0, options: { number: numero, presence: 'paused', delay: 0 } }),
+    })
+    return r.ok
+  } catch { return false }
+}
+
+// Webhook do Evolution apontando para o Soma10. PRESENCE_UPDATE entrou em
+// 22/09/2026 (o "digitando…"). Idempotente.
+export function urlWebhookWa(): string {
+  const raiz = (process.env.APPROVAL_BASE_URL || process.env.NEXTAUTH_URL || '').replace(/\/$/, '')
+  const u = `${raiz}/api/whatsapp/webhook`
+  return process.env.WHATSAPP_VERIFY_TOKEN ? `${u}?token=${encodeURIComponent(process.env.WHATSAPP_VERIFY_TOKEN)}` : u
+}
+export const EVENTOS_WEBHOOK_WA = ['MESSAGES_UPSERT', 'PRESENCE_UPDATE']
+export async function registrarWebhookEvolution(instancia: string): Promise<boolean> {
+  try {
+    const base = normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
+    const r = await fetch(`${base}/webhook/set/${instancia}`, {
+      method: 'POST',
+      headers: { apikey: normalizarChaveEvolution(process.env.EVOLUTION_API_KEY), 'Content-Type': 'application/json' },
+      // base64: o Evolution embute os bytes da mídia no próprio webhook — caminho
+      // mais robusto para o inbox salvar imagem/áudio/vídeo no Blob.
+      body: JSON.stringify({ webhook: { enabled: true, url: urlWebhookWa(), base64: true, events: EVENTOS_WEBHOOK_WA } }),
+    })
+    return r.ok
+  } catch { return false }
+}
+// Instância que já estava conectada ANTES do "digitando" existir tem o webhook só
+// com MESSAGES_UPSERT. Em vez de obrigar o dono a reconectar, o próprio uso do
+// inbox atualiza o registro — uma vez por dia por instância.
+export async function garantirWebhookAtualWa(instancia?: string): Promise<void> {
+  const inst = instanciaEvolution(instancia)
+  if (!inst || !evolutionConfiguradoInst(instancia)) return
+  const flag = `wa:webhook-eventos:${EVENTOS_WEBHOOK_WA.join(',')}:${inst}`
+  try {
+    if (await redis.get(flag)) return
+    if (await registrarWebhookEvolution(inst)) await redis.set(flag, 1, { ex: 60 * 60 * 24 })
+  } catch { /* tenta de novo na próxima */ }
 }
 
 // Salva uma mensagem na conversa (por telefone) e atualiza os metadados/índice.
@@ -450,6 +514,9 @@ export async function salvarMensagem(telefone: string, msg: WaMensagem, extra?: 
     naoLidas: msg.de === 'cliente' ? (atual.naoLidas || 0) + 1 : (extra?.naoLidas ?? atual.naoLidas ?? 0),
   }
   await redis.set(chaveConversaWa(tel, lojaId), conversa)
+  // Mensagem nova do cliente encerra o "digitando" (o aviso de 'paused' às vezes nem vem).
+  if (msg.de === 'cliente') { try { await redis.del(chaveDigitandoWa(tel)) } catch {} }
+  await marcarMudancaWa()
 }
 
 // Envia mensagem de texto. Prioriza o Evolution (número antigo via QR); se não

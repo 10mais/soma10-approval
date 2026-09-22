@@ -80,6 +80,7 @@ aside,
 @keyframes soma-girar   { to { transform: rotate(360deg) } }
 @keyframes soma-pulse   { 0%, 100% { opacity: 1 } 50% { opacity: .45 } } /* so opacity: seguro em qualquer no */
 @keyframes soma-shimmer { from { background-position: 200% 0 } to { background-position: -200% 0 } }
+@keyframes soma-digitando { 0%, 60%, 100% { opacity: .3; transform: translateY(0) } 30% { opacity: 1; transform: translateY(-3px) } } /* "digitando…" do WhatsApp */
 
 /* Overlay do modal (fundo escuro): SO opacity — nunca transform aqui. */
 .anim-overlay { animation: soma-fade-in var(--dur-fast) ease-out both; }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { evolutionConfigurado, evolutionConfiguradoInst, instanciaEvolution, normalizarUrlEvolution, normalizarChaveEvolution, explicaFalhaConexao } from '@/lib/whatsapp'
+import { evolutionConfigurado, evolutionConfiguradoInst, instanciaEvolution, normalizarUrlEvolution, normalizarChaveEvolution, explicaFalhaConexao, registrarWebhookEvolution } from '@/lib/whatsapp'
 
 export const runtime = 'nodejs'
 
@@ -12,24 +12,9 @@ export const runtime = 'nodejs'
 const base = () => normalizarUrlEvolution(process.env.EVOLUTION_API_URL)
 const headers = () => ({ apikey: normalizarChaveEvolution(process.env.EVOLUTION_API_KEY), 'Content-Type': 'application/json' })
 
-function webhookUrl(): string {
-  const raiz = (process.env.APPROVAL_BASE_URL || process.env.NEXTAUTH_URL || '').replace(/\/$/, '')
-  const u = `${raiz}/api/whatsapp/webhook`
-  return process.env.WHATSAPP_VERIFY_TOKEN ? `${u}?token=${encodeURIComponent(process.env.WHATSAPP_VERIFY_TOKEN)}` : u
-}
-
-// Registra o webhook na Evolution apontando de volta pro Soma10 (idempotente).
-async function registrarWebhook(instancia: string): Promise<boolean> {
-  try {
-    const r = await fetch(`${base()}/webhook/set/${instancia}`, {
-      method: 'POST', headers: headers(),
-      // base64: o Evolution embute os bytes da mídia no próprio webhook — caminho
-      // mais robusto para o inbox salvar imagem/áudio/vídeo no Blob.
-      body: JSON.stringify({ webhook: { enabled: true, url: webhookUrl(), base64: true, events: ['MESSAGES_UPSERT'] } }),
-    })
-    return r.ok
-  } catch { return false }
-}
+// Webhook: o registro (URL + eventos, inclusive PRESENCE_UPDATE do "digitando…")
+// mora em lib/whatsapp — um lugar só, usado também pelo inbox para se auto-atualizar.
+const registrarWebhook = registrarWebhookEvolution
 
 // CRIA a instância no host do Evolution. Instância nova (ex.: denyturismo) não
 // existe no host até alguém criá-la — e /instance/connect nunca cria, só pede o

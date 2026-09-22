@@ -43,9 +43,9 @@ describe('i18n — o inglês existe e é inglês', () => {
       if (!porPt.has(pt)) porPt.set(pt, new Set())
       porPt.get(pt)!.add(e.en || '')
     }
-    const divergentes = [...porPt.entries()]
+    const divergentes = Array.from(porPt.entries())
       .filter(([, ens]) => ens.size > 1)
-      .map(([pt, ens]) => `${pt} → ${[...ens].join(' | ')}`)
+      .map(([pt, ens]) => `${pt} → ${Array.from(ens).join(' | ')}`)
     expect(divergentes).toEqual([])
   })
 })

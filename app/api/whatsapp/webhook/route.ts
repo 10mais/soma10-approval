@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { salvarMensagem, atualizarMensagem, mensagemExiste, textoMensagemEvolution, fotoPerfilEvolution, capturarMidiaEvolution, tipoMidiaEvolution, infoGrupoEvolution, ehMensagemSistema, resolverMencoes, lembrarNomeWa, fotoWaCache, WaConversa, lojaDaInstancia, chaveConversaWa } from '@/lib/whatsapp'
+import { salvarMensagem, atualizarMensagem, chaveDigitandoWa, marcarMudancaWa, mensagemExiste, textoMensagemEvolution, fotoPerfilEvolution, capturarMidiaEvolution, tipoMidiaEvolution, infoGrupoEvolution, ehMensagemSistema, resolverMencoes, lembrarNomeWa, fotoWaCache, WaConversa, lojaDaInstancia, chaveConversaWa } from '@/lib/whatsapp'
 import { redis } from '@/lib/redis'
 import { notificarEquipe } from '@/lib/notificacoes'
 import { v4 as uuid } from 'uuid'
+import { presencaDoEvento, DIGITANDO_TTL_S } from '@/lib/waPresenca'
 
 export const runtime = 'nodejs'
 // Baixar a mídia do Evolution + subir ao Blob leva tempo; sem isto a função era
@@ -120,6 +121,15 @@ export async function POST(req: NextRequest) {
       if (passado && passado !== token) return NextResponse.json({ ok: false }, { status: 401 })
     }
     const body = await req.json()
+
+    // "Digitando…" (presence.update): guarda com validade curta e avisa a tela.
+    const presenca = presencaDoEvento(body)
+    if (presenca) {
+      if (presenca.estado) await redis.set(chaveDigitandoWa(presenca.telefone), presenca.estado, { ex: DIGITANDO_TTL_S })
+      else await redis.del(chaveDigitandoWa(presenca.telefone))
+      await marcarMudancaWa()
+      return NextResponse.json({ ok: true })
+    }
 
     // Formato Evolution
     if (body?.event || body?.instance) { await processarEvolution(body); return NextResponse.json({ ok: true }) }

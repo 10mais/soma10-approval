@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
-import { enviarWhatsApp, enviarMidiaWhatsApp, editarMensagemWhatsApp, whatsappConfigurado, salvarMensagem, WaConversa, WaMensagem } from '@/lib/whatsapp'
+import { enviarWhatsApp, enviarMidiaWhatsApp, editarMensagemWhatsApp, whatsappConfigurado, salvarMensagem, WaConversa, WaMensagem, CHAVE_VERSAO_WA, chaveDigitandoWa, assinarPresencaWhatsApp, garantirWebhookAtualWa } from '@/lib/whatsapp'
 import { apagarMensagemDaConversa } from '@/lib/apagarMensagem'
 import { telefoneWhatsApp, soDigitos } from '@/lib/telefoneBR'
 
@@ -22,6 +22,17 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
   const tel = (req.nextUrl.searchParams.get('tel') || '').replace(/\D/g, '')
+
+  // PULSO do "ao vivo" (lib/waPresenca): só o contador de mudanças e o "digitando…"
+  // da conversa aberta — poucos bytes, a cada poucos segundos. A tela só baixa lista
+  // e histórico quando o contador muda.
+  if (req.nextUrl.searchParams.get('pulso')) {
+    const [versao, digitando] = await Promise.all([
+      redis.get<number>(CHAVE_VERSAO_WA).catch(() => 0),
+      tel ? redis.get<string>(chaveDigitandoWa(tel)).catch(() => null) : Promise.resolve(null),
+    ])
+    return NextResponse.json({ versao: Number(versao) || 0, digitando: digitando || null })
+  }
 
   // Busca full-text DENTRO das conversas (não só na última mensagem): varre o
   // histórico de cada conversa e devolve as que casam + um trecho de contexto.
@@ -69,7 +80,18 @@ export async function POST(req: NextRequest) {
   const session = await autorizado()
   if (!session) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
 
-  const { telefone, texto, midia } = await req.json()
+  const corpo = await req.json()
+  const { telefone, texto, midia } = corpo
+  // Abrir uma conversa ASSINA a presença daquele número — sem isso o WhatsApp não
+  // avisa o "digitando…". De carona, garante que o webhook do Evolution já pede
+  // o evento de presença (instância conectada antes de 22/09 não pedia).
+  if (corpo?.acao === 'assinar-presenca') {
+    const telP = telefoneWhatsApp(telefone) || soDigitos(String(telefone || ''))
+    const convP = telP ? await redis.get<WaConversa>(`wa:conversa:${telP}`) : null
+    await garantirWebhookAtualWa()
+    const ok = telP ? await assinarPresencaWhatsApp(telP, convP?.grupo && convP?.jid ? convP.jid : undefined) : false
+    return NextResponse.json({ ok })
+  }
   const temMidia = midia && typeof midia?.url === 'string' && midia.url
   if (!String(telefone || '').trim() || (!String(texto || '').trim() && !temMidia)) {
     return NextResponse.json({ error: 'telefone e texto são obrigatórios' }, { status: 400 })

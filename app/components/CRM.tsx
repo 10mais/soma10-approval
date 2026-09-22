@@ -1,5 +1,6 @@
 'use client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { PULSO_MS, REASSINAR_MS, chaveDoAviso } from '@/lib/waPresenca'
 import { upload } from '@vercel/blob/client'
 import { toast, confirmar } from '@/lib/toast'
 import { frequenciaPaciente } from '@/lib/agenda'
@@ -2821,10 +2822,12 @@ const CANAL_CFG: Record<CanalMsg, {
   subId: (c: MsgConversa | undefined, id: string, tr: (chave: string) => string) => string
   matchContato: (c: MsgConversa, contatos: Contato[]) => string | undefined
   conectarUrl?: string
+  aoVivo?: boolean // pulso + "digitando…" (lib/waPresenca) — só o WhatsApp tem
 }> = {
   whatsapp: {
     cor: 'var(--v2-ok)', bolha: '#dcf8c6',
     aviso: 'crm.aviso-whatsapp',
+    aoVivo: true,
     listar: () => fetch('/api/crm/mensagens').then(r => r.json()).catch(() => null),
     historico: id => fetch(`/api/crm/mensagens?tel=${id}`).then(r => r.json()).catch(() => null),
     buscar: q => fetch(`/api/crm/mensagens?busca=${encodeURIComponent(q)}`).then(r => r.json()).then(d => Array.isArray(d?.matches) ? d.matches : []).catch(() => []),
@@ -3176,12 +3179,64 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
 
   // Troca de canal (e carga inicial): reseta a seleção e recarrega
   useEffect(() => { try { sessionStorage.setItem('crm_canal', canal) } catch {}; setSel(''); setMensagens([]); setCarregando(true); carregarConversas() }, [canal])
-  // Atualiza a conversa aberta periodicamente (recebe respostas do lead)
+  // AO VIVO (lib/waPresenca). Dono, 22/09: "a conversa não atualiza sem o F5".
+  // Antes: a conversa aberta recarregava a cada 15 s e a LISTA nunca. Agora o
+  // WhatsApp pergunta a cada 2,5 s só um contador de mudanças (poucos
+  // bytes) e recarrega lista + conversa quando ele muda. Aba escondida não pulsa;
+  // voltar para a aba pulsa na hora. O Instagram segue o recarregamento de antes.
+  const [digitando, setDigitando] = useState<string | null>(null)
+  const versaoRef = useRef<number | null>(null)
   useEffect(() => {
-    if (!sel) return
-    const id = setInterval(() => { recarregarMensagens(sel) }, 15000)
+    if (!cfg.aoVivo) {
+      if (!sel) return
+      const id = setInterval(() => { recarregarMensagens(sel) }, 15000)
+      return () => clearInterval(id)
+    }
+    let vivo = true
+    const pulsar = async () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return
+      const d = await fetch(`/api/crm/mensagens?pulso=1${sel ? `&tel=${encodeURIComponent(sel)}` : ''}`)
+        .then(r => (r.ok ? r.json() : null)).catch(() => null)
+      if (!vivo || !d) return
+      setDigitando(sel && d.digitando ? String(d.digitando) : null)
+      const v = Number(d.versao) || 0
+      if (versaoRef.current === null) { versaoRef.current = v; return }
+      if (v !== versaoRef.current) {
+        versaoRef.current = v
+        carregarConversas()
+        if (sel) recarregarMensagens(sel)
+      }
+    }
+    pulsar()
+    const id = setInterval(pulsar, PULSO_MS)
+    const aoVoltar = () => { if (document.visibilityState === 'visible') pulsar() }
+    document.addEventListener('visibilitychange', aoVoltar)
+    window.addEventListener('focus', aoVoltar)
+    return () => {
+      vivo = false
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', aoVoltar)
+      window.removeEventListener('focus', aoVoltar)
+    }
+  }, [sel, canal])
+  // Abrir a conversa ASSINA a presença do número (o WhatsApp só avisa o
+  // "digitando…" de quem foi assinado) e re-assina de tempos em tempos.
+  useEffect(() => {
+    setDigitando(null)
+    if (!cfg.aoVivo || !sel) return
+    const assinar = () => { fetch('/api/crm/mensagens', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ acao: 'assinar-presenca', telefone: sel }) }).catch(() => {}) }
+    assinar()
+    const id = setInterval(assinar, REASSINAR_MS)
     return () => clearInterval(id)
-  }, [sel])
+  }, [sel, canal])
+  // Mensagem nova com a pessoa já no fim da conversa: acompanha até embaixo. Quem
+  // está lendo lá em cima não é puxado.
+  const listaMsgsRef = useRef<HTMLDivElement>(null)
+  const noFimRef = useRef(false)
+  useEffect(() => {
+    const el = listaMsgsRef.current
+    if (el && noFimRef.current) el.scrollTop = el.scrollHeight
+  }, [mensagens, digitando])
 
   const conversaSel = conversas.find(c => c.id === sel)
 
@@ -3349,7 +3404,9 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                 {conversaSel && <AvatarConv foto={conversaSel.foto} nome={nomeDe(conversaSel)} cor={cfg.cor} />}
                 <div style={{ minWidth: 0 }}>
                   <p style={{ margin: 0, fontWeight: 800, fontSize: 14, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{conversaSel ? nomeDe(conversaSel) : sel}</p>
-                  <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)' }}>{cfg.subId(conversaSel, sel, tr)}</p>
+                  {chaveDoAviso(digitando as any)
+                    ? <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ok)', fontWeight: 700 }}>{tr(chaveDoAviso(digitando as any)!)}</p>
+                    : <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)' }}>{cfg.subId(conversaSel, sel, tr)}</p>}
                 </div>
               </div>
               {/* Com o contato vinculado, a conversa vira venda em 1 clique */}
@@ -3413,7 +3470,8 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                   style={{ background: 'transparent', border: '1px solid var(--v2-hot-bg)', color: 'var(--v2-hot)', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>{tr('comum.excluir')}</button>
               )}
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--v2-surface1)' }}>
+            <div ref={listaMsgsRef} onScroll={e => { const el = e.currentTarget; noFimRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120 }}
+              style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--v2-surface1)' }}>
               {mensagens.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13, textAlign: 'center', margin: 'auto' }}>{tr('crm.sem-mensagem')}</p>
                 : mensagens.map(m => {
                   const textoVisivel = m.midiaUrl && ehRotuloMidia(m.texto) ? '' : m.texto
@@ -3467,6 +3525,12 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                   </div>
                   )
                 })}
+              {chaveDoAviso(digitando as any) && (
+                <div aria-live="polite" title={tr(chaveDoAviso(digitando as any)!)}
+                  style={{ alignSelf: 'flex-start', display: 'inline-flex', gap: 4, alignItems: 'center', background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, padding: '10px 14px' }}>
+                  {[0, 1, 2].map(i => <span key={i} style={{ width: 7, height: 7, borderRadius: 999, background: 'var(--v2-ink3)', animation: `soma-digitando 1.2s ${i * 0.18}s infinite ease-in-out` }} />)}
+                </div>
+              )}
             </div>
             {(encaminhar || editando) && (
               <div style={{ borderTop: '1px solid var(--v2-rule)', padding: '7px 12px', background: 'var(--v2-amber-bg)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--v2-amber)', fontWeight: 600 }}>
