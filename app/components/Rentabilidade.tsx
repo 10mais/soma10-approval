@@ -3,9 +3,13 @@ import { useT } from '@/app/components/Idioma'
 import { useEffect, useMemo, useState } from 'react'
 import { totalMensalModulos, type ClienteModulos } from '@/lib/modulos'
 import { rotuloFormaPagamento } from '@/lib/ganhosFinanceiro'
+import { receitaClienteNoMes, receitaTotalNoMes, mensalidadeCliente, contratoVigenteNoMes, contratoVigenteNaData, mesesEntre, primeiroMesDaBase, mesDoDia } from '@/lib/receitaRecorrente'
+import { faturamentoDoMes, type FechamentoMes } from '@/lib/fechamentoMes'
 import LancarGanhoModal, { EditarLancamentoModal, type GanhoPendente } from './LancarGanhoModal'
 
-type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; tipo?: string; contratoValor?: number; modulos?: ClienteModulos; inadimplente?: boolean; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[] }
+type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; tipo?: string; contratoValor?: number; modulos?: ClienteModulos; inadimplente?: boolean; receitasAvulsas?: { id: string; mes: string; valor: number; descricao?: string }[]
+  // Vigência: sem estas datas não dá para dizer em QUE MÊS o contrato fatura (lib/receitaRecorrente).
+  contratoInicio?: string; criadoEm?: string; arquivado?: boolean; arquivadoEm?: string; diaVencimento?: number }
 type Usuario = { email: string; nome: string; role?: string; custoHora?: number; salarioFixo?: number; salarioVariavel?: number }
 type Despesa = { id: string; descricao: string; valor: number; tipo: 'fixo' | 'variavel'; categoria?: string; mes: string }
 
@@ -62,6 +66,18 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   const [lValor, setLValor] = useState('')
   const [lData, setLData] = useState('')
   const [carregando, setCarregando] = useState(true)
+  // O cliente que CANCELOU sai da lista da equipe (/api/clientes esconde arquivado), mas o
+  // mês em que ele pagou continua pago: sem ele aqui, o histórico perderia faturamento real.
+  const [arquivados, setArquivados] = useState<Cliente[]>([])
+  useEffect(() => { fetch('/api/clientes?arquivados=1').then(r => r.json()).then(d => { if (Array.isArray(d)) setArquivados(d) }).catch(() => {}) }, [])
+  // Meses já FECHADOS (lib/fechamentoMes): mês que terminou tem o número gravado e não é
+  // recalculado — aumento de contrato hoje não reescreve o faturamento de julho.
+  const [fechamentos, setFechamentos] = useState<Record<string, FechamentoMes>>({})
+  useEffect(() => {
+    fetch('/api/financeiro/faturamento').then(r => r.json())
+      .then(d => { if (Array.isArray(d?.fechamentos)) setFechamentos(Object.fromEntries(d.fechamentos.map((f: FechamentoMes) => [f.mes, f]))) })
+      .catch(() => {})
+  }, [])
   // #1 — ocultar/mostrar informacoes financeiras (privacidade; persistido)
   const [ocultar, setOcultar] = useState(false)
   useEffect(() => { try { setOcultar(localStorage.getItem('rent_ocultar') === '1') } catch {} }, [])
@@ -138,14 +154,32 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
     return { porCliente, porProf, totalMin, totalCustoOp }
   }, [tarefas, custoHora, mes])
 
-  const linhasCliente = useMemo(() => clientes.filter(c => c.tipo !== 'interno').map(c => {
+  // MESES DE REFERÊNCIA (lib/receitaRecorrente). Um mês escolhido = só ele. "Tudo" = o
+  // histórico mês a mês, do primeiro contrato até hoje — acumulado de verdade, e não a
+  // mensalidade de hoje repetida em todo mês, que era o erro apontado pelo dono em 22/09.
+  const mesAtual = mesDoDia(hoje)
+  // Toda conta de faturamento olha ativos + arquivados (o passado deles é real).
+  const base = useMemo(() => [...clientes, ...arquivados], [clientes, arquivados])
+  const mesesRef = useMemo(
+    () => (mes ? [mes] : mesesEntre(primeiroMesDaBase(base, hoje), mesAtual)),
+    [mes, base, mesAtual])
+  // O mês que vale para "quanto é a mensalidade hoje" (cartões de MRR): o escolhido, quando
+  // há um; senão, o mês corrente.
+  const mesMRR = mes || mesAtual
+
+  const linhasCliente = useMemo(() => base.filter(c => c.tipo !== 'interno').map(c => {
     const ag = porCliente[c.id] || { min: 0, custo: 0 }
-    const avulsas = (c.receitasAvulsas || []).filter(r => !mes || r.mes === mes).reduce((s, r) => s + (Number(r.valor) || 0), 0)
-    const modulos = totalMensalModulos(c.modulos)
-    const receita = (Number(c.contratoValor) || 0) + modulos + avulsas
+    // Mês fechado paga pelo retrato gravado dele; mês aberto, pelo contrato de hoje.
+    // (Assim a tabela e o total do topo contam a mesma história.)
+    const receita = mesesRef.reduce((s, m) => {
+      const f = fechamentos[m]
+      if (f) return s + (f.porCliente.find(x => x.id === c.id)?.total || 0)
+      return s + receitaClienteNoMes(c, m, hoje).total
+    }, 0)
     const margem = receita - ag.custo
     return { c, min: ag.min, custo: ag.custo, receita, margem, pct: receita > 0 ? (margem / receita) * 100 : null }
-  }).sort((a, b) => a.margem - b.margem), [clientes, porCliente, mes])
+  }).filter(l => !l.c.arquivado || l.receita > 0 || l.min > 0) // quem saiu só aparece no mês em que faturou
+    .sort((a, b) => a.margem - b.margem), [base, porCliente, mesesRef, fechamentos])
 
   // Equipe (folha) — exclui clientes
   const equipe = usuarios.filter(u => u.role !== 'cliente')
@@ -159,11 +193,16 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   const despVar = despesasMes.filter(d => d.tipo === 'variavel').reduce((s, d) => s + (Number(d.valor) || 0), 0)
   const despesasTotal = despFixas + despVar
 
-  const receitaTotal = linhasCliente.reduce((s, l) => s + l.receita, 0)
+  // Total do período: mês FECHADO entra pelo valor gravado (o retrato daquele mês); mês
+  // corrente e futuros entram pelo cálculo do contrato de hoje.
+  const receitaTotal = useMemo(
+    () => mesesRef.reduce((s, m) => s + faturamentoDoMes(m, fechamentos, base, hoje).total, 0),
+    [mesesRef, fechamentos, base])
+  const mesFechado = !!(mes && fechamentos[mes])
   // MRR só dos add-ons de módulos (recorrência do plano modular), para destaque.
-  const mrrModulos = useMemo(() => clientes.filter(c => c.tipo !== 'interno').reduce((s, c) => s + totalMensalModulos(c.modulos), 0), [clientes])
+  const mrrModulos = useMemo(() => base.filter(c => contratoVigenteNoMes(c, mesMRR, hoje)).reduce((s, c) => s + totalMensalModulos(c.modulos), 0), [base, mesMRR])
   // MRR EM RISCO: mensalidade (contrato + módulos) dos clientes suspensos por inadimplência.
-  const mrrRisco = useMemo(() => clientes.filter(c => c.tipo !== 'interno' && c.inadimplente).reduce((s, c) => s + (Number(c.contratoValor) || 0) + totalMensalModulos(c.modulos), 0), [clientes])
+  const mrrRisco = useMemo(() => base.filter(c => c.inadimplente && contratoVigenteNoMes(c, mesMRR, hoje)).reduce((s, c) => s + mensalidadeCliente(c), 0), [base, mesMRR])
   const lucro = receitaTotal - folha - despesasTotal
   const margemPct = receitaTotal > 0 ? (lucro / receitaTotal) * 100 : null
 
@@ -194,19 +233,19 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
   // Fluxo de caixa — entradas (receita) x saídas (folha + despesas) por mês.
   // Janela: termina 3 meses no futuro (meses futuros = previsão dos recorrentes já lançados).
   const fluxo = useMemo(() => {
-    const recorrente = clientes.filter(c => c.tipo !== 'interno').reduce((s, c) => s + (Number(c.contratoValor) || 0) + totalMensalModulos(c.modulos), 0)
     const out: { mes: string; label: string; entradas: number; saidas: number; saldo: number; futuro: boolean }[] = []
     for (let i = -(periodoFluxo - 4); i <= 3; i++) {
       const d = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1)
       const mk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      const avulsas = clientes.reduce((s, c) => s + (c.receitasAvulsas || []).filter(r => r.mes === mk).reduce((a, r) => a + (Number(r.valor) || 0), 0), 0)
       const desp = despesas.filter(x => x.mes === mk).reduce((s, x) => s + (Number(x.valor) || 0), 0)
-      const entradas = recorrente + avulsas
+      // Faturamento DAQUELE mês: quem já era cliente nele (e ainda era), mais as
+      // cobranças avulsas lançadas nele. Mês passado não muda por causa de cliente novo.
+      const entradas = faturamentoDoMes(mk, fechamentos, base, hoje).total
       const saidas = folha + desp
       out.push({ mes: mk, label: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', ''), entradas, saidas, saldo: entradas - saidas, futuro: i > 0 })
     }
     return out
-  }, [clientes, despesas, folha, periodoFluxo])
+  }, [base, despesas, folha, periodoFluxo, fechamentos])
   const fluxoMax = Math.max(1, ...fluxo.map(f => Math.max(f.entradas, f.saidas)))
 
   // Saldo PREVISTO — projeção do saldo ao longo do tempo conforme datas de
@@ -227,13 +266,15 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
     const hojeD = new Date(); hojeD.setHours(0, 0, 0, 0)
     const limite = new Date(hojeD); limite.setDate(limite.getDate() + 60)
     const eventos: { data: Date; tipo: 'entrada' | 'saida'; desc: string; valor: number }[] = []
-    for (const c of clientes) {
-      if (c.tipo === 'interno') continue
-      const v = (Number(c.contratoValor) || 0) + totalMensalModulos(c.modulos)
-      const dia = Number((c as any).diaVencimento) || 0
+    for (const c of base) {
+      const v = mensalidadeCliente(c)
+      const dia = Number(c.diaVencimento) || 0
       if (v <= 0 || dia < 1) continue
       for (let k = 0; k <= 2; k++) {
         const d = new Date(hojeD.getFullYear(), hojeD.getMonth() + k, Math.min(dia, 28))
+        // Contrato precisa estar valendo NAQUELE mês: cliente que entra em outubro não
+        // aparece cobrando em setembro, e quem saiu não cobra mais.
+        if (!contratoVigenteNaData(c, d, hojeD)) continue
         if (d >= hojeD && d <= limite) eventos.push({ data: d, tipo: 'entrada', desc: `${c.nome} (mensalidade)`, valor: v })
       }
     }
@@ -246,7 +287,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
     const linhas = eventos.map(e => { saldo += e.tipo === 'entrada' ? e.valor : -e.valor; return { ...e, saldoApos: saldo } })
     const menor = linhas.reduce((m, l) => Math.min(m, l.saldoApos), saldoContas)
     return { linhas, saldoFinal: saldo, menor }
-  }, [clientes, lancamentos, saldoContas])
+  }, [base, lancamentos, saldoContas])
 
   const opcoesMes = useMemo(() => {
     const arr: { v: string; label: string }[] = [{ v: '', label: 'Tudo' }]
@@ -289,7 +330,7 @@ export default function Rentabilidade({ clientes, usuarios }: { clientes: Client
         <div>
           {/* DRE — Resultado do mes */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 18 }}>
-            <div style={card}><p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('fin.receita-recorrente')}</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: 'var(--v2-ink)' }}>{brl(receitaTotal)}</p><p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>Contratos + módulos{mrrModulos > 0 ? ` · ${brl(mrrModulos)} em módulos` : ''}</p>{mrrRisco > 0 && <p style={{ margin: '4px 0 0', fontSize: 11, fontWeight: 700, color: 'var(--v2-hot)' }}>{brl(mrrRisco)}/mês em risco (suspensos)</p>}</div>
+            <div style={card}><p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('fin.receita-recorrente')}</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: 'var(--v2-ink)' }}>{brl(receitaTotal)}</p><p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>{mes ? (mesFechado ? tr('fin.mes-fechado') : tr('fin.faturado-no-mes')) : tr('fin.acumulado-historico')}{mrrModulos > 0 ? ` · ${brl(mrrModulos)} em módulos` : ''}</p>{mrrRisco > 0 && <p style={{ margin: '4px 0 0', fontSize: 11, fontWeight: 700, color: 'var(--v2-hot)' }}>{brl(mrrRisco)}/mês em risco (suspensos)</p>}</div>
             <div style={card}><p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('fin.folha-fixo-variavel')}</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: 'var(--v2-hot)' }}>{brl(folha)}</p></div>
             <div style={card}><p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('fin.despesas')}</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: 'var(--v2-hot)' }}>{brl(despesasTotal)}</p></div>
             <div style={{ ...card, background: lucro >= 0 ? 'var(--v2-ok-bg)' : 'var(--v2-hot-bg)' }}><p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('fin.lucro')}</p><p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 800, color: lucro >= 0 ? 'var(--v2-ok)' : 'var(--v2-hot)' }}>{brl(lucro)}{margemPct !== null && <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}> ({mascP(Math.round(margemPct))}%)</span>}</p></div>

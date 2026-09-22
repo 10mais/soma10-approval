@@ -4,6 +4,7 @@ import { notificar, notificarEquipe, notificarAdmins, notificarDono } from '@/li
 import { cronAutorizado } from '@/lib/cronAuth'
 import { capturarErro } from '@/lib/erros'
 import { atrasada, diasDeAtraso } from '@/lib/entregas'
+import { fecharMesesPendentes } from '@/lib/fechamentoMes'
 
 export const runtime = 'nodejs'
 
@@ -106,5 +107,11 @@ async function rodarAlertas(): Promise<NextResponse> {
     renovacoes++
   }
 
-  return NextResponse.json({ ok: true, aprovacoes, entregas, renovacoes, postsVerificados: emAprovacao.length, clientesVerificados: clientes.length })
+  // ---- 4) FECHAMENTO DO MES (lib/fechamentoMes) ----
+  // Mes que terminou vira historia: o faturamento dele fica gravado e nao muda mais,
+  // nem se o contrato do cliente subir depois. Idempotente: mes ja fechado nao reescreve.
+  let mesesFechados: string[] = []
+  try { mesesFechados = await fecharMesesPendentes(clientes as any) } catch (e) { await capturarErro('cron/alertas:fechamento', e) }
+
+  return NextResponse.json({ ok: true, aprovacoes, entregas, renovacoes, mesesFechados, postsVerificados: emAprovacao.length, clientesVerificados: clientes.length })
 }

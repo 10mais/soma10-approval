@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente, CrmNegocio, Post, NpsResposta } from '@/lib/redis'
 import { totalMensalModulos } from '@/lib/modulos'
+import { mensalidadeCliente, contratoVigenteNoMes, mesDoDia } from '@/lib/receitaRecorrente'
 
 export const runtime = 'nodejs'
 
@@ -54,8 +55,11 @@ export async function GET() {
   // ---- RETENÇÃO (clientes) ----
   const ativos = clientes.filter(c => c.tipo !== 'interno' && !(c as any).arquivado)
   // Mensalidade recorrente por cliente = contrato + assinaturas de módulos ativas.
-  const mensal = (c: Cliente) => (Number(c.contratoValor) || 0) + totalMensalModulos((c as any).modulos)
-  const mrr = ativos.reduce((s, c) => s + mensal(c), 0)
+  const mensal = (c: Cliente) => mensalidadeCliente(c as any)
+  // MRR é o que fatura NESTE mês: contrato que começa no mês que vem ainda não entra
+  // (lib/receitaRecorrente — a regra é a mesma do Financeiro).
+  const agoraD = new Date()
+  const mrr = ativos.filter(c => contratoVigenteNoMes(c as any, mesDoDia(agoraD), agoraD)).reduce((s, c) => s + mensal(c), 0)
   const ltvs = ativos.map(c => {
     const d = dias(c.contratoInicio)
     const meses = Math.max(1, d ? Math.floor(d / 30) + 1 : 1)

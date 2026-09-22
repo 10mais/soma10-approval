@@ -1,3 +1,4 @@
+import { mensalidadeCliente, contratoVigenteNoMes, receitaClienteNoMes, mesDoDia } from './receitaRecorrente'
 import { redis, Cliente, Usuario, Tarefa, Despesa, CrmNegocio } from './redis'
 
 // Ferramentas de LEITURA do banco para o assistente de IA (tool-use).
@@ -148,7 +149,11 @@ async function consultarClientes(input: any): Promise<string> {
     entregaveis: c.entregaveis || [],
     segmento: c.segmento || null,
   }))
-  return JSON.stringify({ total: lista.length, receitaRecorrente: fmtR$(lista.reduce((s, c) => s + c.contratoValor, 0)), clientes: lista })
+  // Receita recorrente = o que fatura NESTE mês (contrato que ainda não começou não conta).
+  const agoraCli = new Date()
+  const mesCli = mesDoDia(agoraCli)
+  const recorrenteAgora = clientes.filter(c => contratoVigenteNoMes(c as any, mesCli, agoraCli)).reduce((s, c) => s + mensalidadeCliente(c as any), 0)
+  return JSON.stringify({ total: lista.length, receitaRecorrente: fmtR$(recorrenteAgora), clientes: lista })
 }
 
 async function consultarCrm(input: any): Promise<string> {
@@ -216,10 +221,10 @@ async function consultarFinanceiro(input: any): Promise<string> {
   const despesas = dids.length ? ((await redis.mget<(Despesa | null)[]>(...dids.map(i => `despesa:${i}`))).filter(Boolean) as Despesa[]) : []
 
   // Receita = contrato recorrente + avulsas do mes (clientes, exclui internos)
-  const receita = clientes.filter(c => c.tipo !== 'interno' && !(c as any).arquivado).reduce((s, c) => {
-    const avulsas = (c.receitasAvulsas || []).filter(r => r.mes === mes).reduce((a, r) => a + (Number(r.valor) || 0), 0)
-    return s + (Number(c.contratoValor) || 0) + avulsas
-  }, 0)
+  // Cada mês tem o SEU faturamento: quem entrou depois não conta para trás, quem saiu não
+  // conta para frente (lib/receitaRecorrente, a mesma conta da tela de Financeiro).
+  const agoraFin = new Date()
+  const receita = clientes.reduce((s, c) => s + receitaClienteNoMes(c as any, mes, agoraFin).total, 0)
   // Folha = fixo + variavel (equipe, exclui clientes)
   const equipe = usuarios.filter(u => u.role !== 'cliente')
   const folha = equipe.reduce((s, u) => s + (Number(u.salarioFixo) || 0) + (Number(u.salarioVariavel) || 0), 0)

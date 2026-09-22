@@ -2141,6 +2141,9 @@ export const TEXTOS: Record<string, Entrada> = {
   'portal.material-excluido': { pt: 'Material excluído.', en: 'Item deleted.', es: 'Material eliminado.' },
   'portal.material-grafico': { pt: 'Material gráfico', en: 'Artwork', es: 'Material gráfico' },
   // ---- Financeiro (rentabilidade e caixa)
+  'fin.mes-fechado': { pt: 'Mês fechado — número gravado no fim do mês', en: 'Closed month — figure recorded at month end', es: 'Mes cerrado — número grabado al final del mes' },
+  'fin.faturado-no-mes': { pt: 'Faturado neste mês (contratos + módulos + avulsas)', en: 'Billed this month (contracts + modules + one-off)', es: 'Facturado este mes (contratos + módulos + puntuales)' },
+  'fin.acumulado-historico': { pt: 'Acumulado do histórico, mês a mês', en: 'Accumulated history, month by month', es: 'Acumulado del historial, mes a mes' },
   'fin.cadastre-contas': { pt: 'Cadastre contas e despesas para calcular.', en: 'Register accounts and expenses to calculate it.', es: 'Registre cuentas y gastos para calcular.' },
   'fin.gerenciar-contas': { pt: 'Gerenciar contas bancárias', en: 'Manage bank accounts', es: 'Gestionar cuentas bancarias' },
   'fin.mostrar-valores': { pt: 'Mostrar valores', en: 'Show amounts', es: 'Mostrar valores' },
