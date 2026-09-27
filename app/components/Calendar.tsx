@@ -9,6 +9,7 @@ type Post = {
   redes?: ('instagram' | 'facebook')[]
   capasVideo?: Record<string, string>
   thumbnail?: string
+  suspenso?: { em: string; por: string; statusAnterior: string } // lib/suspenderPost
 }
 
 
@@ -196,7 +197,8 @@ export default function Calendar({ posts, onSelectPost, onAddPost, onMovePost }:
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: 'var(--v2-ink)' }}>
                             <span style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_DOT[p.status] || 'var(--v2-ink3)', flexShrink: 0 }} />
-                            {fmtHora(p.dataAgendada) && <span>{fmtHora(p.dataAgendada)}</span>}
+                            {fmtHora(p.dataAgendada) && <span style={p.suspenso ? { textDecoration: 'line-through', color: 'var(--v2-ink3)' } : undefined}>{fmtHora(p.dataAgendada)}</span>}
+                            {p.suspenso && <span title={idioma === 'en' ? 'Suspended' : idioma === 'es' ? 'Suspendido' : 'Suspenso'} style={{ display: 'inline-flex', color: 'var(--v2-amber)' }}><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" /></svg></span>}
                             {p.formato && <span style={{ color: 'var(--v2-ink3)' }}>· {labelFormato(p.formato, idioma)}</span>}
                             {redes.map(r => <RedeIcon key={r} rede={r} size={11} />)}
                           </div>

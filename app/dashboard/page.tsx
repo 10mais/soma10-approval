@@ -15,6 +15,7 @@ import { useArea, useT, useIdioma } from '@/app/components/Idioma'
 import { localeDe } from '@/lib/i18n'
 import { statusAoSalvarEdicao } from '@/lib/composerPendencias'
 import { camposYouTube } from '@/lib/youtubePost'
+import SuspensaoPost from '@/app/components/SuspensaoPost'
 import { PAPEIS_SQUAD } from '@/lib/squadPapeis'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
@@ -2937,6 +2938,13 @@ function Dashboard() {
                         </div>
                       )
                     })()}
+                    {/* SUSPENDER / REATIVAR (post inteiro ou uma rede) — lib/suspenderPost */}
+                    {role !== 'cliente' && podeNivelDash('producao', 'editar') && (
+                      <SuspensaoPost post={postPreview} onAtualizado={(p: any) => {
+                        setPostPreview(p)
+                        setPosts(ps => ps.map(x => x && x.id === p.id ? p : x))
+                      }} />
+                    )}
                     {postPreview.status === 'falha_publicacao' && postPreview.erroPublicacao && (
                       <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', borderRadius: 8, padding: '8px 10px' }}>Erro: {postPreview.erroPublicacao}</p>
                     )}

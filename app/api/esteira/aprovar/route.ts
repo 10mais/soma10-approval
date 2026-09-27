@@ -31,6 +31,9 @@ export async function POST(req: NextRequest) {
 
   const post = await redis.get<Post>(`post:${postId}`)
   if (!post) return NextResponse.json({ error: 'post não encontrado' }, { status: 404 })
+  // Post SUSPENSO pela equipe (lib/suspenderPost) não volta à fila por uma aprovação: é
+  // preciso reativar antes — senão aprovar desfazia a suspensão sem ninguém perceber.
+  if ((post as any).suspenso) return NextResponse.json({ error: 'Este post está suspenso pela equipe. Reative antes de aprovar.', suspenso: true }, { status: 409 })
 
   // Verificar permissão: admin/gerente podem aprovar; cliente só do seu próprio
   const role = (session.user as any).role

@@ -50,6 +50,9 @@ export async function GET(req: NextRequest) {
       youtubeChannelTitle: canal.titulo,
       youtubeConectado: true,
       youtubeTokenAtualizadoEm: agora,
+      // Quais permissões o Google concedeu (a de gerenciar vídeos habilita suspender um
+      // vídeo que já subiu — lib/youtube.podeGerenciarYouTube).
+      youtubeEscopos: tokens.escopos,
     }
 
     const contas: ContaSocial[] = Array.isArray((cliente as any).contas) ? [...(cliente as any).contas] : []

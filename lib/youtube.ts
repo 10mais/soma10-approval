@@ -29,10 +29,23 @@ const UPLOAD = 'https://www.googleapis.com/upload/youtube/v3/videos'
 
 // `youtube.upload` sobe o vídeo; `youtube.readonly` lê o nome do canal para a tela mostrar
 // EM QUAL canal o post vai sair — conectar às cegas é como publicar no perfil errado.
+//
+// `youtube` (gerenciar) entrou em 27/09 para SUSPENDER um vídeo que já subiu e espera a data
+// própria (lib/suspenderPost): mudar o agendamento de um vídeo existente (videos.update) não
+// cabe no `youtube.upload`. Canal conectado antes disso precisa reconectar uma vez — a conta
+// guarda os escopos concedidos (`youtubeEscopos`) para a tela saber quem precisa.
+export const ESCOPO_GERENCIAR = 'https://www.googleapis.com/auth/youtube'
 export const ESCOPOS_YOUTUBE = [
   'https://www.googleapis.com/auth/youtube.upload',
   'https://www.googleapis.com/auth/youtube.readonly',
+  ESCOPO_GERENCIAR,
 ]
+
+/** O canal foi conectado com permissão de mudar o agendamento de um vídeo já enviado? */
+export function podeGerenciarYouTube(escopos?: string[] | string): boolean {
+  const lista = Array.isArray(escopos) ? escopos : String(escopos || '').split(/\s+/)
+  return lista.includes(ESCOPO_GERENCIAR)
+}
 
 export function youtubeConfigurado(): boolean {
   return !!(process.env.YOUTUBE_CLIENT_ID && process.env.YOUTUBE_CLIENT_SECRET)
@@ -63,7 +76,7 @@ export function urlConsentimentoYouTube(estado: string, origem?: string): string
   return `${OAUTH_AUTH}?${p.toString()}`
 }
 
-export type TokensYouTube = { accessToken: string; refreshToken?: string; expiraEm: number }
+export type TokensYouTube = { accessToken: string; refreshToken?: string; expiraEm: number; escopos: string[] }
 
 async function postForm(url: string, corpo: Record<string, string>): Promise<any> {
   const r = await fetch(url, {
@@ -98,7 +111,10 @@ export async function trocarCodigoYouTube(code: string, origem?: string): Promis
     redirect_uri: urlRedirecionamentoYouTube(origem),
     grant_type: 'authorization_code',
   })
-  return { accessToken: d.access_token, refreshToken: d.refresh_token, expiraEm: Date.now() + (Number(d.expires_in) || 3600) * 1000 }
+  return {
+    accessToken: d.access_token, refreshToken: d.refresh_token, expiraEm: Date.now() + (Number(d.expires_in) || 3600) * 1000,
+    escopos: String(d.scope || '').split(/\s+/).filter(Boolean),
+  }
 }
 
 /** Token de uma hora a partir do refresh guardado na conta do cliente. */
@@ -129,6 +145,7 @@ export type ContaYouTube = {
   youtubeChannelId?: string
   youtubeChannelTitle?: string
   youtubeConectado?: boolean
+  youtubeEscopos?: string[]
 }
 
 /**
@@ -217,5 +234,60 @@ async function definirMiniatura(token: string, videoId: string, url: string): Pr
     return `Miniatura não aplicada — ${explicaErroGoogle(r.status, d)}`
   } catch (e: any) {
     return `Miniatura não aplicada: ${e?.message || e}`
+  }
+}
+
+/**
+ * Muda o agendamento de um vídeo que JÁ ESTÁ no YouTube (lib/suspenderPost):
+ *   - `publishAt` ausente = SUSPENDER: o vídeo fica privado e sem data (não vai ao ar sozinho);
+ *   - `publishAt` no futuro = REATIVAR: privado com a data, e o YouTube publica na hora.
+ *
+ * Lê o status atual antes de gravar: o `videos.update` troca a parte `status` INTEIRA, e
+ * mandar só a privacidade apagaria a declaração de conteúdo infantil, a licença etc.
+ * Vídeo que já está PÚBLICO não é mexido — já foi ao ar, "suspender" ali seria despublicar.
+ */
+export async function alterarAgendaYouTube(
+  conta: ContaYouTube,
+  videoId: string,
+  publishAt?: string,
+): Promise<{ ok: true } | { ok: false; erro: string; reconectar?: boolean }> {
+  if (!youtubeConfigurado()) return { ok: false, erro: 'YouTube não configurado (faltam YOUTUBE_CLIENT_ID e YOUTUBE_CLIENT_SECRET na Vercel).' }
+  if (!conta.youtubeRefreshToken) return { ok: false, erro: 'Este perfil não tem canal do YouTube conectado.' }
+  if (!podeGerenciarYouTube(conta.youtubeEscopos)) {
+    return { ok: false, reconectar: true, erro: 'Para suspender um vídeo que já está no YouTube, o canal precisa ser reconectado uma vez (permissão nova de gerenciar vídeos). Reconecte o canal na ficha do cliente.' }
+  }
+  try {
+    const token = await acessoYouTube(conta.youtubeRefreshToken)
+    const r = await fetch(`${API}/videos?part=status&id=${encodeURIComponent(videoId)}`, { headers: { Authorization: `Bearer ${token}` } })
+    const d = await r.json().catch(() => ({} as any))
+    if (!r.ok) return { ok: false, erro: explicaErroGoogle(r.status, d) }
+    const st = d?.items?.[0]?.status
+    if (!st) return { ok: false, erro: 'Vídeo não encontrado no canal (pode ter sido apagado no YouTube Studio).' }
+    if (st.privacyStatus === 'public') return { ok: false, erro: 'O vídeo já está público no YouTube: não dá mais para segurar.' }
+
+    // Só os campos GRAVÁVEIS da parte status (os de leitura fazem o YouTube recusar).
+    const status: Record<string, any> = {
+      privacyStatus: 'private',
+      ...(st.license ? { license: st.license } : {}),
+      ...(typeof st.embeddable === 'boolean' ? { embeddable: st.embeddable } : {}),
+      ...(typeof st.publicStatsViewable === 'boolean' ? { publicStatsViewable: st.publicStatsViewable } : {}),
+      ...(typeof st.selfDeclaredMadeForKids === 'boolean' ? { selfDeclaredMadeForKids: st.selfDeclaredMadeForKids } : {}),
+      ...(typeof st.containsSyntheticMedia === 'boolean' ? { containsSyntheticMedia: st.containsSyntheticMedia } : {}),
+      ...(publishAt ? { publishAt: new Date(publishAt).toISOString() } : {}),
+    }
+    const up = await fetch(`${API}/videos?part=status`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: videoId, status }),
+    })
+    if (up.ok) return { ok: true }
+    const e = await up.json().catch(() => ({} as any))
+    const motivo = e?.error?.errors?.[0]?.reason || ''
+    if (motivo === 'insufficientPermissions' || up.status === 403) {
+      return { ok: false, reconectar: true, erro: 'O Google recusou a mudança: o canal precisa ser reconectado com a permissão de gerenciar vídeos.' }
+    }
+    return { ok: false, erro: explicaErroGoogle(up.status, e) }
+  } catch (e: any) {
+    return { ok: false, erro: e?.message || String(e) }
   }
 }

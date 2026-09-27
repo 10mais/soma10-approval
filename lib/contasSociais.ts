@@ -40,6 +40,7 @@ export type ContaSocial = {
   youtubeChannelTitle?: string
   youtubeConectado?: boolean
   youtubeTokenAtualizadoEm?: string
+  youtubeEscopos?: string[] // permissões concedidas pelo Google (lib/youtube.podeGerenciarYouTube)
   logo?: string
   criadoEm?: string
 }
@@ -67,6 +68,7 @@ type ClienteComContas = {
   youtubeChannelTitle?: string
   youtubeConectado?: boolean
   youtubeTokenAtualizadoEm?: string
+  youtubeEscopos?: string[]
 }
 
 // A conta principal existe se os campos antigos têm ALGUMA conexão de verdade.
@@ -94,6 +96,7 @@ export function contaPrincipal(cliente?: ClienteComContas | null): ContaSocial |
     youtubeChannelTitle: cliente.youtubeChannelTitle,
     youtubeConectado: cliente.youtubeConectado,
     youtubeTokenAtualizadoEm: cliente.youtubeTokenAtualizadoEm,
+    youtubeEscopos: cliente.youtubeEscopos,
     logo: cliente.logo,
   }
 }

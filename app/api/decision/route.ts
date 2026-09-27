@@ -69,6 +69,11 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   }
 
+  // Post SUSPENSO pela equipe (lib/suspenderPost): a decisão não pode recolocá-lo na fila.
+  if ((post as any).suspenso) {
+    return NextResponse.json({ error: 'Este material foi suspenso pela equipe e não está mais aguardando decisão.' }, { status: 409 })
+  }
+
   // Cliente suspenso por inadimplência não pode aprovar/corrigir/reprovar (cobre sessão, código e token).
   if (await clienteSuspenso(post.clienteId)) {
     return NextResponse.json({ error: 'acesso suspenso por pendência de pagamento' }, { status: 403 })

@@ -1,6 +1,7 @@
 'use client'
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
 import Calendar from '@/app/components/Calendar'
 import PostComposer from '@/app/components/PostComposer'
 import { apareceNoPlanner } from '@/lib/plannerFiltro'
@@ -8,6 +9,7 @@ import { toast, confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
 import { statusAoSalvarEdicao } from '@/lib/composerPendencias'
 import { camposYouTube } from '@/lib/youtubePost'
+import SuspensaoPost from '@/app/components/SuspensaoPost'
 import { useArea } from '@/app/components/Idioma'
 
 // Acompanha o status da publicacao pelo proprio post (resiliente a requisicoes longas:
@@ -59,6 +61,9 @@ export default function PlannerPage() {
   const [view, setView] = useState<'lista' | 'calendario'>('lista')
   const [preview, setPreview] = useState<any>(null)
   const [previewSlide, setPreviewSlide] = useState(0)
+  // Suspender é ação da EQUIPE (a rota recusa o papel cliente); o cliente não vê o botão.
+  const { data: sessao } = useSession()
+  const ehEquipe = !!sessao && (sessao.user as any)?.role !== 'cliente'
   const [legendaExpandida, setLegendaExpandida] = useState(false)
   useEffect(() => { setPreviewSlide(0); setLegendaExpandida(false) }, [preview])
   const [novoPost, setNovoPost] = useState(false)
@@ -233,7 +238,7 @@ export default function PlannerPage() {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 5 }}>
                       <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.clienteNome}</span>
                       <span style={{ background: STATUS_COLOR[post.status] || 'var(--v2-surface2)', borderRadius: 999, padding: '2px 8px', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>
-                        {STATUS_LABEL[post.status] || post.status}
+                        {(post as any).suspenso ? 'Suspenso' : (STATUS_LABEL[post.status] || post.status)}
                       </span>
                     </div>
                     <p style={{ margin: '0 0 5px', fontSize: 10, color: 'var(--v2-ink3)' }}>{dataMostrar ? new Date(dataMostrar).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</p>
@@ -364,6 +369,8 @@ export default function PlannerPage() {
                   )}
                 </div>
               )}
+              {/* SUSPENDER / REATIVAR (post inteiro ou uma rede) — lib/suspenderPost */}
+              {ehEquipe && <SuspensaoPost post={preview} onAtualizado={(p: any) => { setPreview(p); carregar() }} />}
               {preview.status === 'falha_publicacao' && (
                 <button onClick={() => republicar(preview.id)} style={{ width: '100%', padding: '11px 0', background: corCliente, color: corClienteTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', marginBottom: 8 }}>
                   Tentar publicar novamente

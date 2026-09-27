@@ -71,7 +71,9 @@ async function publicarAgendados(): Promise<NextResponse> {
     await redis.srem('agendados', id)
     // Re-le o post fresco do banco (pode ter sido atualizado por outra instancia)
     const postFresco = await redis.get<Post>(`post:${id}`)
-    if (!postFresco || postFresco.status === 'publicado') continue
+    // Confere de novo o STATUS, não só "já publicado": um post suspenso (ou desagendado) entre
+    // a leitura do índice e este ponto não pode sair (lib/suspenderPost).
+    if (!postFresco || postFresco.status !== 'agendado' || postFresco.suspenso) continue
     const cliente = postFresco.clienteId ? await redis.get<any>(`cliente:${postFresco.clienteId}`) : null
     const resultado = await processarPublicacao(postFresco, cliente)
     // Outra publicacao deste post ja esta rodando: devolve ao indice e tenta no proximo ciclo

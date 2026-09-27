@@ -33,6 +33,8 @@ async function publicarAgora(req: NextRequest): Promise<NextResponse> {
 
   // Protecao anti-duplicata: se ja esta publicado em todas as redes, nao republica
   if (post.status === 'publicado') return NextResponse.json({ ok: true, jaPublicado: true })
+  // Suspenso (lib/suspenderPost): "Publicar agora" não passa por cima — reativa antes.
+  if (post.suspenso) return NextResponse.json({ error: 'Este post está suspenso. Reative antes de publicar.', suspenso: true }, { status: 409 })
 
   // Remove do indice de agendados ANTES de publicar (evita race condition com o cron)
   await redis.srem('agendados', id)

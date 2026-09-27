@@ -207,7 +207,17 @@ export async function PUT(req: NextRequest) {
   }
 
   // Campos do YouTube passam pelo saneador (valor inválido/vazio = volta ao padrão).
-  const atualizado = { ...post, ...updates, ...configYouTubeDoCorpo(updates), atualizadoEm: new Date().toISOString() }
+  const atualizado: any = { ...post, ...updates, ...configYouTubeDoCorpo(updates), atualizadoEm: new Date().toISOString() }
+  // Suspensão (lib/suspenderPost) só é mexida pela rota própria. Mas agendar ou mandar para
+  // aprovação de propósito (editor, "Programar novamente") é reativar: a marca sai junto,
+  // para não ficar um post "agendado e suspenso" ao mesmo tempo.
+  delete atualizado.suspenso
+  if (post.suspenso && atualizado.status === 'rascunho') atualizado.suspenso = post.suspenso
+  // Rede suspensa que foi remarcada no editor deixa de estar suspensa.
+  if (Array.isArray(updates.redes) && Array.isArray(post.redesSuspensas)) {
+    const resto = post.redesSuspensas.filter(r => !updates.redes.includes(r))
+    atualizado.redesSuspensas = resto.length ? resto : undefined
+  }
   // SLA de aprovação: marca quando entra numa etapa de aprovação; limpa ao sair
   const ETAPAS_APROVACAO = ['aprovacao_copy', 'aprovacao_criativo']
   if ('etapa' in updates && updates.etapa !== post.etapa) {

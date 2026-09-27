@@ -200,6 +200,7 @@ export type Cliente = {
   youtubeChannelTitle?: string
   youtubeConectado?: boolean
   youtubeTokenAtualizadoEm?: string
+  youtubeEscopos?: string[]
   // Perfis ADICIONAIS (cliente com filiais: 3 lojas = 3 Instagram). Os campos
   // acima seguem valendo como "conta principal" — nada foi migrado. Quem lê
   // qualquer conta usa lib/contasSociais, nunca os campos direto.
@@ -1081,6 +1082,11 @@ export type Post = {
   youtubeInfantil?: boolean
   youtubeMiniatura?: boolean // false = não usar a capa como miniatura
   youtubeVideoIds?: Record<string, string> // contaId -> id do vídeo publicado (link e conferência)
+  // SUSPENSÃO (lib/suspenderPost): post inteiro fora da fila (vira rascunho e guarda o que
+  // era), redes tiradas uma a uma, e o agendamento do vídeo já enviado segurado no YouTube.
+  suspenso?: { em: string; por: string; statusAnterior: string }
+  redesSuspensas?: ('instagram' | 'facebook' | 'youtube')[]
+  youtubeAgendaSuspensa?: boolean
   // Perfis do cliente que recebem este post. Vazio/ausente = conta principal,
   // que é como todo post existente se comporta (lib/contasSociais.contasAlvo).
   contaIds?: string[]
