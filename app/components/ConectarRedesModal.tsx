@@ -32,6 +32,9 @@ const REDES: Rede[] = [
   { key: 'bluesky', nome: 'Bluesky', cor: '#0085ff', ativo: false, icone: <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--v2-surface)"><path d="M5.8 3.2C8.6 5.3 11.6 9.6 12 12c.4-2.4 3.4-6.7 6.2-8.8C20.3 1.7 23 .5 23 3.6c0 .6-.4 5.2-.6 5.9-.7 2.6-3.4 3.2-5.7 2.8 4.1.7 5.1 3 2.9 5.3-4.3 4.4-6.1-1.1-6.6-2.5-.1-.3-.1-.4-.2 0-.5 1.4-2.3 6.9-6.6 2.5-2.2-2.3-1.2-4.6 2.9-5.3-2.4.4-5-.2-5.7-2.8C.4 8.8 0 4.2 0 3.6 0 .5 2.7 1.7 4.8 3.2z"/></svg> },
 ]
 
+// CAMADA 1300: este modal abre DE DENTRO da Ficha do cliente (camada 1200). Com 1000 ele
+// nascia ATRÁS da ficha e só aparecia quando ela fechava (dono, 27/09). Fica abaixo de
+// avisos e confirmações (2000+), que precisam continuar por cima de tudo.
 export default function ConectarRedesModal({ clienteId, clienteNome, comoNovaConta = false, onClose }: { clienteId: string | null; clienteNome?: string; comoNovaConta?: boolean; onClose: () => void }) {
   function conectar(rede: Rede) {
     if (!rede.ativo) return
@@ -50,7 +53,7 @@ export default function ConectarRedesModal({ clienteId, clienteNome, comoNovaCon
 
   return (
     <div onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1300, padding: 16 }}>
       <div onClick={e => e.stopPropagation()}
         style={{ background: 'var(--v2-surface)', borderRadius: 16, width: '100%', maxWidth: 560, boxShadow: '0 20px 60px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '18px 22px', borderBottom: '1px solid var(--v2-rule)' }}>
