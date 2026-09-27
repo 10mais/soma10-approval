@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   tituloDoPost, descricaoDoPost, tagsDoPost, formatoDaMidia, privacidadeDoPost,
   pendenciasYouTube, corpoDoUpload, linkDoVideo, LIMITE_TITULO, LIMITE_DESCRICAO,
+  conferirFormato, conferirAgendaYouTube, configYouTubeDoCorpo, camposYouTube,
 } from '@/lib/youtubePost'
+import { pendenciasDoPost } from '@/lib/composerPendencias'
 
 const AGORA = new Date('2026-09-27T10:00:00.000-03:00')
 
@@ -98,5 +100,75 @@ describe('YouTube — corpo do upload', () => {
     expect(c.status.privacyStatus).toBe('private')
     expect(c.status.publishAt).toBeTruthy()
     expect(c.status.selfDeclaredMadeForKids).toBe(false)
+    expect(c.snippet.categoryId).toBe('22')
+  })
+
+  it('respeita categoria, público infantil e descrição próprios', () => {
+    const c = corpoDoUpload({ legenda: 'Legenda do IG #insta', youtubeDescricao: 'Descrição do YouTube #yt', youtubeCategoria: '27', youtubeInfantil: true }, AGORA)
+    expect(c.snippet.description).toBe('Descrição do YouTube #yt')
+    expect(c.snippet.tags).toEqual(['yt'])
+    expect(c.snippet.categoryId).toBe('27')
+    expect(c.status.selfDeclaredMadeForKids).toBe(true)
+    expect(corpoDoUpload({ youtubeCategoria: '999' }, AGORA).snippet.categoryId).toBe('22')
+  })
+})
+
+describe('YouTube — visibilidade e data própria', () => {
+  const futuro = '2026-10-05T18:00:00.000-03:00'
+  it('data própria do YouTube vale mais que a do post', () => {
+    const r = privacidadeDoPost({ dataAgendada: '2026-09-27T09:00:00.000-03:00', youtubePublicarEm: futuro }, AGORA)
+    expect(r).toEqual({ privacyStatus: 'private', publishAt: new Date(futuro).toISOString() })
+  })
+  it('não listado e privado sobem assim e ignoram a data (o YouTube só agenda público)', () => {
+    expect(privacidadeDoPost({ youtubeVisibilidade: 'unlisted', youtubePublicarEm: futuro }, AGORA)).toEqual({ privacyStatus: 'unlisted' })
+    expect(privacidadeDoPost({ youtubeVisibilidade: 'private', dataAgendada: futuro }, AGORA)).toEqual({ privacyStatus: 'private' })
+  })
+  it('acusa data própria no passado ou antes do post ir ao ar', () => {
+    expect(conferirAgendaYouTube('2026-09-01T09:00:00.000-03:00', undefined, AGORA)).toBe('yt-agenda-passada')
+    expect(conferirAgendaYouTube('2026-10-01T09:00:00.000-03:00', '2026-10-02T09:00:00.000-03:00', AGORA)).toBe('yt-agenda-antes-do-post')
+    expect(conferirAgendaYouTube(futuro, '2026-10-02T09:00:00.000-03:00', AGORA)).toBeNull()
+    expect(conferirAgendaYouTube(undefined, undefined, AGORA)).toBeNull()
+  })
+})
+
+describe('YouTube — Short marcado × arquivo', () => {
+  it('avisa quando o arquivo contraria a escolha', () => {
+    expect(conferirFormato('short', { url: 'a.mp4', largura: 1920, altura: 1080, duracaoS: 30 })).toBe('short-horizontal')
+    expect(conferirFormato('short', { url: 'a.mp4', largura: 1080, altura: 1920, duracaoS: 400 })).toBe('short-longo')
+    expect(conferirFormato('video', { url: 'a.mp4', largura: 1080, altura: 1920, duracaoS: 30 })).toBe('video-vai-virar-short')
+    expect(conferirFormato('short', { url: 'a.mp4', largura: 1080, altura: 1920, duracaoS: 30 })).toBeNull()
+    expect(conferirFormato('short', null)).toBeNull()
+  })
+})
+
+describe('YouTube — o que a API aceita da tela', () => {
+  it('limpa valores inválidos e só mexe no que veio no corpo', () => {
+    const c = configYouTubeDoCorpo({ youtubeVisibilidade: 'hackeado', youtubeFormato: 'short', youtubeTags: ['#um', '', 'dois'], youtubeCategoria: '27', youtubeInfantil: 'sim', youtubePublicarEm: 'torta' })
+    expect(c.youtubeVisibilidade).toBeUndefined()
+    expect(c.youtubeFormato).toBe('short')
+    expect(c.youtubeTags).toEqual(['um', 'dois'])
+    expect(c.youtubeCategoria).toBe('27')
+    expect(c.youtubeInfantil).toBeUndefined()
+    expect(c.youtubePublicarEm).toBeUndefined()
+    // PUT parcial (arrastar a data no calendário) não apaga a configuração do YouTube
+    expect(configYouTubeDoCorpo({ id: 'x', dataAgendada: '2026-10-01' })).toEqual({})
+  })
+  it('reabrir o post traz as configurações de volta', () => {
+    expect(camposYouTube({ legenda: 'x', youtubeTitulo: 'T', youtubeVisibilidade: 'unlisted', youtubeInfantil: false })).toEqual({ youtubeTitulo: 'T', youtubeVisibilidade: 'unlisted', youtubeInfantil: false })
+  })
+})
+
+describe('Compositor — YouTube não depende de Instagram/Facebook', () => {
+  const base = { clienteId: 'c1', marcoId: 'm1', totalMidias: 1, videosSemCapa: 1, totalVideos: 1 }
+  it('post só de YouTube não exige legenda nem capa', () => {
+    expect(pendenciasDoPost({ ...base, legenda: '', redes: ['youtube'] })).toEqual([])
+  })
+  it('com Instagram marcado, legenda e capa continuam obrigatórias', () => {
+    const p = pendenciasDoPost({ ...base, legenda: '', redes: ['instagram', 'youtube'] }).map(x => x.chave)
+    expect(p).toContain('legenda')
+    expect(p).toContain('capa')
+  })
+  it('data do YouTube inválida bloqueia', () => {
+    expect(pendenciasDoPost({ ...base, redes: ['youtube'], ytAgenda: 'yt-agenda-passada' }).map(x => x.chave)).toEqual(['yt-agenda-passada'])
   })
 })

@@ -14,6 +14,7 @@ import { TEXTOS, t as traduz } from '@/lib/i18n'
 import { useArea, useT, useIdioma } from '@/app/components/Idioma'
 import { localeDe } from '@/lib/i18n'
 import { statusAoSalvarEdicao } from '@/lib/composerPendencias'
+import { camposYouTube } from '@/lib/youtubePost'
 import { PAPEIS_SQUAD } from '@/lib/squadPapeis'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
@@ -1239,6 +1240,7 @@ function Dashboard() {
       capasVideo: (post as any).capasVideo || {},
       redes: (post as any).redes || ['instagram', 'facebook'],
       ...((post as any).contaIds ? { contaIds: (post as any).contaIds } : {}),
+      ...camposYouTube(post), // sem isto, editar o post apagava título/configurações do YouTube
     })
     setComposerKey(k => k + 1)
     setPostPreview(null)
@@ -3576,7 +3578,7 @@ function Dashboard() {
             postsGlobais={posts as any} usuariosEquipe={usuarios.map((u: any) => ({ nome: u.nome, email: u.email }))} meuEmail={(session?.user as any)?.email || ''}
             foco={focoStudio || undefined}
             onAbrirComposer={(pauta: any) => {
-            setComposerPrefill({ clienteId: pauta.clienteId, anexosTarefa: (pauta as any).anexosTarefa || [], legenda: pauta.legenda || '', imagens: pauta.imagens || [], formato: pauta.formato || 'feed', colaboradores: pauta.colaboradores || [], capasVideo: pauta.capasVideo || {}, redes: pauta.redes || ['instagram', 'facebook'] })
+            setComposerPrefill({ clienteId: pauta.clienteId, anexosTarefa: (pauta as any).anexosTarefa || [], legenda: pauta.legenda || '', imagens: pauta.imagens || [], formato: pauta.formato || 'feed', colaboradores: pauta.colaboradores || [], capasVideo: pauta.capasVideo || {}, redes: pauta.redes || ['instagram', 'facebook'], ...camposYouTube(pauta) })
             setEditandoPostId(pauta.id)
             setAba('novo-post')
           }} />

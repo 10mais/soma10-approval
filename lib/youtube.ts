@@ -144,7 +144,8 @@ export async function subirVideoYouTube(
   post: PostYouTube,
   videoUrl: string,
   agora = new Date(),
-): Promise<{ ok: true; videoId: string } | { ok: false; erro: string }> {
+  miniaturaUrl?: string,
+): Promise<{ ok: true; videoId: string; aviso?: string } | { ok: false; erro: string }> {
   if (!youtubeConfigurado()) return { ok: false, erro: 'YouTube não configurado (faltam YOUTUBE_CLIENT_ID e YOUTUBE_CLIENT_SECRET na Vercel).' }
   if (!conta.youtubeRefreshToken) return { ok: false, erro: 'Este perfil não tem canal do YouTube conectado.' }
 
@@ -185,8 +186,36 @@ export async function subirVideoYouTube(
     })
     const res = await envio.json().catch(() => ({} as any))
     if (!envio.ok || !res?.id) return { ok: false, erro: explicaErroGoogle(envio.status, res) }
-    return { ok: true, videoId: res.id }
+
+    // 4) Miniatura (a capa do vídeo). O vídeo JÁ subiu: falha aqui vira aviso, nunca erro —
+    //    senão a nova tentativa subiria o vídeo de novo.
+    const aviso = miniaturaUrl ? await definirMiniatura(token, res.id, miniaturaUrl) : undefined
+    return { ok: true, videoId: res.id, ...(aviso ? { aviso } : {}) }
   } catch (e: any) {
     return { ok: false, erro: e?.message || String(e) }
+  }
+}
+
+/**
+ * Troca a miniatura do vídeo. Devolve um aviso em texto quando não deu (ou nada, se deu).
+ * O YouTube só aceita miniatura personalizada de canal VERIFICADO (por telefone) e até 2 MB.
+ */
+async function definirMiniatura(token: string, videoId: string, url: string): Promise<string | undefined> {
+  try {
+    const img = await fetch(url)
+    if (!img.ok) return `Miniatura não aplicada: não foi possível ler a capa (HTTP ${img.status}).`
+    const bytes = await img.arrayBuffer()
+    if (bytes.byteLength > 2 * 1024 * 1024) return 'Miniatura não aplicada: a capa passa de 2 MB (limite do YouTube).'
+    const r = await fetch(`https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${encodeURIComponent(videoId)}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': img.headers.get('content-type') || 'image/jpeg' },
+      body: bytes,
+    })
+    if (r.ok) return undefined
+    const d = await r.json().catch(() => ({} as any))
+    if (r.status === 403) return 'Miniatura não aplicada: o canal precisa estar verificado no YouTube para usar miniatura personalizada.'
+    return `Miniatura não aplicada — ${explicaErroGoogle(r.status, d)}`
+  } catch (e: any) {
+    return `Miniatura não aplicada: ${e?.message || e}`
   }
 }

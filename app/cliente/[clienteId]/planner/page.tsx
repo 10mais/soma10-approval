@@ -7,6 +7,7 @@ import { apareceNoPlanner } from '@/lib/plannerFiltro'
 import { toast, confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
 import { statusAoSalvarEdicao } from '@/lib/composerPendencias'
+import { camposYouTube } from '@/lib/youtubePost'
 import { useArea } from '@/app/components/Idioma'
 
 // Acompanha o status da publicacao pelo proprio post (resiliente a requisicoes longas:
@@ -149,6 +150,8 @@ export default function PlannerPage() {
       // etapa escolhida aqui se perdia ao salvar).
       marcoId: valor.marcoId || '', subetapaId: valor.subetapaId || '',
       ...(valor.contaIds ? { contaIds: valor.contaIds } : {}),
+      // Configurações do YouTube (só vêm quando a rede está marcada).
+      ...camposYouTube(valor),
     }
     // Salvar NÃO desagenda (dono, 17/09): agendado com data nova continua agendado.
     if (acao === 'agendar' || acao === 'salvar' || acao === 'aprovacao') updates.status = statusAoSalvarEdicao(editPost.status, acao, !!dataISO)
@@ -266,6 +269,7 @@ export default function PlannerPage() {
                 colaboradores: editPost.colaboradores || [],
                 capasVideo: editPost.capasVideo || {},
                 redes: editPost.redes || ['instagram', 'facebook'],
+                ...camposYouTube(editPost),
               } : { clienteId: clienteId as string }}
               onSubmit={editPost ? atualizarPost : criarPost}
               onSalvarRascunho={editPost ? undefined : salvarRascunho}

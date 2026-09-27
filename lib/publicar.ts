@@ -342,27 +342,21 @@ export type ResultadoPublicacao = {
 //     na hora marcada, mesmo que o nosso robô não rode (lib/youtubePost.privacidadeDoPost);
 //   • Short não é outro endpoint: é o mesmo upload, e o vídeo vira Short por ser vertical e
 //     curto. Aqui o formato só serve para montar o link certo de volta.
-export async function publishToYouTube(post: Post, conta?: any): Promise<{ ok: boolean; error?: string; videoId?: string }> {
+//
+// Quem grava o id do vídeo no post é quem chama (processarPublicacaoInterno), junto com a
+// marca de anti-duplicação — gravar aqui e lá corria o risco de uma escrita apagar a outra.
+export async function publishToYouTube(post: Post, conta?: any): Promise<{ ok: boolean; error?: string; videoId?: string; aviso?: string }> {
   const videos = (post.imagens || []).filter(u => isVideo(u))
   if (!videos.length) return { ok: false, error: 'Post sem vídeo: o YouTube só aceita vídeo.' }
   if (videos.length > 1) return { ok: false, error: 'Mais de um vídeo no post: o YouTube publica um vídeo por vez.' }
 
-  const r = await subirVideoYouTube(conta || {}, post as any, videos[0])
+  // Miniatura = a capa do vídeo, a menos que a equipe tenha desligado.
+  const capa = post.youtubeMiniatura === false ? undefined : (post.capasVideo || {})[videos[0]]
+  const r = await subirVideoYouTube(conta || {}, post as any, videos[0], new Date(), capa)
   if (r.ok === false) return { ok: false, error: r.erro }
 
-  // Guarda o id do vídeo para a tela mostrar o link — e para conferir depois, se alguém
-  // duvidar de onde o vídeo foi parar.
-  try {
-    const { redis: rd } = await import('@/lib/redis')
-    const curr = await rd.get<Post>(`post:${post.id}`)
-    if (curr) {
-      const contaId = conta?.id || ID_CONTA_PRINCIPAL
-      await rd.set(`post:${post.id}`, { ...curr, youtubeVideoIds: { ...(curr.youtubeVideoIds || {}), [contaId]: r.videoId } })
-    }
-  } catch { /* o vídeo já subiu: não é hora de falhar por causa do registro */ }
-
-  console.log('[youtube] publicado', r.videoId, linkDoVideo(r.videoId, formatoDaMidia({ url: videos[0] })))
-  return { ok: true, videoId: r.videoId }
+  console.log('[youtube] publicado', r.videoId, linkDoVideo(r.videoId, post.youtubeFormato || formatoDaMidia({ url: videos[0] })))
+  return { ok: true, videoId: r.videoId, ...(r.aviso ? { aviso: r.aviso } : {}) }
 }
 
 export async function processarPublicacao(post: Post, cliente?: any): Promise<ResultadoPublicacao> {
@@ -406,11 +400,19 @@ async function processarPublicacaoInterno(post: Post, cliente?: any): Promise<Re
     }
   }
 
+  // YouTube pedido e nenhum perfil de destino tem canal conectado. Só o YouTube é conferido
+  // assim: ele é sempre escolha explícita, enquanto Instagram + Facebook vêm marcados por
+  // padrão em todo post antigo (cliente só com Instagram geraria aviso em todo post).
+  const youtubeSemCanal = redesPedidas.includes('youtube') && !jaPublicadas.some(k => k.endsWith(':youtube'))
+    && !contas.some(c => redesDaConta(c).includes('youtube'))
+
   if (!contas.length || (!alvos.length && !jaPublicadas.length)) {
     const agora = new Date().toISOString()
     const motivo = !contas.length
       ? 'Nenhum perfil de destino: o post aponta para perfis que não existem mais neste cliente.'
-      : 'Nenhum perfil conectado para publicar. Conecte o Instagram ou a Página do Facebook.'
+      : redesPedidas.length === 1 && redesPedidas[0] === 'youtube'
+        ? 'Nenhum canal do YouTube conectado neste cliente. Conecte o canal em Conectar redes.'
+        : `Nenhum perfil conectado para publicar em ${redesPedidas.map(nomeDaRede).join(', ')}. Conecte as redes do cliente.`
     return { ok: false, redesOk: '', motivo, campos: { status: 'falha_publicacao', erroPublicacao: motivo, atualizadoEm: agora } }
   }
 
@@ -427,55 +429,83 @@ async function processarPublicacaoInterno(post: Post, cliente?: any): Promise<Re
   }
 
   const novasOk: string[] = [...jaPublicadas]
+  const videoIds: Record<string, string> = { ...(post.youtubeVideoIds || {}) }
   const rotulo = (conta: { id: string; nome: string }, rede: string) =>
     contas.length > 1 ? `${nomeDaRede(rede)} de ${conta.nome}` : nomeDaRede(rede)
 
-  // Publica CADA PAR (perfil, rede) SEPARADAMENTE e salva redesPublicadas
-  // IMEDIATAMENTE: em caso de crash/timeout, o que já saiu não sai de novo.
-  // A conta é passada no lugar do cliente — os campos que publishToX lê têm
-  // os mesmos nomes na ContaSocial.
-  for (const { conta, rede } of alvos) {
-    const r = rede === 'instagram' ? await publishToInstagram(post, conta)
-      : rede === 'youtube' ? await publishToYouTube(post, conta)
-      : await publishToFacebook(post, conta)
-    if (!r.ok) {
-      const agora = new Date().toISOString()
-      const erro = `${rotulo(conta, rede)} — ${(r as any).error}`
-      return { ok: false, redesOk: resumoPublicado(novasOk, contas), motivo: erro,
-        campos: { status: 'falha_publicacao', erroPublicacao: erro, redesPublicadas: novasOk, atualizadoEm: agora } }
-    }
-    novasOk.push(chavePublicacao(conta.id, rede))
-    const { redis: rd } = await import('@/lib/redis')
-    const curr = await rd.get<Post>(`post:${post.id}`)
-    if (curr) await rd.set(`post:${post.id}`, { ...curr, redesPublicadas: novasOk })
+  // REDES INDEPENDENTES (dono, 27/09: "quando publicar, não dependa do facebook ou
+  // instagram, pois são independentes"). Antes, o primeiro erro encerrava tudo: Instagram
+  // fora do ar = vídeo que nem tentava subir no YouTube. Agora:
+  //   • cada par (perfil, rede) roda até o fim, mesmo que outro tenha falhado;
+  //   • Meta e YouTube andam em FILAS PARALELAS — um upload grande no YouTube não come o
+  //     tempo da função que o Reel do Instagram precisa (e vice-versa). Dentro da fila da
+  //     Meta a ordem continua sequencial, como sempre foi (limite de uso da Graph API).
+  // Cada sucesso é gravado NA HORA (anti-duplicação): se a função cair no meio, o que já saiu
+  // não sai de novo, e a nova tentativa refaz só o que falhou. As gravações passam por uma
+  // fila única para que as duas filas não sobrescrevam uma à outra.
+  const erros: string[] = []
+  const avisos: string[] = []
+  let gravacao: Promise<void> = Promise.resolve()
+  const registrar = (conta: { id: string }, rede: string, videoId?: string) => {
+    gravacao = gravacao.then(async () => {
+      novasOk.push(chavePublicacao(conta.id, rede))
+      if (videoId) videoIds[conta.id || ID_CONTA_PRINCIPAL] = videoId
+      const curr = await redis.get<Post>(`post:${post.id}`)
+      if (curr) await redis.set(`post:${post.id}`, { ...curr, redesPublicadas: novasOk, ...(Object.keys(videoIds).length ? { youtubeVideoIds: videoIds } : {}) })
+    }).catch(() => { /* já publicou; o registro final (campos) grava de novo */ })
+    return gravacao
   }
 
+  // A conta é passada no lugar do cliente — os campos que publishToX lê têm os mesmos
+  // nomes na ContaSocial.
+  const rodarFila = async (fila: typeof alvos) => {
+    for (const { conta, rede } of fila) {
+      let r: { ok: boolean; error?: string; videoId?: string; aviso?: string }
+      try {
+        r = rede === 'instagram' ? await publishToInstagram(post, conta)
+          : rede === 'youtube' ? await publishToYouTube(post, conta)
+          : await publishToFacebook(post, conta)
+      } catch (e: any) {
+        r = { ok: false, error: e?.message || String(e) }
+      }
+      if (!r.ok) { erros.push(`${rotulo(conta, rede)} — ${r.error || 'erro desconhecido'}`); continue }
+      if (r.aviso) avisos.push(`${rotulo(conta, rede)}: ${r.aviso}`)
+      await registrar(conta, rede, r.videoId)
+    }
+  }
+  await Promise.all([
+    rodarFila(alvos.filter(a => a.rede !== 'youtube')),
+    rodarFila(alvos.filter(a => a.rede === 'youtube')),
+  ])
+  await gravacao
+
   const agora = new Date().toISOString()
+  const idsVideo = Object.keys(videoIds).length ? { youtubeVideoIds: videoIds } : {}
 
-  const todasOk = alvos.every(a => jaPublicou(novasOk, a.conta.id, a.rede))
+  // Perfil escolhido que estava desconectado na hora H: o post saiu nos outros, e isso
+  // PRECISA ficar registrado. Publicado com ressalva é diferente de publicado.
+  if (semConexao.length) avisos.push(`${semConexao.length} perfil(is) ficaram de fora por não estarem conectados: ${semConexao.map(c => c.nome).join(', ')}.`)
+  if (youtubeSemCanal) avisos.push('YouTube ficou de fora: nenhum canal conectado neste cliente.')
 
-  if (todasOk) {
+  if (!erros.length) {
     const limpeza = await limparMidiasMantendoCapa(post)
-    // Perfil escolhido que estava desconectado na hora H: o post saiu nos
-    // outros, e isso PRECISA ficar registrado. Publicado com ressalva é
-    // diferente de publicado — sem esta linha, ninguém descobre que faltou um.
-    const aviso = semConexao.length
-      ? `Publicado, mas ${semConexao.length} perfil(is) ficaram de fora por não estarem conectados: ${semConexao.map(c => c.nome).join(', ')}.`
-      : undefined
     return {
       ok: true, redesOk: resumoPublicado(novasOk, contas), motivo: '',
-      campos: { status: 'publicado', erroPublicacao: aviso, redesPublicadas: novasOk,
+      campos: { status: 'publicado', erroPublicacao: avisos.length ? `Publicado, com ressalvas: ${avisos.join(' ')}` : undefined, redesPublicadas: novasOk,
+        ...idsVideo,
         ...(limpeza.removidas ? { midiaRemovida: true } : {}),
         ...(limpeza.thumbnail ? { thumbnail: limpeza.thumbnail } : {}),
         atualizadoEm: agora },
     }
   }
 
-  // Se chegou aqui, nao houve erro (os returns de erro estao dentro de cada bloco acima)
-  // Este trecho so e alcancado se nenhuma rede falhou — redundante com o todasOk abaixo, mas seguro
+  // Alguma rede falhou. O que saiu fica marcado (não sai de novo); a mídia NÃO é limpa,
+  // porque a nova tentativa precisa dela para a rede que faltou.
+  const saiuAgora = novasOk.length > jaPublicadas.length
+  const motivo = `${saiuAgora ? `Publicado em ${resumoPublicado(novasOk, contas)}. ` : ''}Falhou: ${erros.join(' | ')}${avisos.length ? ` (${avisos.join(' ')})` : ''}`
   return {
-    ok: false, redesOk: resumoPublicado(novasOk, contas), motivo: 'erro desconhecido',
-    campos: { status: 'falha_publicacao', erroPublicacao: 'erro desconhecido', redesPublicadas: novasOk, atualizadoEm: agora },
+    ok: false, redesOk: resumoPublicado(novasOk, contas), motivo,
+    campos: { status: 'falha_publicacao', erroPublicacao: motivo, redesPublicadas: novasOk, ...idsVideo, atualizadoEm: agora },
   }
 }
 

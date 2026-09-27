@@ -8,6 +8,7 @@ import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
 import { clienteSuspenso } from '@/lib/suspensao'
 import { clientesAtivosIds } from '@/lib/cache'
+import { configYouTubeDoCorpo } from '@/lib/youtubePost'
 
 function gerarCodigo() {
   return Math.floor(100000 + Math.random() * 900000).toString()
@@ -120,7 +121,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
   }
 
-  const { youtubeTitulo, clienteId, clienteNome, marcoId, subetapaId, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradores, capasVideo, redes, contaIds, statusInicial, planoId, etapa, briefing, headline, sugestaoImagem, textoImagem, sugestaoLegenda } = await req.json()
+  const corpo = await req.json()
+  const { clienteId, clienteNome, marcoId, subetapaId, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradores, capasVideo, redes, contaIds, statusInicial, planoId, etapa, briefing, headline, sugestaoImagem, textoImagem, sugestaoLegenda } = corpo
   const redesLimpas: ('instagram' | 'facebook' | 'youtube')[] = Array.isArray(redes)
     ? redes.filter((r: string): r is 'instagram' | 'facebook' | 'youtube' => r === 'instagram' || r === 'facebook' || r === 'youtube')
     : ['instagram', 'facebook']
@@ -152,7 +154,9 @@ export async function POST(req: NextRequest) {
     ...(colaboradoresLimpos.length ? { colaboradores: colaboradoresLimpos } : {}),
     ...(capasVideo && typeof capasVideo === 'object' && Object.keys(capasVideo).length ? { capasVideo } : {}),
     redes: redesLimpas.length ? redesLimpas : ['instagram', 'facebook'],
-    ...(typeof youtubeTitulo === 'string' && youtubeTitulo.trim() ? { youtubeTitulo: youtubeTitulo.trim().slice(0, 100) } : {}),
+    // Configurações do YouTube (título, descrição, Short/vídeo, visibilidade, data própria...),
+    // já limpas. Só grava o que tem valor.
+    ...Object.fromEntries(Object.entries(configYouTubeDoCorpo(corpo)).filter(([, v]) => v !== undefined)),
     ...(contaIdsLimpos.length ? { contaIds: contaIdsLimpos } : {}),
     ...(planoId ? { planoId } : {}),
     ...(etapa ? { etapa } : {}),
@@ -202,7 +206,8 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true, post: restaurado })
   }
 
-  const atualizado = { ...post, ...updates, atualizadoEm: new Date().toISOString() }
+  // Campos do YouTube passam pelo saneador (valor inválido/vazio = volta ao padrão).
+  const atualizado = { ...post, ...updates, ...configYouTubeDoCorpo(updates), atualizadoEm: new Date().toISOString() }
   // SLA de aprovação: marca quando entra numa etapa de aprovação; limpa ao sair
   const ETAPAS_APROVACAO = ['aprovacao_copy', 'aprovacao_criativo']
   if ('etapa' in updates && updates.etapa !== post.etapa) {

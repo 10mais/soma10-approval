@@ -20,9 +20,11 @@ describe('o que falta para o post sair — a tela diz, não só apaga o botão',
   })
 
   it('lista várias pendências em frase, e em inglês também', () => {
-    const p = pendenciasDoPost({ ...completo, marcoId: '', legenda: ' ', redes: [] })
-    expect(frase(p, 'pend.prefixo-agendar')).toBe('Para agendar: escolher a etapa do Plano de entregas, escrever a legenda e marcar Instagram ou Facebook.')
-    expect(frase(p, 'pend.prefixo-agendar', 'en')).toBe('To schedule: choose the delivery plan stage, write the caption and select Instagram or Facebook.')
+    const p = pendenciasDoPost({ ...completo, marcoId: '', legenda: ' ', totalMidias: 0 })
+    expect(frase(p, 'pend.prefixo-agendar')).toBe('Para agendar: escolher a etapa do Plano de entregas, adicionar ao menos uma mídia e escrever a legenda.')
+    expect(frase(p, 'pend.prefixo-agendar', 'en')).toBe('To schedule: choose the delivery plan stage, add at least one media file and write the caption.')
+    // Nenhuma rede marcada: a legenda (exigência do Instagram/Facebook) sai da lista.
+    expect(frase(pendenciasDoPost({ ...completo, legenda: ' ', redes: [] }), 'pend.prefixo-agendar')).toBe('Para agendar: marcar ao menos uma rede.')
   })
 
   it('story não pede legenda nem capa; cliente com vários perfis pede o perfil', () => {
@@ -35,7 +37,7 @@ describe('o que falta para o post sair — a tela diz, não só apaga o botão',
   })
 
   it('toda pendência tem texto no dicionário', () => {
-    const chaves = ['cliente', 'etapa', 'perfil', 'midia', 'legenda', 'rede', 'capa', 'capa-varias', 'upload']
+    const chaves = ['cliente', 'etapa', 'perfil', 'midia', 'legenda', 'rede', 'capa', 'capa-varias', 'upload', 'yt-sem-video', 'yt-varios-videos', 'yt-agenda-passada', 'yt-agenda-antes-do-post']
     for (const c of chaves) {
       expect(t(`pend.${c}`)).not.toBe(`pend.${c}`)
       expect(t(`pend.${c}`, 'en')).not.toBe(`pend.${c}`)

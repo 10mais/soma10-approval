@@ -2,7 +2,7 @@
 import { anexosParaCriativo } from '@/lib/producaoVinculo'
 import { opcoesEtapas, separarValor, juntarValor, opcaoDoValorAtual, type MarcoOpcao } from '@/lib/etapaPlaybook'
 import { pendenciasDoPost, pendenciasDaAcao, frasePendencias, minimoDatetimeLocal } from '@/lib/composerPendencias'
-import { tituloDoPost } from '@/lib/youtubePost'
+import { tituloDoPost, conferirFormato, conferirAgendaYouTube, formatoDaMidia, CATEGORIAS_YOUTUBE, CATEGORIA_PADRAO, LIMITE_DESCRICAO, type FormatoYouTube, type VisibilidadeYouTube, type MidiaVideo } from '@/lib/youtubePost'
 import { useT } from '@/app/components/Idioma'
 import { useRef, useState, useEffect } from 'react'
 import { upload } from '@vercel/blob/client'
@@ -31,6 +31,15 @@ export type ComposerValue = {
   redes: ('instagram' | 'facebook' | 'youtube')[]
   // YouTube: título próprio (lá o título é o que aparece na busca). Vazio = headline da pauta.
   youtubeTitulo?: string
+  // Demais configurações do YouTube (lib/youtubePost). Vazio = padrão.
+  youtubeDescricao?: string
+  youtubeTags?: string[]
+  youtubeFormato?: FormatoYouTube
+  youtubeVisibilidade?: VisibilidadeYouTube
+  youtubePublicarEm?: string // ISO; a tela converte para datetime-local e de volta
+  youtubeCategoria?: string
+  youtubeInfantil?: boolean
+  youtubeMiniatura?: boolean
   contaIds?: string[] // perfis de destino (cliente com mais de um). Vazio = principal.
   acao?: 'publicar' | 'agendar' | 'rascunho' | 'salvar' | 'aprovacao'
 }
@@ -133,6 +142,22 @@ export default function PostComposer({
   }
   const [redes, setRedes] = useState<('instagram' | 'facebook' | 'youtube')[]>(valorInicial?.redes || ['instagram', 'facebook'])
   const [youtubeTitulo, setYoutubeTitulo] = useState(valorInicial?.youtubeTitulo || '')
+  const [ytDescricao, setYtDescricao] = useState(valorInicial?.youtubeDescricao || '')
+  const [ytTags, setYtTags] = useState((valorInicial?.youtubeTags || []).join(', '))
+  const [ytFormato, setYtFormato] = useState<FormatoYouTube>(valorInicial?.youtubeFormato || 'video')
+  const [ytVisibilidade, setYtVisibilidade] = useState<VisibilidadeYouTube>(valorInicial?.youtubeVisibilidade || 'public')
+  const [ytDataPropria, setYtDataPropria] = useState(!!valorInicial?.youtubePublicarEm)
+  // O post guarda ISO; o campo da tela é datetime-local (fuso de quem usa).
+  const [ytPublicarEm, setYtPublicarEm] = useState(() => {
+    const d = valorInicial?.youtubePublicarEm ? new Date(valorInicial.youtubePublicarEm) : null
+    return d && !isNaN(d.getTime()) ? minimoDatetimeLocal(d) : ''
+  })
+  const [ytCategoria, setYtCategoria] = useState(valorInicial?.youtubeCategoria || CATEGORIA_PADRAO)
+  const [ytInfantil, setYtInfantil] = useState(!!valorInicial?.youtubeInfantil)
+  const [ytMiniatura, setYtMiniatura] = useState(valorInicial?.youtubeMiniatura !== false)
+  // Medidas do vídeo (duração e orientação), lidas do próprio arquivo no navegador, para
+  // conferir se o que foi marcado (Short/Vídeo) é o que o YouTube vai fazer.
+  const [ytMedida, setYtMedida] = useState<MidiaVideo | null>(null)
   const [modoAgendar, setModoAgendar] = useState(false)
 
   function alternarRede(rede: 'instagram' | 'facebook' | 'youtube') {
@@ -352,15 +377,64 @@ export default function PostComposer({
   // Story no IG nao usa legenda, capa nem collab — o backend ja ignora (lib/publicar.ts).
   const ehStory = formato === 'story'
 
+  // Redes independentes (dono, 27/09): o que é do Instagram/Facebook (formato Feed/Reel/Story,
+  // collab, capa e legenda obrigatórias) só aparece e só trava quando uma delas está marcada.
+  const temMeta = redes.includes('instagram') || redes.includes('facebook')
+  const temYouTube = redes.includes('youtube')
+  const soYouTube = temYouTube && !temMeta
+  const clienteSemCanal = temYouTube && !!clienteAtual && !(clienteAtual.contas || []).some(c => c.temYoutube)
+
+  // Lê duração e orientação do (primeiro) vídeo direto no navegador — só os metadados, sem
+  // baixar o arquivo inteiro.
+  const urlVideo = midias.find(m => m.tipo === 'video')?.url || ''
+  useEffect(() => {
+    setYtMedida(null)
+    if (!urlVideo || !temYouTube) return
+    const v = document.createElement('video')
+    v.preload = 'metadata'
+    v.muted = true
+    const ok = () => setYtMedida({ url: urlVideo, duracaoS: isFinite(v.duration) ? v.duration : undefined, largura: v.videoWidth || undefined, altura: v.videoHeight || undefined })
+    v.addEventListener('loadedmetadata', ok)
+    v.src = urlVideo
+    return () => { v.removeEventListener('loadedmetadata', ok); v.removeAttribute('src'); v.load() }
+  }, [urlVideo, temYouTube])
+  // Vídeo novo com cara de Short e ninguém escolheu ainda: já marca Short.
+  const [ytFormatoTocado, setYtFormatoTocado] = useState(!!valorInicial?.youtubeFormato)
+  useEffect(() => {
+    if (!ytFormatoTocado && ytMedida) setYtFormato(formatoDaMidia(ytMedida))
+  }, [ytMedida, ytFormatoTocado])
+  const avisoFormatoYt = conferirFormato(ytFormato, ytMedida)
+  const ytPublicarEmEfetivo = ytDataPropria && ytVisibilidade === 'public' ? ytPublicarEm : ''
+  const avisoAgendaYt = temYouTube && ytPublicarEmEfetivo ? conferirAgendaYouTube(ytPublicarEmEfetivo, dataAgendada || undefined) : null
+
+  // Configuração do YouTube que vai junto com o post. Sem YouTube marcado, não manda nada
+  // (a configuração salva continua no post, caso a rede volte a ser marcada depois).
+  function configYouTube(): Partial<ComposerValue> {
+    if (!temYouTube) return {}
+    return {
+      youtubeTitulo: youtubeTitulo.trim(),
+      youtubeDescricao: ytDescricao.trim(),
+      youtubeTags: ytTags.split(',').map(t => t.trim().replace(/^#/, '')).filter(Boolean),
+      youtubeFormato: ytFormato,
+      youtubeVisibilidade: ytVisibilidade,
+      // Vai em ISO (absoluto): o servidor roda em outro fuso. Vazio = "junto com o post".
+      youtubePublicarEm: ytPublicarEmEfetivo ? new Date(ytPublicarEmEfetivo).toISOString() : '',
+      youtubeCategoria: ytCategoria,
+      youtubeInfantil: ytInfantil,
+      youtubeMiniatura: ytMiniatura,
+    }
+  }
+
   // Reporta o estado atual a cada mudança (ver prop `aoMudar`).
   useEffect(() => {
-    aoMudar?.({ clienteId, marcoId, subetapaId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, ...(multiPerfil ? { contaIds } : {}) })
+    aoMudar?.({ clienteId, marcoId, subetapaId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, ...configYouTube(), ...(multiPerfil ? { contaIds } : {}) })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clienteId, marcoId, subetapaId, legenda, midias, dataAgendada, formato, colaboradores, redes, contaIds, multiPerfil])
+  }, [clienteId, marcoId, subetapaId, legenda, midias, dataAgendada, formato, colaboradores, redes, contaIds, multiPerfil, youtubeTitulo, ytDescricao, ytTags, ytFormato, ytVisibilidade, ytDataPropria, ytPublicarEm, ytCategoria, ytInfantil, ytMiniatura])
 
   async function submeter(acao: ComposerValue['acao']) {
-    // Capa é obrigatória para vídeos ao publicar ou agendar (rascunho pode salvar sem)
-    if ((acao === 'publicar' || acao === 'agendar') && !ehStory && videosSemCapa > 0) {
+    // Capa é obrigatória para vídeos ao publicar ou agendar (rascunho pode salvar sem) —
+    // exigência do Instagram/Facebook; post só de YouTube não precisa.
+    if ((acao === 'publicar' || acao === 'agendar') && temMeta && !ehStory && videosSemCapa > 0) {
       setErroUpload(`Defina uma capa para ${videosSemCapa > 1 ? 'cada vídeo' : 'o vídeo'} (botão "Frame" ou "Capa") antes de publicar ou agendar.`)
       return
     }
@@ -381,7 +455,7 @@ export default function PostComposer({
         if (!ok) return
       }
     }
-    onSubmit({ clienteId, marcoId, subetapaId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, ...(redes.includes('youtube') ? { youtubeTitulo: youtubeTitulo.trim() } : {}), ...(multiPerfil ? { contaIds } : {}), acao })
+    onSubmit({ clienteId, marcoId, subetapaId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, ...configYouTube(), ...(multiPerfil ? { contaIds } : {}), acao })
   }
 
   const enviandoArquivo = emEnvio.length > 0
@@ -389,7 +463,7 @@ export default function PostComposer({
   // O que falta, ESCRITO (lib/composerPendencias): botão apagado sem motivo foi o que travou a
   // troca de data de um post agendado antes de a etapa do Playbook virar obrigatória (17/09).
   const totalVideos = midias.filter(m => m.tipo === 'video').length
-  const pendencias = pendenciasDoPost({ clienteId, marcoId, multiPerfil, contaIds, ehStory, legenda, totalMidias: midias.length, redes, videosSemCapa, enviandoArquivo, totalVideos })
+  const pendencias = pendenciasDoPost({ clienteId, marcoId, multiPerfil, contaIds, ehStory, legenda, totalMidias: midias.length, redes, videosSemCapa, enviandoArquivo, totalVideos, ytAgenda: avisoAgendaYt })
   const faltaEtapa = pendencias.some(p => p.chave === 'etapa')
   // Cada botão com a SUA regra: editar a data de um post que já existe não trava pela etapa.
   const acaoPrincipal = dataAgendada ? 'agendar' as const : 'publicar' as const
@@ -448,7 +522,7 @@ export default function PostComposer({
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {contas.map(conta => {
                 const ativo = contaIds.includes(conta.id)
-                const redesConta = [conta.temInstagram ? 'IG' : null, conta.temFacebook ? 'FB' : null].filter(Boolean).join(' · ')
+                const redesConta = [conta.temInstagram ? 'IG' : null, conta.temFacebook ? 'FB' : null, conta.temYoutube ? 'YT' : null].filter(Boolean).join(' · ')
                 return (
                   <button key={conta.id} type="button" onClick={() => alternarConta(conta.id)}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 13px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
@@ -508,20 +582,127 @@ export default function PostComposer({
           {redes.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--v2-hot)' }}>{tr('composer.redes-vazio')}</p>}
         </div>
 
-        {/* YOUTUBE — título próprio. Lá o título é o que aparece na busca; a legenda vira a
-            descrição. O agendamento é do próprio YouTube (sobe privado com publishAt). */}
-        {redes.includes('youtube') && (
-          <div>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('composer.youtube-titulo')}</label>
-            <input value={youtubeTitulo} onChange={e => setYoutubeTitulo(e.target.value.slice(0, 100))}
-              placeholder={tituloDoPost({ legenda, clienteNome: clientes.find(c => c.id === clienteId)?.nome })}
-              style={{ width: '100%', boxSizing: 'border-box', padding: '11px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit', background: 'var(--v2-surface)', color: 'var(--v2-ink)' }} />
-            <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>
-              {tr('composer.youtube-titulo-ajuda')} {youtubeTitulo.length > 0 && <span style={{ fontWeight: 700 }}>{youtubeTitulo.length}/100</span>}
-            </p>
-            {dataAgendada && <p style={{ margin: '4px 0 0', fontSize: 11.5, color: 'var(--v2-ok)' }}>{tr('composer.youtube-agenda')}</p>}
-          </div>
-        )}
+        {/* YOUTUBE — configurações próprias (dono, 27/09). Título é o que aparece na busca;
+            descrição própria ou a legenda; Short × vídeo; visibilidade; data própria (o
+            YouTube agenda sozinho, sobe privado com publishAt); categoria; público infantil. */}
+        {temYouTube && (() => {
+          const rotulo: React.CSSProperties = { display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }
+          const campo: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '11px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit', background: 'var(--v2-surface)', color: 'var(--v2-ink)' }
+          const ajuda: React.CSSProperties = { margin: '6px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)', lineHeight: 1.45 }
+          const pilula = (ativo: boolean): React.CSSProperties => ({
+            padding: '8px 16px', borderRadius: 999, border: '1.5px solid', cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: 'inherit',
+            borderColor: ativo ? 'var(--v2-ink)' : 'var(--v2-rule)', background: ativo ? 'var(--v2-ink)' : 'var(--v2-surface)', color: ativo ? 'var(--v2-amber-on)' : 'var(--v2-ink3)',
+          })
+          const aviso: React.CSSProperties = { margin: '8px 0 0', fontSize: 12, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', borderRadius: 8, padding: '8px 12px', lineHeight: 1.45 }
+          return (
+            <div style={{ border: '1.5px solid var(--v2-rule)', borderRadius: 12, padding: 14, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#ff0000', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" /></svg>
+                </span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)' }}>{tr('composer.yt-bloco')}</span>
+              </div>
+              {clienteSemCanal && <p style={{ ...aviso, margin: 0 }}>{tr('composer.yt-sem-canal')}</p>}
+
+              {/* Tipo: Vídeo ou Short */}
+              <div>
+                <label style={rotulo}>{tr('composer.yt-tipo')}</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {(['video', 'short'] as const).map(f => (
+                    <button key={f} type="button" onClick={() => { setYtFormato(f); setYtFormatoTocado(true) }} style={pilula(ytFormato === f)}>
+                      {tr(f === 'short' ? 'composer.yt-short' : 'composer.yt-video')}
+                    </button>
+                  ))}
+                </div>
+                <p style={ajuda}>{tr('composer.yt-tipo-ajuda')}</p>
+                {avisoFormatoYt && <p style={aviso}>{tr(avisoFormatoYt === 'short-horizontal' ? 'composer.yt-aviso-short-horizontal' : avisoFormatoYt === 'short-longo' ? 'composer.yt-aviso-short-longo' : 'composer.yt-aviso-video-vira-short')}</p>}
+              </div>
+
+              {/* Título */}
+              <div>
+                <label style={rotulo}>{tr('composer.youtube-titulo')}</label>
+                <input value={youtubeTitulo} onChange={e => setYoutubeTitulo(e.target.value.slice(0, 100))}
+                  placeholder={tituloDoPost({ legenda: ytDescricao || legenda, clienteNome: clienteAtual?.nome })} style={campo} />
+                <p style={ajuda}>
+                  {tr('composer.youtube-titulo-ajuda')} {youtubeTitulo.length > 0 && <span style={{ fontWeight: 700 }}>{youtubeTitulo.length}/100</span>}
+                </p>
+              </div>
+
+              {/* Descrição */}
+              <div>
+                <label style={rotulo}>{tr('composer.yt-descricao')}</label>
+                <textarea lang="pt-BR" value={ytDescricao} onChange={e => setYtDescricao(e.target.value.slice(0, LIMITE_DESCRICAO))}
+                  placeholder={soYouTube ? tr('composer.yt-descricao-placeholder') : (legenda || tr('composer.yt-descricao-placeholder'))}
+                  style={{ ...campo, minHeight: 110, resize: 'vertical' }} />
+                <p style={ajuda}>
+                  {tr('composer.yt-descricao-ajuda')} {ytDescricao.length > 0 && <span style={{ fontWeight: 700 }}>{ytDescricao.length}/{LIMITE_DESCRICAO}</span>}
+                </p>
+              </div>
+
+              {/* Tags */}
+              <div>
+                <label style={rotulo}>{tr('composer.yt-tags')}</label>
+                <input value={ytTags} onChange={e => setYtTags(e.target.value)} placeholder="marketing, clínica, antes e depois" style={campo} />
+                <p style={ajuda}>{tr('composer.yt-tags-ajuda')}</p>
+              </div>
+
+              {/* Visibilidade */}
+              <div>
+                <label style={rotulo}>{tr('composer.yt-visibilidade')}</label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {([['public', 'composer.yt-publico'], ['unlisted', 'composer.yt-nao-listado'], ['private', 'composer.yt-privado']] as const).map(([v, k]) => (
+                    <button key={v} type="button" onClick={() => setYtVisibilidade(v)} style={pilula(ytVisibilidade === v)}>{tr(k)}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Programação */}
+              <div>
+                <label style={rotulo}>{tr('composer.yt-programacao')}</label>
+                {ytVisibilidade !== 'public' ? (
+                  <p style={{ ...ajuda, margin: 0 }}>{tr('composer.yt-sem-agenda')}</p>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button type="button" onClick={() => setYtDataPropria(false)} style={pilula(!ytDataPropria)}>{tr('composer.yt-junto')}</button>
+                      <button type="button" onClick={() => setYtDataPropria(true)} style={pilula(ytDataPropria)}>{tr('composer.yt-data-propria')}</button>
+                    </div>
+                    {ytDataPropria && (
+                      <input type="datetime-local" value={ytPublicarEm} onChange={e => setYtPublicarEm(e.target.value)} min={minimoDatetimeLocal()}
+                        style={{ ...campo, marginTop: 8, borderColor: avisoAgendaYt ? '#ea580c' : 'var(--v2-rule)' }} />
+                    )}
+                    <p style={ajuda}>{tr(ytDataPropria ? 'composer.yt-programacao-ajuda' : 'composer.youtube-agenda')}</p>
+                    {avisoAgendaYt && <p style={{ ...ajuda, color: '#ea580c', fontWeight: 600 }}>{tr(`pend.${avisoAgendaYt}`)}</p>}
+                  </>
+                )}
+              </div>
+
+              {/* Categoria */}
+              <div>
+                <label style={rotulo}>{tr('composer.yt-categoria')}</label>
+                <select value={ytCategoria} onChange={e => setYtCategoria(e.target.value)} style={campo}>
+                  {CATEGORIAS_YOUTUBE.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+              </div>
+
+              {/* Público infantil + miniatura */}
+              <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer' }}>
+                <input type="checkbox" checked={ytInfantil} onChange={e => setYtInfantil(e.target.checked)} style={{ marginTop: 3 }} />
+                <span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--v2-ink)' }}>{tr('composer.yt-infantil')}</span>
+                  <span style={{ display: 'block', ...ajuda, margin: '2px 0 0' }}>{tr('composer.yt-infantil-ajuda')}</span>
+                </span>
+              </label>
+              <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer' }}>
+                <input type="checkbox" checked={ytMiniatura} onChange={e => setYtMiniatura(e.target.checked)} style={{ marginTop: 3 }} />
+                <span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--v2-ink)' }}>{tr('composer.yt-miniatura')}</span>
+                  <span style={{ display: 'block', ...ajuda, margin: '2px 0 0' }}>{tr('composer.yt-miniatura-ajuda')}</span>
+                </span>
+              </label>
+            </div>
+          )
+        })()}
 
         {/* Upload de mídia */}
         <div>
@@ -656,21 +837,26 @@ export default function PostComposer({
               ))}
             </div>
           )}
-          {!ehStory && videosSemCapa > 0 && (
+          {temMeta && !ehStory && videosSemCapa > 0 && (
             <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--v2-amber)', background: 'var(--v2-amber-bg)', border: '1px solid var(--v2-amber-bg)', borderRadius: 8, padding: '8px 12px' }}>
               {videosSemCapa > 1 ? `${videosSemCapa} ${tr('composer.videos-varios')}` : tr('composer.video-um')} {tr('composer.video-sem-capa')}
             </p>
           )}
         </div>
 
+        {/* Legenda, formato e collab são do Instagram/Facebook. Post só de YouTube usa a
+            descrição do bloco do YouTube e não vê nada disto. */}
+        {temMeta && (
         <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('composer.legenda')}{ehStory && <span style={{ fontWeight: 400, color: 'var(--v2-ink3)', marginLeft: 6 }}>{tr('composer.legenda-story')}</span>}</label>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('composer.legenda')}{temYouTube && <span style={{ fontWeight: 400, color: 'var(--v2-ink3)', marginLeft: 6 }}>· {tr('composer.meta-bloco')}</span>}{ehStory && <span style={{ fontWeight: 400, color: 'var(--v2-ink3)', marginLeft: 6 }}>{tr('composer.legenda-story')}</span>}</label>
           <textarea lang="pt-BR" value={legenda} onChange={e => setLegenda(e.target.value)}
             placeholder={tr('composer.legenda-placeholder')}
             style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, minHeight: 130, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
         </div>
+        )}
 
         {/* Formato */}
+        {temMeta && (
         <div>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('composer.formato')}</label>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -686,9 +872,10 @@ export default function PostComposer({
             ))}
           </div>
         </div>
+        )}
 
         {/* Colaboração (collab) — não se aplica a Story (o IG não suporta collab em Stories) */}
-        {!ehStory && (
+        {temMeta && !ehStory && (
         <div>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>
             {tr('composer.colab')}
@@ -816,14 +1003,16 @@ export default function PostComposer({
               <AvatarCliente logo={cliente?.logo} nome={cliente?.nome} />
             </div>
             <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--v2-ink)' }}>
-              {cliente ? cliente.instagram.replace(/^@/, '') : 'seu_cliente'}
-              {colaboradores.length > 0 && (
+              {soYouTube
+                ? (contas.find(c => c.temYoutube)?.youtubeChannelTitle || cliente?.nome || 'Canal')
+                : (cliente ? (cliente.instagram || cliente.nome || '').replace(/^@/, '') : 'seu_cliente')}
+              {!soYouTube && colaboradores.length > 0 && (
                 <span style={{ fontWeight: 400, color: 'var(--v2-ink3)' }}> e {colaboradores.map(c => c).join(', ')}</span>
               )}
             </span>
-            {formato !== 'feed' && (
+            {(soYouTube || formato !== 'feed') && (
               <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 700, color: 'var(--v2-ink3)', background: 'var(--v2-surface1)', borderRadius: 999, padding: '3px 9px', textTransform: 'uppercase' }}>
-                {formato === 'reel' ? 'Reel' : 'Story'}
+                {soYouTube ? (ytFormato === 'short' ? 'YouTube Short' : 'YouTube') : formato === 'reel' ? 'Reel' : 'Story'}
               </span>
             )}
           </div>
@@ -833,7 +1022,7 @@ export default function PostComposer({
             const m = midias[idx]
             return (
               <div style={{
-                position: 'relative', width: '100%', aspectRatio: formato === 'story' || formato === 'reel' ? '9/16' : '4/5', background: 'var(--v2-surface1)', overflow: 'hidden',
+                position: 'relative', width: '100%', aspectRatio: soYouTube ? (ytFormato === 'short' ? '9/16' : '16/9') : formato === 'story' || formato === 'reel' ? '9/16' : '4/5', background: 'var(--v2-surface1)', overflow: 'hidden',
               }}>
                 {midias.length === 0 ? (
                   <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink3)', fontSize: 13, textAlign: 'center', padding: 16 }}>
@@ -874,13 +1063,29 @@ export default function PostComposer({
           })()}
 
           <div style={{ padding: 14 }}>
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              <strong>{cliente ? cliente.instagram.replace(/^@/, '') : 'seu_cliente'}</strong>{' '}
-              {legenda || <span style={{ color: 'var(--v2-ink3)' }}>{tr('composer.legenda-previa')}</span>}
-            </p>
+            {soYouTube ? (
+              <>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: 'var(--v2-ink)', lineHeight: 1.4, wordBreak: 'break-word' }}>
+                  {tituloDoPost({ youtubeTitulo, legenda: ytDescricao || legenda, clienteNome: cliente?.nome })}
+                </p>
+                <p style={{ margin: '6px 0 0', fontSize: 12.5, color: 'var(--v2-ink2)', lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: 140, overflow: 'hidden' }}>
+                  {ytDescricao || legenda || <span style={{ color: 'var(--v2-ink3)' }}>{tr('composer.yt-descricao-placeholder')}</span>}
+                </p>
+              </>
+            ) : (
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                <strong>{cliente ? (cliente.instagram || cliente.nome || '').replace(/^@/, '') : 'seu_cliente'}</strong>{' '}
+                {legenda || <span style={{ color: 'var(--v2-ink3)' }}>{tr('composer.legenda-previa')}</span>}
+              </p>
+            )}
             {dataAgendada && (
               <p style={{ margin: '10px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>
                 Agendado para {new Date(dataAgendada).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
+            {temYouTube && ytPublicarEmEfetivo && (
+              <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>
+                YouTube: {new Date(ytPublicarEmEfetivo).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
               </p>
             )}
           </div>

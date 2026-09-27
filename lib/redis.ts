@@ -1072,6 +1072,14 @@ export type Post = {
   // busca). Vazio = o sistema usa a headline da pauta e a legenda (lib/youtubePost).
   youtubeTitulo?: string
   youtubeDescricao?: string
+  youtubeTags?: string[]
+  // Configurações próprias do YouTube (lib/youtubePost explica cada uma). Ausente = padrão.
+  youtubeFormato?: 'short' | 'video'
+  youtubeVisibilidade?: 'public' | 'unlisted' | 'private'
+  youtubePublicarEm?: string // data própria no YouTube (o YouTube agenda sozinho)
+  youtubeCategoria?: string
+  youtubeInfantil?: boolean
+  youtubeMiniatura?: boolean // false = não usar a capa como miniatura
   youtubeVideoIds?: Record<string, string> // contaId -> id do vídeo publicado (link e conferência)
   // Perfis do cliente que recebem este post. Vazio/ausente = conta principal,
   // que é como todo post existente se comporta (lib/contasSociais.contasAlvo).
