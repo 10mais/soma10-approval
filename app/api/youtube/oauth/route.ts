@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   if (!session || (session.user as any).role !== 'admin') {
     return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
   }
-  const base = (process.env.APPROVAL_BASE_URL || process.env.NEXTAUTH_URL || '').replace(/\/$/, '')
+  const base = req.nextUrl.origin
   if (!youtubeConfigurado()) {
     return NextResponse.redirect(`${base}/dashboard?youtube_erro=sem_credenciais#clientes`)
   }
@@ -29,5 +29,6 @@ export async function GET(req: NextRequest) {
   // O `state` é o único jeito de levar contexto por um redirect — e o Google devolve
   // exatamente o que foi mandado, então ele também confere que a volta é da nossa ida.
   const estado = Buffer.from(JSON.stringify({ cliente, nova, conta, em: Date.now() })).toString('base64url')
-  return NextResponse.redirect(urlConsentimentoYouTube(estado))
+  // A volta vem para o MESMO domínio em que a pessoa está (lib/youtube.urlRedirecionamentoYouTube).
+  return NextResponse.redirect(urlConsentimentoYouTube(estado, req.nextUrl.origin))
 }

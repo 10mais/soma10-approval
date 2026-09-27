@@ -12,7 +12,8 @@ export const runtime = 'nodejs'
 // foi autorizado e guarda no cliente. O que dura é o `refresh_token`; o token de acesso vale
 // uma hora e é pedido de novo na hora de subir o vídeo (lib/youtube).
 export async function GET(req: NextRequest) {
-  const base = (process.env.APPROVAL_BASE_URL || process.env.NEXTAUTH_URL || '').replace(/\/$/, '')
+  // Mesmo domínio da ida: o Google confere que o redirect_uri da troca é idêntico.
+  const base = req.nextUrl.origin
   const volta = (erro?: string, nome?: string) =>
     NextResponse.redirect(`${base}/dashboard?${erro ? `youtube_erro=${encodeURIComponent(erro)}` : `youtube_ok=${encodeURIComponent(nome || '1')}`}#clientes`)
 
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
   if (!clienteId) return volta('sem_cliente')
 
   try {
-    const tokens = await trocarCodigoYouTube(code)
+    const tokens = await trocarCodigoYouTube(code, base)
     // Sem refresh_token não há conexão que sobreviva a uma hora. Acontece quando o Google
     // já tinha consentimento e não repetiu o token — por isso a ida pede `prompt=consent`.
     if (!tokens.refreshToken) return volta('sem_refresh')

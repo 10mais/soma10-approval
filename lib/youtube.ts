@@ -38,16 +38,21 @@ export function youtubeConfigurado(): boolean {
   return !!(process.env.YOUTUBE_CLIENT_ID && process.env.YOUTUBE_CLIENT_SECRET)
 }
 
-export function urlRedirecionamentoYouTube(): string {
-  const raiz = (process.env.APPROVAL_BASE_URL || process.env.NEXTAUTH_URL || '').replace(/\/$/, '')
+// O endereço de volta sai do DOMÍNIO em que a pessoa está usando o sistema (a origem da
+// requisição), e não de APPROVAL_BASE_URL. Dono, 27/09: "Erro 400: redirect_uri_mismatch" —
+// a variável apontava para outro endereço que o cadastrado no Google. O Google exige o
+// endereço IDÊNTICO nas duas pontas (ida e troca do código), então as duas usam a mesma
+// origem. Sem origem (chamada interna), cai na variável como antes.
+export function urlRedirecionamentoYouTube(origem?: string): string {
+  const raiz = (origem || process.env.APPROVAL_BASE_URL || process.env.NEXTAUTH_URL || '').replace(/\/$/, '')
   return `${raiz}/api/youtube/oauth/callback`
 }
 
 /** Tela de consentimento do Google. `estado` volta no callback (cliente + conta + de onde veio). */
-export function urlConsentimentoYouTube(estado: string): string {
+export function urlConsentimentoYouTube(estado: string, origem?: string): string {
   const p = new URLSearchParams({
     client_id: String(process.env.YOUTUBE_CLIENT_ID || ''),
-    redirect_uri: urlRedirecionamentoYouTube(),
+    redirect_uri: urlRedirecionamentoYouTube(origem),
     response_type: 'code',
     scope: ESCOPOS_YOUTUBE.join(' '),
     access_type: 'offline',      // sem isto não vem refresh_token e a conexão morre em 1 hora
@@ -85,12 +90,12 @@ export function explicaErroGoogle(status: number, corpo: any): string {
 }
 
 /** Troca o código da tela de consentimento pelos tokens. */
-export async function trocarCodigoYouTube(code: string): Promise<TokensYouTube> {
+export async function trocarCodigoYouTube(code: string, origem?: string): Promise<TokensYouTube> {
   const d = await postForm(OAUTH_TOKEN, {
     code,
     client_id: String(process.env.YOUTUBE_CLIENT_ID || ''),
     client_secret: String(process.env.YOUTUBE_CLIENT_SECRET || ''),
-    redirect_uri: urlRedirecionamentoYouTube(),
+    redirect_uri: urlRedirecionamentoYouTube(origem),
     grant_type: 'authorization_code',
   })
   return { accessToken: d.access_token, refreshToken: d.refresh_token, expiraEm: Date.now() + (Number(d.expires_in) || 3600) * 1000 }
