@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/app/components/Idioma'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
 import { LayoutVeiculo, capacidadeLayout, layoutVazio, validarLayout } from '@/lib/layoutVeiculo'
@@ -60,6 +61,7 @@ const inputStyle: React.CSSProperties = { padding: '10px 12px', borderRadius: 10
 const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }
 
 export default function Frota({ podeEditar = true, podeExcluir = false }: { podeEditar?: boolean; podeExcluir?: boolean }) {
+  const tr = useT()
   const [lista, setLista] = useState<Veiculo[]>([])
   const [carregando, setCarregando] = useState(true)
   const [form, setForm] = useState<Form | null>(null)
@@ -136,19 +138,19 @@ export default function Frota({ podeEditar = true, podeExcluir = false }: { pode
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-        <h2 style={{ margin: 0, fontSize: 20, color: 'var(--v2-ink)' }}>Frota</h2>
+        <h2 style={{ margin: 0, fontSize: 20, color: 'var(--v2-ink)' }}>{tr('fro.frota')}</h2>
         <span style={{ flex: 1 }} />
         {excluidos > 0 && (
           <button onClick={() => setVerExcluidos(v => !v)} style={{ padding: '7px 12px', background: 'transparent', border: '1px solid var(--v2-rule)', borderRadius: 9, color: 'var(--v2-ink3)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
             {verExcluidos ? 'Ocultar excluídos' : `Ver excluídos (${excluidos})`}
           </button>
         )}
-        {podeEditar && <button onClick={abrirNovo} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>+ Veículo</button>}
+        {podeEditar && <button onClick={abrirNovo} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>{tr('fro.veiculo')}</button>}
       </div>
-      <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--v2-ink3)' }}>Veículos da operadora. O croqui de cada um define o mapa de poltronas usado nas reservas — e a capacidade sai dele.</p>
+      <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('fro.veiculos-operadora-croqui-cada')}</p>
 
-      {carregando ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13 }}>Carregando...</p>
-        : visiveis.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13 }}>Nenhum veículo cadastrado.</p>
+      {carregando ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13 }}>{tr('conta.carregando')}</p>
+        : visiveis.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13 }}>{tr('fro.nenhum-veiculo-cadastrado')}</p>
         : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
             {visiveis.map(v => {
@@ -206,32 +208,32 @@ export default function Frota({ podeEditar = true, podeExcluir = false }: { pode
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <div style={{ flex: 2, minWidth: 180 }}>
-                    <label style={labelStyle}>Veículo</label>
-                    <input value={form.nome} onChange={e => setForm(f => f && ({ ...f, nome: e.target.value }))} placeholder="Ex.: DD 01 - Prata" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
+                    <label style={labelStyle}>{tr('via.veiculo')}</label>
+                    <input value={form.nome} onChange={e => setForm(f => f && ({ ...f, nome: e.target.value }))} placeholder={tr('fro.ex-dd-01-prata')} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 110 }}>
-                    <label style={labelStyle}>Placa</label>
-                    <input value={form.placa} onChange={e => setForm(f => f && ({ ...f, placa: e.target.value.toUpperCase() }))} placeholder="ABC1D23" style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
+                    <label style={labelStyle}>{tr('fro.placa')}</label>
+                    <input value={form.placa} onChange={e => setForm(f => f && ({ ...f, placa: e.target.value.toUpperCase() }))} placeholder={tr('fro.placa-ex')} style={{ ...inputStyle, width: '100%', boxSizing: 'border-box' }} />
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 140 }}>
-                    <label style={labelStyle}>Tipo</label>
+                    <label style={labelStyle}>{tr('comum.tipo')}</label>
                     <select value={form.tipo} onChange={e => setForm(f => f && ({ ...f, tipo: e.target.value as TipoVeiculo }))} style={{ ...inputStyle, width: '100%', background: 'var(--v2-surface)' }}>
                       {TIPOS_VEICULO.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
                     </select>
                   </div>
                   <div style={{ flex: 1, minWidth: 140 }}>
-                    <label style={labelStyle}>Capacidade</label>
+                    <label style={labelStyle}>{tr('fro.capacidade')}</label>
                     <div style={{ ...inputStyle, background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', display: 'flex', alignItems: 'center', gap: 8 }}>
                       <strong style={{ color: 'var(--v2-ink)' }}>{capacidadeLayout(form.layout)}</strong>
-                      <span style={{ fontSize: 11.5 }}>poltronas</span>
+                      <span style={{ fontSize: 11.5 }}>{tr('fro.poltronas')}</span>
                       <span style={{ flex: 1 }} />
-                      <button type="button" onClick={() => setSecao('croqui')} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>Editar croqui</button>
+                      <button type="button" onClick={() => setSecao('croqui')} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{tr('fro.editar-croqui')}</button>
                     </div>
                   </div>
                   <div style={{ flex: 1, minWidth: 170 }}>
-                    <label style={labelStyle}>Condição</label>
+                    <label style={labelStyle}>{tr('fro.condicao')}</label>
                     <select value={form.condicao} onChange={e => setForm(f => f && ({ ...f, condicao: e.target.value as Condicao }))} style={{ ...inputStyle, width: '100%', background: 'var(--v2-surface)' }}>
                       {CONDICOES.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
                     </select>
@@ -239,7 +241,7 @@ export default function Frota({ podeEditar = true, podeExcluir = false }: { pode
                 </div>
                 <p style={{ margin: '-4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>A capacidade é contada do croqui — assim ela nunca diverge do mapa de poltronas das reservas. Só &quot;Disponível para viajar&quot; aparece na hora de montar a viagem.</p>
                 <div>
-                  <label style={{ ...labelStyle, marginBottom: 6 }}>Amenidades</label>
+                  <label style={{ ...labelStyle, marginBottom: 6 }}>{tr('fro.amenidades')}</label>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {AMENIDADES.map(a => {
                       const on = form.amenidades.includes(a)
@@ -247,7 +249,7 @@ export default function Frota({ podeEditar = true, podeExcluir = false }: { pode
                     })}
                   </div>
                 </div>
-                <textarea lang="pt-BR" value={form.observacoes} onChange={e => setForm(f => f && ({ ...f, observacoes: e.target.value }))} placeholder="Observações" rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
+                <textarea lang="pt-BR" value={form.observacoes} onChange={e => setForm(f => f && ({ ...f, observacoes: e.target.value }))} placeholder={tr('crm.observacoes')} rows={2} style={{ ...inputStyle, resize: 'vertical' }} />
               </div>
             )}
 
@@ -261,12 +263,12 @@ export default function Frota({ podeEditar = true, podeExcluir = false }: { pode
               <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Documentos com validade</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('fro.documentos-validade')}</span>
                     <span style={{ flex: 1 }} />
-                    <button type="button" onClick={addDoc} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Documento</button>
+                    <button type="button" onClick={addDoc} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{tr('fro.documento')}</button>
                   </div>
-                  <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>Vencendo em até 30 dias vira tarefa para a equipe automaticamente.</p>
-                  {form.documentos.length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum documento cadastrado.</p>}
+                  <p style={{ margin: '0 0 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>{tr('fro.vencendo-ate-30-dias-vira-tare')}</p>
+                  {form.documentos.length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('fro.nenhum-documento-cadastrado')}</p>}
                   {form.documentos.map(d => {
                     const dias = d.vencimento ? diasAte(d.vencimento) : null
                     return (
@@ -274,7 +276,7 @@ export default function Frota({ podeEditar = true, podeExcluir = false }: { pode
                         <select value={d.tipo} onChange={e => setDoc(d.id, { tipo: e.target.value })} style={{ ...inputStyle, background: 'var(--v2-surface)', flex: 1, minWidth: 130 }}>
                           {TIPOS_DOC.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
                         </select>
-                        <input value={d.numero || ''} onChange={e => setDoc(d.id, { numero: e.target.value })} placeholder="Número" style={{ ...inputStyle, flex: 1, minWidth: 100 }} />
+                        <input value={d.numero || ''} onChange={e => setDoc(d.id, { numero: e.target.value })} placeholder={tr('fro.numero')} style={{ ...inputStyle, flex: 1, minWidth: 100 }} />
                         <input type="date" value={d.vencimento} onChange={e => setDoc(d.id, { vencimento: e.target.value })} style={{ ...inputStyle, minWidth: 140 }} />
                         {dias !== null && dias <= 30 && (
                           <span style={{ fontSize: 10.5, fontWeight: 800, color: dias < 0 ? 'var(--v2-hot)' : 'var(--v2-amber)', background: dias < 0 ? 'var(--v2-hot-bg)' : 'var(--v2-amber-bg)', borderRadius: 999, padding: '3px 8px' }}>
@@ -289,12 +291,12 @@ export default function Frota({ podeEditar = true, podeExcluir = false }: { pode
 
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Histórico de serviços</span>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('fro.historico-servicos')}</span>
                     {form.manutencoes.length > 0 && <span style={{ fontSize: 11.5, color: 'var(--v2-ink2)' }}>· total {fmtBRL(form.manutencoes.reduce((s, m) => s + (Number(m.custo) || 0), 0))}</span>}
                     <span style={{ flex: 1 }} />
-                    <button type="button" onClick={addManut} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>+ Serviço</button>
+                    <button type="button" onClick={addManut} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{tr('fro.servico')}</button>
                   </div>
-                  {form.manutencoes.length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>Nenhum serviço registrado.</p>}
+                  {form.manutencoes.length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('fro.nenhum-servico-registrado')}</p>}
                   {form.manutencoes.map(m => (
                     <div key={m.id} style={{ border: '1px solid var(--v2-rule)', borderRadius: 10, padding: 10, marginBottom: 8 }}>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
@@ -302,18 +304,18 @@ export default function Frota({ podeEditar = true, podeExcluir = false }: { pode
                         <select value={m.tipo} onChange={e => setManut(m.id, { tipo: e.target.value })} style={{ ...inputStyle, background: 'var(--v2-surface)', flex: 1, minWidth: 120 }}>
                           {TIPOS_MANUT.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
                         </select>
-                        <input type="number" min={0} value={m.km ?? ''} onChange={e => setManut(m.id, { km: e.target.value ? Number(e.target.value) : undefined })} placeholder="km" style={{ ...inputStyle, width: 90 }} />
+                        <input type="number" min={0} value={m.km ?? ''} onChange={e => setManut(m.id, { km: e.target.value ? Number(e.target.value) : undefined })} placeholder={tr('fro.km')} style={{ ...inputStyle, width: 90 }} />
                         <input type="number" min={0} step="0.01" value={m.custo ?? ''} onChange={e => setManut(m.id, { custo: e.target.value ? Number(e.target.value) : undefined })} placeholder="Custo R$" style={{ ...inputStyle, width: 110 }} />
                         <button type="button" onClick={() => rmManut(m.id)} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 18, marginLeft: 'auto' }}>×</button>
                       </div>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        <input value={m.oficina || ''} onChange={e => setManut(m.id, { oficina: e.target.value })} placeholder="Oficina / fornecedor" style={{ ...inputStyle, flex: 1, minWidth: 150 }} />
-                        <input value={m.descricao || ''} onChange={e => setManut(m.id, { descricao: e.target.value })} placeholder="O que foi feito" style={{ ...inputStyle, flex: 2, minWidth: 180 }} />
+                        <input value={m.oficina || ''} onChange={e => setManut(m.id, { oficina: e.target.value })} placeholder={tr('fro.oficina-fornecedor')} style={{ ...inputStyle, flex: 1, minWidth: 150 }} />
+                        <input value={m.descricao || ''} onChange={e => setManut(m.id, { descricao: e.target.value })} placeholder={tr('fro.que-foi-feito')} style={{ ...inputStyle, flex: 2, minWidth: 180 }} />
                       </div>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6, alignItems: 'center' }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>Próxima revisão:</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>{tr('fro.proxima-revisao')}</span>
                         <input type="date" value={m.proximaData || ''} onChange={e => setManut(m.id, { proximaData: e.target.value })} style={{ ...inputStyle, minWidth: 140 }} />
-                        <input type="number" min={0} value={m.proximoKm ?? ''} onChange={e => setManut(m.id, { proximoKm: e.target.value ? Number(e.target.value) : undefined })} placeholder="ou em km" style={{ ...inputStyle, width: 110 }} />
+                        <input type="number" min={0} value={m.proximoKm ?? ''} onChange={e => setManut(m.id, { proximoKm: e.target.value ? Number(e.target.value) : undefined })} placeholder={tr('fro.ou-km')} style={{ ...inputStyle, width: 110 }} />
                         {m.proximaData && diasAte(m.proximaData) <= 30 && (
                           <span style={{ fontSize: 10.5, fontWeight: 800, color: diasAte(m.proximaData) < 0 ? 'var(--v2-hot)' : 'var(--v2-amber)', background: diasAte(m.proximaData) < 0 ? 'var(--v2-hot-bg)' : 'var(--v2-amber-bg)', borderRadius: 999, padding: '3px 8px' }}>
                             {diasAte(m.proximaData) < 0 ? 'atrasada' : 'próxima'}
@@ -329,10 +331,10 @@ export default function Frota({ podeEditar = true, podeExcluir = false }: { pode
             <div style={{ display: 'flex', gap: 8, marginTop: 18, alignItems: 'center' }}>
               {form.id && podeExcluir && (
                 <button onClick={() => { const v = lista.find(x => x.id === form.id); if (v) excluir(v) }}
-                  style={{ padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, color: 'var(--v2-hot)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginRight: 'auto' }}>Excluir</button>
+                  style={{ padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, color: 'var(--v2-hot)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginRight: 'auto' }}>{tr('comum.excluir')}</button>
               )}
               <span style={{ flex: form.id && podeExcluir ? undefined : 1 }} />
-              <button onClick={() => setForm(null)} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={() => setForm(null)} style={{ padding: '10px 16px', background: 'var(--v2-surface2)', border: 'none', borderRadius: 9, color: 'var(--v2-ink2)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
               <button onClick={salvar} disabled={salvando} style={{ padding: '10px 18px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 13, cursor: salvando ? 'wait' : 'pointer' }}>{salvando ? 'Salvando…' : 'Salvar'}</button>
             </div>
           </div>

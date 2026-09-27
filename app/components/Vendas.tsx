@@ -1,4 +1,5 @@
 'use client'
+import { useT } from '@/app/components/Idioma'
 import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { toast, confirmar } from '@/lib/toast'
@@ -17,6 +18,7 @@ const inp: React.CSSProperties = { padding: '9px 11px', borderRadius: 9, border:
 const PAPEL_LOJA: Record<string, string> = { usuario: 'Estoquista', vendas: 'Vendedor', gerente: 'Gerente', admin: 'Admin' }
 
 export default function Vendas({ lojaAtiva = '', bloqueado = false, podeEditar = true }: { lojaAtiva?: string; bloqueado?: boolean; podeEditar?: boolean }) {
+  const tr = useT()
   const { data: session } = useSession()
   const meuNome = (session?.user?.name || '').trim()
   const [produtos, setProdutos] = useState<Produto[]>([])
@@ -133,8 +135,8 @@ ${v.desconto ? `<div class="muted" style="text-align:right">Desconto: ${brl(v.de
   if (bloqueado) {
     return (
       <div style={{ padding: 26, background: 'var(--v2-surface)', borderRadius: 14, border: '1px solid var(--v2-rule)', textAlign: 'center', maxWidth: 520 }}>
-        <h2 style={{ margin: '0 0 8px', fontSize: 17, color: 'var(--v2-ink)' }}>PDV</h2>
-        <p style={{ margin: 0, fontSize: 13.5, color: 'var(--v2-ink3)' }}>Escolha uma <strong>loja</strong> no seletor lateral (“Ver loja”) para registrar vendas — a venda baixa o estoque daquela unidade.</p>
+        <h2 style={{ margin: '0 0 8px', fontSize: 17, color: 'var(--v2-ink)' }}>{tr('painel.pdv')}</h2>
+        <p style={{ margin: 0, fontSize: 13.5, color: 'var(--v2-ink3)' }}>{tr('ven.escolha')}<strong>loja</strong> no seletor lateral (“Ver loja”) para registrar vendas — a venda baixa o estoque daquela unidade.</p>
       </div>
     )
   }
@@ -144,13 +146,13 @@ ${v.desconto ? `<div class="muted" style="text-align:right">Desconto: ${brl(v.de
 
   return (
     <div>
-      <h2 style={{ margin: '0 0 14px', fontSize: 18, color: 'var(--v2-ink)' }}>PDV — nova venda</h2>
+      <h2 style={{ margin: '0 0 14px', fontSize: 18, color: 'var(--v2-ink)' }}>{tr('ven.pdv-nova-venda')}</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.3fr) minmax(0, 1fr)', gap: 16, alignItems: 'start' }}>
         {/* Catálogo */}
         <div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-            <input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Buscar produto por nome ou SKU…" style={{ ...inp, flex: 1 }} />
-            <button onClick={carregar} title="Atualizar produtos e estoque" style={{ ...inp, padding: '9px 14px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', fontWeight: 700, cursor: 'pointer', border: 'none' }}>Atualizar</button>
+            <input value={busca} onChange={e => setBusca(e.target.value)} placeholder={tr('ven.buscar-produto-por-nome-ou-sku')} style={{ ...inp, flex: 1 }} />
+            <button onClick={carregar} title={tr('ven.atualizar-produtos-estoque')} style={{ ...inp, padding: '9px 14px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', fontWeight: 700, cursor: 'pointer', border: 'none' }}>{tr('saude.atualizar')}</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 460, overflowY: 'auto' }}>
             {filtrados.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13, padding: 14 }}>{produtos.length === 0 ? 'Nenhum produto no catálogo.' : 'Nada encontrado.'}</p>
@@ -172,8 +174,8 @@ ${v.desconto ? `<div class="muted" style="text-align:right">Desconto: ${brl(v.de
 
         {/* Carrinho */}
         <div style={{ background: 'var(--v2-surface)', borderRadius: 14, border: '1px solid var(--v2-rule)', padding: 16, boxShadow: '0 1px 6px rgba(0,0,0,0.05)' }}>
-          <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>Carrinho</span>
-          {carrinho.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13, margin: '14px 0' }}>Toque num produto para adicionar.</p> : (
+          <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('ven.carrinho')}</span>
+          {carrinho.length === 0 ? <p style={{ color: 'var(--v2-ink3)', fontSize: 13, margin: '14px 0' }}>{tr('ven.toque-num-produto-adicionar')}</p> : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, margin: '12px 0' }}>
               {carrinho.map(it => (
                 <div key={it.produtoId} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -181,7 +183,7 @@ ${v.desconto ? `<div class="muted" style="text-align:right">Desconto: ${brl(v.de
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.nome}</p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 3 }}>
                       <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>R$</span>
-                      <input type="number" min="0" step="0.01" value={it.precoUnit} onChange={e => setItem(it.produtoId, { precoUnit: Number(e.target.value) })} title="Preço unitário (ajustável)" style={{ ...inp, width: 82, padding: '5px 8px', fontSize: 12 }} />
+                      <input type="number" min="0" step="0.01" value={it.precoUnit} onChange={e => setItem(it.produtoId, { precoUnit: Number(e.target.value) })} title={tr('ven.preco-unitario-ajustavel')} style={{ ...inp, width: 82, padding: '5px 8px', fontSize: 12 }} />
                       <span style={{ fontSize: 11, color: 'var(--v2-ink3)' }}>×</span>
                       <input type="number" min="1" value={it.quantidade} onChange={e => setItem(it.produtoId, { quantidade: Math.max(1, Math.floor(Number(e.target.value) || 1)) })} style={{ ...inp, width: 56, padding: '5px 8px', fontSize: 12 }} />
                     </div>
@@ -198,21 +200,21 @@ ${v.desconto ? `<div class="muted" style="text-align:right">Desconto: ${brl(v.de
             {contatoSel ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--v2-ink2)' }}>
                 Cliente: <strong>{contatoSel.nome}</strong>
-                <button onClick={() => { setContatoId(''); setBuscaContato('') }} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>trocar</button>
+                <button onClick={() => { setContatoId(''); setBuscaContato('') }} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{tr('ven.trocar')}</button>
               </div>
             ) : cadastrando ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)' }}>Novo cliente</span>
-                <input value={novoNome} onChange={e => setNovoNome(e.target.value)} placeholder="Nome*" autoFocus style={{ ...inp, width: '100%', fontSize: 12.5 }} />
-                <input value={novoTel} onChange={e => setNovoTel(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') novoCliente() }} placeholder="Telefone (opcional)" inputMode="tel" style={{ ...inp, width: '100%', fontSize: 12.5 }} />
+                <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('ven.novo-cliente')}</span>
+                <input value={novoNome} onChange={e => setNovoNome(e.target.value)} placeholder={tr('ven.nome')} autoFocus style={{ ...inp, width: '100%', fontSize: 12.5 }} />
+                <input value={novoTel} onChange={e => setNovoTel(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') novoCliente() }} placeholder={tr('ven.telefone-opcional')} inputMode="tel" style={{ ...inp, width: '100%', fontSize: 12.5 }} />
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={novoCliente} disabled={!novoNome.trim() || salvandoCli} style={{ flex: 1, padding: '8px 12px', borderRadius: 9, border: 'none', background: 'var(--v2-ink)', color: 'var(--v2-surface)', fontWeight: 700, fontSize: 12.5, cursor: novoNome.trim() && !salvandoCli ? 'pointer' : 'default', opacity: novoNome.trim() && !salvandoCli ? 1 : 0.5, fontFamily: 'inherit' }}>{salvandoCli ? 'Salvando…' : 'Salvar cliente'}</button>
-                  <button onClick={() => { setCadastrando(false); setNovoNome(''); setNovoTel('') }} style={{ padding: '8px 12px', borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
+                  <button onClick={() => { setCadastrando(false); setNovoNome(''); setNovoTel('') }} style={{ padding: '8px 12px', borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>{tr('comum.cancelar')}</button>
                 </div>
               </div>
             ) : (
               <div style={{ position: 'relative' }}>
-                <input value={buscaContato} onChange={e => setBuscaContato(e.target.value)} placeholder="Cliente (opcional) — buscar por nome/telefone" style={{ ...inp, width: '100%', fontSize: 12.5 }} />
+                <input value={buscaContato} onChange={e => setBuscaContato(e.target.value)} placeholder={tr('ven.cliente-opcional-buscar-por-no')} style={{ ...inp, width: '100%', fontSize: 12.5 }} />
                 {contatosFiltrados.length > 0 && (
                   <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 10, marginTop: 4, zIndex: 5, boxShadow: '0 4px 14px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
                     {contatosFiltrados.map(c => (
@@ -227,24 +229,24 @@ ${v.desconto ? `<div class="muted" style="text-align:right">Desconto: ${brl(v.de
 
           {/* Vendedor da loja */}
           <div style={{ marginTop: 12 }}>
-            <label style={lbl}>Vendedor</label>
+            <label style={lbl}>{tr('crm.vendedor-responsavel')}</label>
             {vendedores.length > 0 ? (
               <select value={vendedor} onChange={e => setVendedor(e.target.value)} style={{ ...inp, width: '100%', background: 'var(--v2-surface)' }}>
-                <option value="">Balcão (sem vendedor)</option>
+                <option value="">{tr('ven.balcao-sem-vendedor')}</option>
                 {vendedores.map(v => <option key={v.id} value={v.nome}>{v.nome} · {PAPEL_LOJA[v.role] || v.role}</option>)}
               </select>
             ) : (
-              <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-amber)' }}>Nenhum vendedor nesta loja. Crie colaboradores (papel <strong>Vendas</strong>) vinculados à loja em Colaboradores.</p>
+              <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-amber)' }}>Nenhum vendedor nesta loja. Crie colaboradores (papel <strong>{tr('dash.vendas')}</strong>) vinculados à loja em Colaboradores.</p>
             )}
           </div>
 
           {/* Desconto + pagamento + total */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
             <div><label style={lbl}>Desconto (R$)</label><input type="number" min="0" step="0.01" value={desconto} onChange={e => setDesconto(e.target.value)} style={{ ...inp, width: '100%' }} /></div>
-            <div><label style={lbl}>Pagamento</label><select value={forma} onChange={e => setForma(e.target.value)} style={{ ...inp, width: '100%', background: 'var(--v2-surface)' }}>{FORMAS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></div>
+            <div><label style={lbl}>{tr('ven.pagamento')}</label><select value={forma} onChange={e => setForma(e.target.value)} style={{ ...inp, width: '100%', background: 'var(--v2-surface)' }}>{FORMAS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></div>
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', margin: '14px 0 12px' }}>
-            <span style={{ fontSize: 13, color: 'var(--v2-ink3)', fontWeight: 700 }}>Total</span>
+            <span style={{ fontSize: 13, color: 'var(--v2-ink3)', fontWeight: 700 }}>{tr('prod.total')}</span>
             <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--v2-ink)' }}>{brl(total)}</span>
           </div>
           <button onClick={finalizar} disabled={!carrinho.length || finalizando || !podeEditar} style={{ width: '100%', padding: '13px 0', background: (!carrinho.length || finalizando) ? 'var(--v2-surface2)' : 'var(--v2-ok)', color: (!carrinho.length || finalizando) ? 'var(--v2-ink3)' : 'var(--v2-surface)', border: 'none', borderRadius: 11, fontWeight: 800, fontSize: 15, cursor: (!carrinho.length || finalizando) ? 'default' : 'pointer' }}>
@@ -256,16 +258,16 @@ ${v.desconto ? `<div class="muted" style="text-align:right">Desconto: ${brl(v.de
       {/* Vendas recentes */}
       {vendas.length > 0 && (
         <div style={{ marginTop: 26 }}>
-          <h3 style={{ margin: '0 0 10px', fontSize: 14, color: 'var(--v2-ink)' }}>Vendas recentes</h3>
+          <h3 style={{ margin: '0 0 10px', fontSize: 14, color: 'var(--v2-ink)' }}>{tr('ven.vendas-recentes')}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             {vendas.slice(0, 20).map(v => (
               <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: v.cancelada ? 'var(--v2-surface1)' : 'var(--v2-surface)', borderRadius: 10, border: '1px solid var(--v2-rule)', opacity: v.cancelada ? 0.7 : 1 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink)' }}>{v.itens.reduce((n, i) => n + i.quantidade, 0)} item(ns) · {formaLabel(v.formaPagamento)} {v.cancelada && <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', borderRadius: 999, padding: '2px 8px', marginLeft: 4 }}>cancelada</span>}</p>
+                  <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink)' }}>{v.itens.reduce((n, i) => n + i.quantidade, 0)} item(ns) · {formaLabel(v.formaPagamento)} {v.cancelada && <span style={{ fontSize: 10.5, fontWeight: 800, color: 'var(--v2-hot)', background: 'var(--v2-hot-bg)', borderRadius: 999, padding: '2px 8px', marginLeft: 4 }}>{tr('ven.cancelada')}</span>}</p>
                   <p style={{ margin: '2px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>{new Date(v.data).toLocaleString('pt-BR')}{v.vendedor ? ` · ${v.vendedor}` : ''}</p>
                 </div>
                 <span style={{ fontSize: 14, fontWeight: 800, color: v.cancelada ? 'var(--v2-ink3)' : 'var(--v2-ok)', textDecoration: v.cancelada ? 'line-through' : 'none' }}>{brl(v.total)}</span>
-                {podeEditar && !v.cancelada && <button onClick={() => cancelar(v)} title="Cancelar venda" style={{ background: 'none', border: '1px solid var(--v2-hot-bg)', color: 'var(--v2-hot)', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', padding: '5px 10px' }}>Cancelar</button>}
+                {podeEditar && !v.cancelada && <button onClick={() => cancelar(v)} title={tr('ven.cancelar-venda')} style={{ background: 'none', border: '1px solid var(--v2-hot-bg)', color: 'var(--v2-hot)', borderRadius: 8, fontWeight: 700, fontSize: 11.5, cursor: 'pointer', padding: '5px 10px' }}>{tr('comum.cancelar')}</button>}
               </div>
             ))}
           </div>
@@ -278,13 +280,13 @@ ${v.desconto ? `<div class="muted" style="text-align:right">Desconto: ${brl(v.de
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, width: '100%', maxWidth: 380, padding: 22 }}>
             <div style={{ textAlign: 'center', marginBottom: 14 }}>
               <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--v2-ok-bg)', color: 'var(--v2-ok)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 800, marginBottom: 6 }}>✓</div>
-              <h3 style={{ margin: 0, fontSize: 17, color: 'var(--v2-ink)' }}>Venda registrada</h3>
+              <h3 style={{ margin: 0, fontSize: 17, color: 'var(--v2-ink)' }}>{tr('ven.venda-registrada')}</h3>
               <p style={{ margin: '2px 0 0', fontSize: 22, fontWeight: 800, color: 'var(--v2-ok)' }}>{brl(recibo.total)}</p>
               <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{recibo.itens.reduce((n, i) => n + i.quantidade, 0)} item(ns) · {formaLabel(recibo.formaPagamento)}</p>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => imprimirRecibo(recibo)} style={{ flex: 1, padding: '11px 0', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13.5, cursor: 'pointer' }}>Imprimir comprovante</button>
-              <button onClick={() => setRecibo(null)} style={{ padding: '11px 18px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>Nova venda</button>
+              <button onClick={() => imprimirRecibo(recibo)} style={{ flex: 1, padding: '11px 0', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13.5, cursor: 'pointer' }}>{tr('ven.imprimir-comprovante')}</button>
+              <button onClick={() => setRecibo(null)} style={{ padding: '11px 18px', background: 'var(--v2-surface1)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13.5, cursor: 'pointer' }}>{tr('ven.nova-venda')}</button>
             </div>
           </div>
         </div>

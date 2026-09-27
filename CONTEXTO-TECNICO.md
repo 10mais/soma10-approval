@@ -1922,3 +1922,104 @@ sessão paralela.
     - visões Lista e Gantt;
     - cor por marco e etapa, tarefas por etapa, seletor MARCO > ETAPA e "Aplicar modelo".
   - **Em tudo:** Ctrl+Z e salvar automático.
+
+---
+
+## 45. Evolução 2026-09-15→27 — Métricas · Idiomas (pt/en/es) · WhatsApp ao vivo · Financeiro mês a mês · YouTube
+
+Handoff da sessão de 15 a 27/09 (≈35 commits na `main`, todos com deploy READY confirmado).
+
+### 45.1 Como publicar enquanto o repositório local está em outro ramo
+O clone local está no ramo **`deny-soma10`** (outra frente). Tudo desta sessão foi publicado assim:
+1. commit **por pathspec** no ramo atual (`git commit -m ... -- <arquivos>`);
+2. `git worktree add <tmp> main` → `git pull` → `git cherry-pick <hash>` → `git push origin main`;
+3. `git worktree remove --force <tmp>` e confirmar READY na Vercel.
+`npm run build` completo (vitest + next build) antes de cada push — a suíte está em **1.304 testes**.
+
+### 45.2 Métricas e Programador de postagens (15–17/09)
+- Métricas: editar lançamento, vírgula nos centavos com formato de Real, funil de vendas
+  (carrinho → checkout → compra, custo por venda, ROAS, taxas), botão Voltar em "Lançar números"
+  e período de análise visível no painel (`lib/metricasAds`).
+- Reagendar post: trocar a data de um post que já existe libera Salvar e Agendar mesmo sem etapa
+  do Playbook (`lib/composerPendencias.pendenciasDaAcao` / `statusAoSalvarEdicao`).
+- App Review da Meta: roteiro v3 em `APP_REVIEW.md` §3.1-A (vídeo de `pages_manage_posts` com a
+  conexão do Instagram antes de publicar, legendas EN + tradução). **Falta o dono gravar.**
+
+### 45.3 Idiomas — português consolidado + inglês (espanhol oculto até fechar)
+- Glossário do dono: Playbook → **Plano de entregas**, Planner → **Programador de postagens**,
+  Studio → **Estúdio**, Personal list → **Anotações**, Inbox → **Caixa de entrada**,
+  Analytics → **Desempenho**, Briefing → **Pauta**; **CRM continua CRM**. Idioma **por pessoa**
+  (`Usuario.idioma` + localStorage `soma10-idioma`; rota pública segue o idioma do navegador).
+- Arquitetura: `lib/i18n.ts` (dicionário único, `t/tv/nomeDaArea/normalizarIdioma/localeDe`),
+  `app/components/Idioma.tsx` (`useT`, `useIdioma`, `useArea`). **A CHAVE nunca muda**
+  (`planner`, `studio`, `playbook` seguem no Redis e na URL).
+- Regras aprendidas: frase partida por `<b>` vira UMA chave; catálogo de módulo guarda a CHAVE
+  (status do post, etapas, fases da cadência, categorias); data/número via `localeDe(idioma)`
+  (toLocaleDateString sem locale derrubou um deploy — a Vercel roda em en-US); **dado não se
+  traduz** (cabeçalho do CSV, origens do CRM, serviços da clínica, objetivo do briefing).
+- Telas já traduzidas: menus, Novo post, Home V2, Minha conta, Configurações, Tarefas, Plano de
+  entregas, Métricas, Estúdio, **CRM**, **Painel (`app/dashboard/page.tsx`)**, **link público de
+  aprovação + portal do cliente**, Financeiro, Esteira, Agenda, Reuniões, Mapas mentais,
+  Biblioteca de vendas, Raio-X do lead, Briefings, painel das instâncias, Saúde do sistema,
+  Produtos, Viagens, Pacotes. Formato da peça com idioma em `lib/formatoPost`.
+- Ferramentas: `scripts/i18n-varredura.mjs` (inventário; `--lista <arquivo>`) e
+  `tests/i18nCobertura.test.ts` (todo texto tem en/es; inglês sem acento português; a mesma frase
+  não tem duas traduções).
+- **Falta:** Reservas, Frota e Vendas (tradução parcial publicada junto com esta seção), Processos,
+  DashboardVendas, telas menores, mensagens das rotas `app/api/**` e `lib/comunicacao.ts`, e o
+  **espanhol completo** (hoje oculto por `IDIOMAS[].pronto`). Inventário: ~3.300 textos.
+
+### 45.4 WhatsApp ao vivo + "digitando…" (22/09)
+- Antes: a conversa aberta recarregava a cada 15 s e a **lista nunca** (precisava F5).
+- Agora (`lib/waPresenca`, testada): toda mensagem gravada sobe `wa:versao`; a tela pergunta só esse
+  número a cada 2,5 s (`/api/crm/mensagens?pulso=1`) e recarrega quando muda; aba escondida não pulsa.
+- "Digitando…/gravando áudio…": webhook ouve `presence.update` (validade 12 s em `wa:digitando:{tel}`);
+  abrir a conversa assina a presença (`sendPresence 'paused'`) e re-assina a cada minuto. O webhook do
+  Evolution é re-registrado com `PRESENCE_UPDATE` automaticamente (1×/dia por instância,
+  `garantirWebhookAtualWa`). **O "digitando" depende do Evolution entregar o evento — não foi
+  confirmado em produção.** Instagram segue com o recarregamento de 15 s.
+
+### 45.5 Financeiro mês a mês (22/09)
+- Erro: `contratoValor` de todo cliente em todo mês. Regra nova em `lib/receitaRecorrente` (pura):
+  começa no mês de `contratoInicio` (sem ele, `criadoEm`), termina no mês de `arquivadoEm`;
+  renovação vencida **não** zera; `contratoValor` é mensal; avulsa só no mês dela; interno não fatura.
+- `lib/fechamentoMes`: mês que termina é **gravado** (`financeiro:mes:{YYYY-MM}`) pelo cron diário
+  (`/api/cron/alertas`) e na primeira abertura da tela (`/api/financeiro/faturamento`). Aumentar
+  contrato hoje não reescreve o passado. O Financeiro carrega também os **arquivados**.
+- Mesma conta no painel de vendas (MRR) e no assistente de IA. "Tudo" = acumulado mês a mês.
+- Limitação dita ao dono: os meses passados foram gravados a partir dos contratos de hoje.
+
+### 45.6 YouTube — vídeos, Shorts e agendamento (27/09)
+- `lib/youtubePost` (pura, 14 testes): título ≤100 (campo próprio → headline → 1ª linha da legenda),
+  legenda = descrição, hashtags = tags, **Short = mesmo upload** (vertical + ≤3 min), data futura →
+  `private` + `publishAt` (o **YouTube agenda sozinho**). Live fora (pedido do dono).
+- `lib/youtube`: OAuth do Google (`youtube.upload` + `youtube.readonly`, offline + consent), canal,
+  upload retomável Blob → YouTube. Rotas `/api/youtube/oauth` e `/callback` (conta principal, perfil
+  extra `nova=1`, reconexão `conta=`). O `redirect_uri` usa a **origem da requisição**
+  (`https://approval.soma10.com.br/api/youtube/oauth/callback`) — `APPROVAL_BASE_URL` apontava para
+  outro endereço e deu `redirect_uri_mismatch`.
+- Motor: `publishToYouTube` no `lib/publicar` (mesma anti-duplicação), `redesDaConta` inclui
+  `youtube`, `Post.youtubeTitulo` / `youtubeVideoIds`; compositor com chip YouTube, título e travas
+  `yt-sem-video` / `yt-varios-videos`. "Adicionar perfil" passou para a camada 1300 (abria atrás da
+  Ficha do cliente, 1200).
+- Google Cloud (projeto **soma10**, conta authuser=3): API ativa, escopos adicionados, cliente OAuth
+  "Soma10 YouTube" criado, **`YOUTUBE_CLIENT_ID` e `YOUTUBE_CLIENT_SECRET` na Vercel (Production)**.
+  App **em teste** → só contas na lista de testadores conectam e a conexão cai a cada 7 dias.
+- **Pendente:** o dono confirmar a primeira conexão e o primeiro upload em produção; verificação do
+  Google para o escopo `youtube.upload`; pedir aumento de cota (1.600 unidades por vídeo, padrão
+  10.000/dia ≈ 6 vídeos/dia no sistema inteiro); thumbnail, playlist e link do vídeo no Planner.
+
+### 45.7 Pedido em aberto — CRM da instância agência (25/09)
+O dono pediu no cadastro de contatos: **@ do Instagram pessoal e profissional**, **diagnóstico dos
+perfis e da clínica** e **cidade/estado com lista ou busca** (para filtrar depois). Nada foi
+implementado: a pergunta ficou sem resposta porque a sessão caiu. Perguntar de novo:
+1. diagnóstico = checklist com nota por item, texto livre em 3 blocos, ou checklist + resumo por IA
+   (a IA **não** lê Instagram de terceiros);
+2. vale só para a instância da agência ou Instagram e cidade/estado em todas.
+Modelo atual: `CrmContato` em `lib/redis.ts`; formulário `ContatoModal` em `app/components/CRM.tsx`;
+lista de campos aceitos em `app/api/crm/contatos/route.ts` (`campos = [...]`, linha ~206).
+
+### 45.8 Outras pendências do dono
+- Credencial do revisor da Meta segue em texto puro no `CONTEXTO-TECNICO.md` (linha ~392), num
+  repositório **público** — decidir se troca a senha e tira do arquivo.
+- Redesenho pelo Claude Design (CRM e Playbook) — plano em §44.12, não iniciado.
