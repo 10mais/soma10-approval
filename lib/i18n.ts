@@ -332,6 +332,12 @@ export const TEXTOS: Record<string, Entrada> = {
   'campo.investimento': { pt: 'Investimento', en: 'Spend', es: 'Inversión' },
   'campo.receita': { pt: 'Receita (valor das vendas)', en: 'Revenue (sales value)', es: 'Ingresos (valor de las ventas)' },
 
+  'pend.yt-sem-video': { pt: 'subir o vídeo (o YouTube só aceita vídeo)', en: 'upload the video (YouTube only takes video)', es: 'subir el video (YouTube solo acepta video)' },
+  'pend.yt-varios-videos': { pt: 'deixar um vídeo só (o YouTube publica um por vez)', en: 'leave just one video (YouTube publishes one at a time)', es: 'dejar un solo video (YouTube publica uno por vez)' },
+  'composer.youtube-titulo': { pt: 'Título no YouTube', en: 'YouTube title', es: 'Título en YouTube' },
+  'composer.youtube-titulo-ajuda': { pt: 'É o que aparece na busca do YouTube (até 100 caracteres). Em branco, o sistema usa a headline da pauta ou a primeira linha da legenda.', en: 'This is what shows in YouTube search (up to 100 characters). Left empty, the system uses the brief headline or the first line of the caption.', es: 'Es lo que aparece en la búsqueda de YouTube (hasta 100 caracteres). En blanco, el sistema usa el titular de la pauta o la primera línea de la leyenda.' },
+  'composer.youtube-agenda': { pt: 'Com data marcada, o vídeo sobe privado e o próprio YouTube publica na hora certa.', en: 'With a date set, the video goes up private and YouTube itself publishes it at the right time.', es: 'Con fecha marcada, el video sube privado y el propio YouTube lo publica a la hora correcta.' },
+  'composer.youtube-short': { pt: 'Vertical e até 3 minutos: vai virar Short.', en: 'Vertical and up to 3 minutes: it will become a Short.', es: 'Vertical y hasta 3 minutos: se volverá un Short.' },
   // ---- CRM
   'crm.digitando': { pt: 'digitando…', en: 'typing…', es: 'escribiendo…' },
   'crm.gravando-audio': { pt: 'gravando áudio…', en: 'recording audio…', es: 'grabando audio…' },
@@ -1495,6 +1501,11 @@ export const TEXTOS: Record<string, Entrada> = {
     en: 'Applies to you only. Your teammates can use the system in another language.',
     es: 'Solo para ti. El equipo puede usar el sistema en otro idioma.',
   },
+  'dash.youtube-conectado': { pt: 'Canal do YouTube conectado! {canal}', en: 'YouTube channel connected! {canal}', es: '¡Canal de YouTube conectado! {canal}' },
+  'dash.youtube-sem-credenciais': { pt: 'YouTube ainda não configurado: faltam YOUTUBE_CLIENT_ID e YOUTUBE_CLIENT_SECRET na Vercel.', en: 'YouTube is not set up yet: YOUTUBE_CLIENT_ID and YOUTUBE_CLIENT_SECRET are missing at Vercel.', es: 'YouTube aún no está configurado: faltan YOUTUBE_CLIENT_ID y YOUTUBE_CLIENT_SECRET en Vercel.' },
+  'dash.youtube-sem-refresh': { pt: 'O Google não devolveu a permissão de longa duração. Desconecte o app na conta do Google e conecte de novo.', en: 'Google did not return the long-lived permission. Disconnect the app in the Google account and connect again.', es: 'Google no devolvió el permiso de larga duración. Desconecte la app en la cuenta de Google y conéctela de nuevo.' },
+  'dash.youtube-sem-canal': { pt: 'Esta conta do Google não tem canal no YouTube. Crie o canal e conecte de novo.', en: 'This Google account has no YouTube channel. Create the channel and connect again.', es: 'Esta cuenta de Google no tiene canal en YouTube. Cree el canal y conéctela de nuevo.' },
+  'dash.youtube-falhou': { pt: 'Não foi possível conectar o YouTube: {erro}', en: 'It was not possible to connect YouTube: {erro}', es: 'No se pudo conectar YouTube: {erro}' },
   // ---- Painel (dashboard)
   'dash.fechar-conexao': { pt: 'Fechar', en: 'Close', es: 'Cerrar' },
   'dash.defina-instancia': { pt: 'defina a instância', en: 'set the instance', es: 'defina la instancia' },

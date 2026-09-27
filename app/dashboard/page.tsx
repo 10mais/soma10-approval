@@ -866,9 +866,28 @@ function Dashboard() {
       }
       setMetaErro(erros[erro] || tr('dash.erro-desconhecido-ponto'))
     }
+    // YOUTUBE — volta do consentimento do Google (lib/youtube).
+    const ytOk = searchParams.get('youtube_ok')
+    const ytErro = searchParams.get('youtube_erro')
+    if (ytOk) {
+      setAba('clientes')
+      fetch('/api/clientes').then(x => x.json()).then(d => { if (Array.isArray(d)) setClientes(d) }).catch(() => {})
+      toast(tr('dash.youtube-conectado', { canal: ytOk === '1' ? '' : ytOk }).trim(), 'sucesso')
+    }
+    if (ytErro) {
+      setAba('clientes')
+      const errosYt: Record<string, string> = {
+        sem_credenciais: tr('dash.youtube-sem-credenciais'),
+        cancelado: tr('dash.acesso-negado'),
+        sem_refresh: tr('dash.youtube-sem-refresh'),
+        sem_canal: tr('dash.youtube-sem-canal'),
+        sem_permissao: tr('dash.erro-interno'),
+      }
+      toast(errosYt[ytErro] || tr('dash.youtube-falhou', { erro: ytErro }), 'erro')
+    }
     // Consome os params UMA vez. Sem isto a URL segue com ?meta_pages/?meta_error
     // e todo refresh re-dispara este efeito, jogando de volta em Clientes.
-    if ((pagesId || erro) && typeof window !== 'undefined') {
+    if ((pagesId || erro || ytOk || ytErro) && typeof window !== 'undefined') {
       window.history.replaceState({}, '', '/dashboard')
     }
   }, [searchParams])

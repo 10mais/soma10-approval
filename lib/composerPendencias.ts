@@ -19,11 +19,13 @@ export type EstadoComposer = {
   redes: string[]
   videosSemCapa: number
   enviandoArquivo?: boolean
+  // YouTube: só entra vídeo, e um de cada vez (lib/youtubePost explica o porquê).
+  totalVideos?: number
 }
 
 // A pendência devolve só a CHAVE; o texto sai do dicionário (lib/i18n, 'pend.<chave>'), para
 // a tela falar o idioma de quem está usando.
-export type ChavePendencia = 'cliente' | 'etapa' | 'perfil' | 'legenda' | 'midia' | 'rede' | 'capa' | 'capa-varias' | 'upload'
+export type ChavePendencia = 'cliente' | 'etapa' | 'perfil' | 'legenda' | 'midia' | 'rede' | 'capa' | 'capa-varias' | 'upload' | 'yt-sem-video' | 'yt-varios-videos'
 export type Pendencia = { chave: ChavePendencia }
 
 /** Tudo o que impede publicar, agendar ou enviar para aprovação, na ordem em que aparece na tela. */
@@ -36,6 +38,13 @@ export function pendenciasDoPost(e: EstadoComposer): Pendencia[] {
   if (!e.ehStory && !String(e.legenda || '').trim()) out.push({ chave: 'legenda' })
   if (!e.redes.length) out.push({ chave: 'rede' })
   if (!e.ehStory && e.videosSemCapa > 0) out.push({ chave: e.videosSemCapa > 1 ? 'capa-varias' : 'capa' })
+  // YouTube pedido: o post PRECISA ter exatamente um vídeo. Descobrir isso na hora da
+  // publicação é descobrir tarde — o post fica em falha e ninguém vê até alguém abrir.
+  if (e.redes.includes('youtube')) {
+    const videos = Number(e.totalVideos || 0)
+    if (videos <= 0) out.push({ chave: 'yt-sem-video' })
+    else if (videos > 1) out.push({ chave: 'yt-varios-videos' })
+  }
   if (e.enviandoArquivo) out.push({ chave: 'upload' })
   return out
 }

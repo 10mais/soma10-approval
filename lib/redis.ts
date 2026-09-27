@@ -194,6 +194,12 @@ export type Cliente = {
   instagramUserId?: string
   instagramConectado?: boolean
   instagramTokenAtualizadoEm?: string
+  // Canal do YouTube do cliente (conta principal). Perfis extras guardam o deles em contas[].
+  youtubeRefreshToken?: string
+  youtubeChannelId?: string
+  youtubeChannelTitle?: string
+  youtubeConectado?: boolean
+  youtubeTokenAtualizadoEm?: string
   // Perfis ADICIONAIS (cliente com filiais: 3 lojas = 3 Instagram). Os campos
   // acima seguem valendo como "conta principal" — nada foi migrado. Quem lê
   // qualquer conta usa lib/contasSociais, nunca os campos direto.
@@ -1061,7 +1067,12 @@ export type Post = {
   erroPublicacao?: string
   rascunhoInterno?: boolean
   colaboradores?: string[] // até 4 @usuários marcados em colab
-  redes?: ('instagram' | 'facebook')[] // redes onde publicar
+  redes?: ('instagram' | 'facebook' | 'youtube')[] // redes onde publicar
+  // YouTube: título e descrição separados da legenda (lá o título é o que aparece na
+  // busca). Vazio = o sistema usa a headline da pauta e a legenda (lib/youtubePost).
+  youtubeTitulo?: string
+  youtubeDescricao?: string
+  youtubeVideoIds?: Record<string, string> // contaId -> id do vídeo publicado (link e conferência)
   // Perfis do cliente que recebem este post. Vazio/ausente = conta principal,
   // que é como todo post existente se comporta (lib/contasSociais.contasAlvo).
   contaIds?: string[]

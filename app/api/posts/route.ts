@@ -120,9 +120,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
   }
 
-  const { clienteId, clienteNome, marcoId, subetapaId, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradores, capasVideo, redes, contaIds, statusInicial, planoId, etapa, briefing, headline, sugestaoImagem, textoImagem, sugestaoLegenda } = await req.json()
-  const redesLimpas: ('instagram' | 'facebook')[] = Array.isArray(redes)
-    ? redes.filter((r: string): r is 'instagram' | 'facebook' => r === 'instagram' || r === 'facebook')
+  const { youtubeTitulo, clienteId, clienteNome, marcoId, subetapaId, imagens, legenda, dataAgendada, formato, rascunhoInterno, colaboradores, capasVideo, redes, contaIds, statusInicial, planoId, etapa, briefing, headline, sugestaoImagem, textoImagem, sugestaoLegenda } = await req.json()
+  const redesLimpas: ('instagram' | 'facebook' | 'youtube')[] = Array.isArray(redes)
+    ? redes.filter((r: string): r is 'instagram' | 'facebook' | 'youtube' => r === 'instagram' || r === 'facebook' || r === 'youtube')
     : ['instagram', 'facebook']
   // Perfis de destino. Vazio/ausente = conta principal (contasAlvo trata isso).
   // Guardado só quando há escolha explícita — post de cliente com uma conta só
@@ -152,6 +152,7 @@ export async function POST(req: NextRequest) {
     ...(colaboradoresLimpos.length ? { colaboradores: colaboradoresLimpos } : {}),
     ...(capasVideo && typeof capasVideo === 'object' && Object.keys(capasVideo).length ? { capasVideo } : {}),
     redes: redesLimpas.length ? redesLimpas : ['instagram', 'facebook'],
+    ...(typeof youtubeTitulo === 'string' && youtubeTitulo.trim() ? { youtubeTitulo: youtubeTitulo.trim().slice(0, 100) } : {}),
     ...(contaIdsLimpos.length ? { contaIds: contaIdsLimpos } : {}),
     ...(planoId ? { planoId } : {}),
     ...(etapa ? { etapa } : {}),

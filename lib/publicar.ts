@@ -1,6 +1,8 @@
 import { del } from '@vercel/blob'
 import { redis, Post } from '@/lib/redis'
 import { contasAlvo, redesDaConta, jaPublicou, chavePublicacao, ID_CONTA_PRINCIPAL } from '@/lib/contasSociais'
+import { subirVideoYouTube } from '@/lib/youtube'
+import { formatoDaMidia, linkDoVideo } from '@/lib/youtubePost'
 
 // v21+ é necessário para Reels e para a tag de colaboradores (collaborators)
 const VERSION = process.env.META_API_VERSION_PUBLISH || 'v21.0'
@@ -333,6 +335,36 @@ export type ResultadoPublicacao = {
 // roda por vez (em qualquer caminho: manual, cron de agendados ou aprovacao). Sem isso,
 // chamadas concorrentes publicavam a mesma midia 2x. Marca o post como "publicando"
 // enquanto processa, para a UI nao exibir "rascunho" durante o envio.
+// YOUTUBE — sobe UM vídeo do post no canal daquele perfil.
+//
+// Diferente da Meta em dois pontos que importam:
+//   • o YouTube agenda sozinho. Post com data futura sobe PRIVADO com `publishAt` e vai ao ar
+//     na hora marcada, mesmo que o nosso robô não rode (lib/youtubePost.privacidadeDoPost);
+//   • Short não é outro endpoint: é o mesmo upload, e o vídeo vira Short por ser vertical e
+//     curto. Aqui o formato só serve para montar o link certo de volta.
+export async function publishToYouTube(post: Post, conta?: any): Promise<{ ok: boolean; error?: string; videoId?: string }> {
+  const videos = (post.imagens || []).filter(u => isVideo(u))
+  if (!videos.length) return { ok: false, error: 'Post sem vídeo: o YouTube só aceita vídeo.' }
+  if (videos.length > 1) return { ok: false, error: 'Mais de um vídeo no post: o YouTube publica um vídeo por vez.' }
+
+  const r = await subirVideoYouTube(conta || {}, post as any, videos[0])
+  if (r.ok === false) return { ok: false, error: r.erro }
+
+  // Guarda o id do vídeo para a tela mostrar o link — e para conferir depois, se alguém
+  // duvidar de onde o vídeo foi parar.
+  try {
+    const { redis: rd } = await import('@/lib/redis')
+    const curr = await rd.get<Post>(`post:${post.id}`)
+    if (curr) {
+      const contaId = conta?.id || ID_CONTA_PRINCIPAL
+      await rd.set(`post:${post.id}`, { ...curr, youtubeVideoIds: { ...(curr.youtubeVideoIds || {}), [contaId]: r.videoId } })
+    }
+  } catch { /* o vídeo já subiu: não é hora de falhar por causa do registro */ }
+
+  console.log('[youtube] publicado', r.videoId, linkDoVideo(r.videoId, formatoDaMidia({ url: videos[0] })))
+  return { ok: true, videoId: r.videoId }
+}
+
 export async function processarPublicacao(post: Post, cliente?: any): Promise<ResultadoPublicacao> {
   const lockKey = `publicando:${post.id}`
   const lock = await redis.set(lockKey, Date.now().toString(), { nx: true, ex: 600 })
@@ -355,7 +387,9 @@ async function processarPublicacaoInterno(post: Post, cliente?: any): Promise<Re
   // PERFIS de destino. Post sem `contaIds` (todos os que existiam antes deste
   // campo) resolve para a conta principal — os campos antigos do cliente.
   const contas = contasAlvo(cliente, post.contaIds)
-  const redesPedidas = post.redes && post.redes.length ? [...post.redes] : ['instagram', 'facebook']
+  // Post antigo (sem `redes`) nasceu antes do YouTube existir: continua Meta, nunca sobe
+  // vídeo num canal sem alguém ter pedido.
+  const redesPedidas: string[] = post.redes && post.redes.length ? [...post.redes] : ['instagram', 'facebook']
   const jaPublicadas = (post.redesPublicadas || []) as string[]
 
   // Perfil selecionado que perdeu a conexão DEPOIS do agendamento. Não pode
@@ -366,7 +400,7 @@ async function processarPublicacaoInterno(post: Post, cliente?: any): Promise<Re
   const alvos: { conta: typeof contas[number]; rede: string }[] = []
   for (const conta of contas) {
     for (const rede of redesDaConta(conta)) {
-      if (!redesPedidas.includes(rede as any)) continue
+      if (!redesPedidas.includes(rede)) continue
       if (jaPublicou(jaPublicadas, conta.id, rede)) continue
       alvos.push({ conta, rede })
     }
@@ -394,14 +428,16 @@ async function processarPublicacaoInterno(post: Post, cliente?: any): Promise<Re
 
   const novasOk: string[] = [...jaPublicadas]
   const rotulo = (conta: { id: string; nome: string }, rede: string) =>
-    contas.length > 1 ? `${rede === 'instagram' ? 'Instagram' : 'Facebook'} de ${conta.nome}` : (rede === 'instagram' ? 'Instagram' : 'Facebook')
+    contas.length > 1 ? `${nomeDaRede(rede)} de ${conta.nome}` : nomeDaRede(rede)
 
   // Publica CADA PAR (perfil, rede) SEPARADAMENTE e salva redesPublicadas
   // IMEDIATAMENTE: em caso de crash/timeout, o que já saiu não sai de novo.
   // A conta é passada no lugar do cliente — os campos que publishToX lê têm
   // os mesmos nomes na ContaSocial.
   for (const { conta, rede } of alvos) {
-    const r = rede === 'instagram' ? await publishToInstagram(post, conta) : await publishToFacebook(post, conta)
+    const r = rede === 'instagram' ? await publishToInstagram(post, conta)
+      : rede === 'youtube' ? await publishToYouTube(post, conta)
+      : await publishToFacebook(post, conta)
     if (!r.ok) {
       const agora = new Date().toISOString()
       const erro = `${rotulo(conta, rede)} — ${(r as any).error}`
@@ -443,13 +479,18 @@ async function processarPublicacaoInterno(post: Post, cliente?: any): Promise<Re
   }
 }
 
+// Nome da rede como a equipe fala dela (uma lista só — rede nova entra aqui).
+function nomeDaRede(rede: string): string {
+  return rede === 'instagram' ? 'Instagram' : rede === 'facebook' ? 'Facebook' : rede === 'youtube' ? 'YouTube' : rede
+}
+
 // "principal:instagram" -> "Instagram". Com mais de um perfil, diz qual:
 // "Instagram de Loja Sul". A chave crua nunca chega ao olho de ninguém.
 function resumoPublicado(chaves: string[], contas: { id: string; nome: string }[]): string {
   const nomeDe = (id: string) => contas.find(c => c.id === id)?.nome || ''
   const partes = (chaves || []).map(k => {
     const [contaId, rede] = k.includes(':') ? k.split(':') : [ID_CONTA_PRINCIPAL, k]
-    const label = rede === 'instagram' ? 'Instagram' : rede === 'facebook' ? 'Facebook' : rede
+    const label = nomeDaRede(rede)
     const nome = nomeDe(contaId)
     return contas.length > 1 && nome ? `${label} de ${nome}` : label
   })

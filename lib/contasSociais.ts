@@ -15,6 +15,10 @@
 // caminho da publicação é o mais caro de errar no sistema inteiro — post
 // duplicado ou no perfil errado é irreversível, já saiu para o público.
 
+// Onde o sistema publica hoje. Sair daqui é o jeito de não esquecer um lugar quando
+// entra rede nova (foi assim que o YouTube entrou, em 27/09/2026).
+export type RedeSocial = 'instagram' | 'facebook' | 'youtube'
+
 export type ContaSocial = {
   id: string
   nome: string // rótulo interno ("Loja Centro"), escolhido pela equipe
@@ -29,6 +33,13 @@ export type ContaSocial = {
   facebookPageToken?: string
   instagramBusinessId?: string
   metaConectado?: boolean
+  // Canal do YouTube (OAuth do Google). O refresh_token é o que dura; o token de
+  // acesso vale 1 hora e é pedido na hora de subir o vídeo (lib/youtube).
+  youtubeRefreshToken?: string
+  youtubeChannelId?: string
+  youtubeChannelTitle?: string
+  youtubeConectado?: boolean
+  youtubeTokenAtualizadoEm?: string
   logo?: string
   criadoEm?: string
 }
@@ -51,6 +62,11 @@ type ClienteComContas = {
   facebookPageToken?: string
   instagramBusinessId?: string
   metaConectado?: boolean
+  youtubeRefreshToken?: string
+  youtubeChannelId?: string
+  youtubeChannelTitle?: string
+  youtubeConectado?: boolean
+  youtubeTokenAtualizadoEm?: string
 }
 
 // A conta principal existe se os campos antigos têm ALGUMA conexão de verdade.
@@ -59,7 +75,8 @@ export function contaPrincipal(cliente?: ClienteComContas | null): ContaSocial |
   if (!cliente) return null
   const temIG = !!(cliente.instagramToken && cliente.instagramUserId)
   const temFB = !!(cliente.facebookPageToken && cliente.facebookPageId)
-  if (!temIG && !temFB) return null
+  const temYT = !!(cliente.youtubeRefreshToken && cliente.youtubeChannelId)
+  if (!temIG && !temFB && !temYT) return null
   return {
     id: ID_CONTA_PRINCIPAL,
     nome: cliente.instagramUsername ? `@${cliente.instagramUsername}` : (cliente.nome || 'Conta principal'),
@@ -72,6 +89,11 @@ export function contaPrincipal(cliente?: ClienteComContas | null): ContaSocial |
     facebookPageToken: cliente.facebookPageToken,
     instagramBusinessId: cliente.instagramBusinessId,
     metaConectado: cliente.metaConectado,
+    youtubeRefreshToken: cliente.youtubeRefreshToken,
+    youtubeChannelId: cliente.youtubeChannelId,
+    youtubeChannelTitle: cliente.youtubeChannelTitle,
+    youtubeConectado: cliente.youtubeConectado,
+    youtubeTokenAtualizadoEm: cliente.youtubeTokenAtualizadoEm,
     logo: cliente.logo,
   }
 }
@@ -98,11 +120,13 @@ export function contaPorId(cliente: ClienteComContas | null | undefined, id?: st
 // Em quais redes ESTA conta consegue publicar. Conta que só tem Instagram não
 // deve aparecer como opção de Facebook — antes isso era um filtro solto dentro
 // de publicar.ts, checando o cliente inteiro.
-export function redesDaConta(conta?: ContaSocial | null): ('instagram' | 'facebook')[] {
+export function redesDaConta(conta?: ContaSocial | null): RedeSocial[] {
   if (!conta) return []
-  const redes: ('instagram' | 'facebook')[] = []
+  const redes: RedeSocial[] = []
   if (conta.instagramToken && conta.instagramUserId) redes.push('instagram')
   if (conta.metaConectado && conta.facebookPageToken && conta.facebookPageId) redes.push('facebook')
+  // YouTube: o que vale é o refresh_token; o de acesso vive 1 hora e é renovado no envio.
+  if (conta.youtubeRefreshToken && conta.youtubeChannelId) redes.push('youtube')
   return redes
 }
 
@@ -113,12 +137,12 @@ export function contaConectada(conta?: ContaSocial | null): boolean {
 // Forma SEGURA para o frontend: sem tokens, com flags de conexão. O frontend
 // precisa saber que a conta existe e em que redes publica, jamais o token —
 // mesmo cuidado que o GET de /api/clientes já tem com os campos escalares.
-export type ContaPublica = { id: string; nome: string; instagramUsername?: string; logo?: string; temInstagram: boolean; temFacebook: boolean }
+export type ContaPublica = { id: string; nome: string; instagramUsername?: string; logo?: string; temInstagram: boolean; temFacebook: boolean; temYoutube: boolean; youtubeChannelTitle?: string }
 
 export function contasPublicas(cliente?: ClienteComContas | null): ContaPublica[] {
   return contasDoCliente(cliente).map(c => {
     const r = redesDaConta(c)
-    return { id: c.id, nome: c.nome, instagramUsername: c.instagramUsername, logo: c.logo, temInstagram: r.includes('instagram'), temFacebook: r.includes('facebook') }
+    return { id: c.id, nome: c.nome, instagramUsername: c.instagramUsername, logo: c.logo, temInstagram: r.includes('instagram'), temFacebook: r.includes('facebook'), temYoutube: r.includes('youtube'), ...(c.youtubeChannelTitle ? { youtubeChannelTitle: c.youtubeChannelTitle } : {}) }
   })
 }
 

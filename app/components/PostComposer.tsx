@@ -2,6 +2,7 @@
 import { anexosParaCriativo } from '@/lib/producaoVinculo'
 import { opcoesEtapas, separarValor, juntarValor, opcaoDoValorAtual, type MarcoOpcao } from '@/lib/etapaPlaybook'
 import { pendenciasDoPost, pendenciasDaAcao, frasePendencias, minimoDatetimeLocal } from '@/lib/composerPendencias'
+import { tituloDoPost } from '@/lib/youtubePost'
 import { useT } from '@/app/components/Idioma'
 import { useRef, useState, useEffect } from 'react'
 import { upload } from '@vercel/blob/client'
@@ -27,7 +28,9 @@ export type ComposerValue = {
   formato: 'feed' | 'reel' | 'story'
   colaboradores: string[]
   capasVideo: Record<string, string>
-  redes: ('instagram' | 'facebook')[]
+  redes: ('instagram' | 'facebook' | 'youtube')[]
+  // YouTube: título próprio (lá o título é o que aparece na busca). Vazio = headline da pauta.
+  youtubeTitulo?: string
   contaIds?: string[] // perfis de destino (cliente com mais de um). Vazio = principal.
   acao?: 'publicar' | 'agendar' | 'rascunho' | 'salvar' | 'aprovacao'
 }
@@ -128,10 +131,11 @@ export default function PostComposer({
       setCapturandoFrame(false)
     }
   }
-  const [redes, setRedes] = useState<('instagram' | 'facebook')[]>(valorInicial?.redes || ['instagram', 'facebook'])
+  const [redes, setRedes] = useState<('instagram' | 'facebook' | 'youtube')[]>(valorInicial?.redes || ['instagram', 'facebook'])
+  const [youtubeTitulo, setYoutubeTitulo] = useState(valorInicial?.youtubeTitulo || '')
   const [modoAgendar, setModoAgendar] = useState(false)
 
-  function alternarRede(rede: 'instagram' | 'facebook') {
+  function alternarRede(rede: 'instagram' | 'facebook' | 'youtube') {
     setRedes(atual => atual.includes(rede) ? atual.filter(r => r !== rede) : [...atual, rede])
   }
 
@@ -377,14 +381,15 @@ export default function PostComposer({
         if (!ok) return
       }
     }
-    onSubmit({ clienteId, marcoId, subetapaId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, ...(multiPerfil ? { contaIds } : {}), acao })
+    onSubmit({ clienteId, marcoId, subetapaId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, ...(redes.includes('youtube') ? { youtubeTitulo: youtubeTitulo.trim() } : {}), ...(multiPerfil ? { contaIds } : {}), acao })
   }
 
   const enviandoArquivo = emEnvio.length > 0
   const marcoOk = !clienteId || !!marcoId
   // O que falta, ESCRITO (lib/composerPendencias): botão apagado sem motivo foi o que travou a
   // troca de data de um post agendado antes de a etapa do Playbook virar obrigatória (17/09).
-  const pendencias = pendenciasDoPost({ clienteId, marcoId, multiPerfil, contaIds, ehStory, legenda, totalMidias: midias.length, redes, videosSemCapa, enviandoArquivo })
+  const totalVideos = midias.filter(m => m.tipo === 'video').length
+  const pendencias = pendenciasDoPost({ clienteId, marcoId, multiPerfil, contaIds, ehStory, legenda, totalMidias: midias.length, redes, videosSemCapa, enviandoArquivo, totalVideos })
   const faltaEtapa = pendencias.some(p => p.chave === 'etapa')
   // Cada botão com a SUA regra: editar a data de um post que já existe não trava pela etapa.
   const acaoPrincipal = dataAgendada ? 'agendar' as const : 'publicar' as const
@@ -474,6 +479,7 @@ export default function PostComposer({
             {([
               { key: 'instagram' as const, nome: 'Instagram', cor: '#dc2743' },
               { key: 'facebook' as const, nome: 'Facebook', cor: '#1877f2' },
+              { key: 'youtube' as const, nome: 'YouTube', cor: '#ff0000' },
             ]).map(r => {
               const ativo = redes.includes(r.key)
               const sel = '#1877f2' // cor azul da seleção, igual para as duas redes
@@ -488,7 +494,9 @@ export default function PostComposer({
                     display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-surface)', fontSize: 12, flexShrink: 0,
                   }}>{ativo ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--v2-surface)" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg> : null}</span>
                   <span style={{ width: 22, height: 22, borderRadius: '50%', background: r.cor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--v2-surface)">{r.key === 'facebook'
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--v2-surface)">{r.key === 'youtube'
+                      ? <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                      : r.key === 'facebook'
                       ? <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                       : <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8z"/>}</svg>
                   </span>
@@ -499,6 +507,21 @@ export default function PostComposer({
           </div>
           {redes.length === 0 && <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--v2-hot)' }}>{tr('composer.redes-vazio')}</p>}
         </div>
+
+        {/* YOUTUBE — título próprio. Lá o título é o que aparece na busca; a legenda vira a
+            descrição. O agendamento é do próprio YouTube (sobe privado com publishAt). */}
+        {redes.includes('youtube') && (
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('composer.youtube-titulo')}</label>
+            <input value={youtubeTitulo} onChange={e => setYoutubeTitulo(e.target.value.slice(0, 100))}
+              placeholder={tituloDoPost({ legenda, clienteNome: clientes.find(c => c.id === clienteId)?.nome })}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '11px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit', background: 'var(--v2-surface)', color: 'var(--v2-ink)' }} />
+            <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--v2-ink3)' }}>
+              {tr('composer.youtube-titulo-ajuda')} {youtubeTitulo.length > 0 && <span style={{ fontWeight: 700 }}>{youtubeTitulo.length}/100</span>}
+            </p>
+            {dataAgendada && <p style={{ margin: '4px 0 0', fontSize: 11.5, color: 'var(--v2-ok)' }}>{tr('composer.youtube-agenda')}</p>}
+          </div>
+        )}
 
         {/* Upload de mídia */}
         <div>
