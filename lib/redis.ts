@@ -220,6 +220,10 @@ export type Cliente = {
   publicoAlvo?: string
   tomDeVoz?: string
   preferencias?: string
+  // Marca (lib/marcaExtras): ofertas do cliente (nome + descrição) e links de benchmark
+  // (só a equipe vê; /api/clientes não entrega ao papel cliente).
+  produtosServicos?: { id: string; nome: string; descricao?: string }[]
+  benchmarks?: { id: string; url: string; tipo: 'instagram' | 'site' | 'youtube' | 'tiktok' | 'facebook' | 'linkedin' | 'outro'; nome?: string; observar?: string }[]
   documentos?: { nome: string; url: string }[]
   // Documento de marca aprofundado, gerado por IA a partir do Brand Board
   documentoMarca?: string

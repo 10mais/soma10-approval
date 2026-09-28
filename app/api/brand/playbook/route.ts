@@ -6,6 +6,7 @@ import { revalidateTag } from 'next/cache'
 import { registrarGasto, custoEstimado } from '@/lib/anthropicSaldo'
 import { extrairTextoDeArquivo } from '@/lib/extrairTexto'
 import Anthropic from '@anthropic-ai/sdk'
+import { textoMarcaExtras } from '@/lib/marcaExtras'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -71,6 +72,8 @@ export async function POST(req: NextRequest) {
     cliente.publicoAlvo ? `Público-alvo: ${cliente.publicoAlvo}` : '',
     cliente.tomDeVoz ? `Tom de voz: ${cliente.tomDeVoz}` : '',
     cliente.preferencias ? `Preferências/restrições informadas: ${cliente.preferencias}` : '',
+    // Produtos/serviços e benchmarks da Marca (lib/marcaExtras) — o mesmo bloco em todo gerador.
+    textoMarcaExtras(cliente as any),
     cliente.documentoMarca ? `\nDOCUMENTO DE MARCA (referência editorial):\n${(cliente.documentoMarca || '').slice(0, 12000)}` : '',
   ].filter(Boolean).join('\n')
 

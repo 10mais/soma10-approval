@@ -6,6 +6,8 @@ import { isViewAsClient } from '@/lib/modoCliente'
 import { confirmar } from '@/lib/toast'
 import ReferenciasVisuais from '../../../components/ReferenciasVisuais'
 import FontesMarca from '../../../components/FontesMarca'
+import ProdutosServicos from '../../../components/ProdutosServicos'
+import BenchmarksMarca from '../../../components/BenchmarksMarca'
 import { useArea } from '@/app/components/Idioma'
 
 const CAMPOS: { key: string; label: string; placeholder: string; area?: boolean }[] = [
@@ -175,6 +177,20 @@ export default function MarcaPage() {
               <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: 13, lineHeight: 1.6, color: 'var(--v2-ink)', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 12, padding: 18, maxHeight: 520, overflow: 'auto', margin: 0 }}>{cliente.documentoMarca}</pre>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Produtos e serviços — nome + descrição (dono, 28/09). Equipe edita; cliente vê. */}
+      {(ehEquipe || (cliente.produtosServicos || []).length > 0) && (
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
+          <ProdutosServicos key={`ps-${clienteId}`} clienteId={clienteId as string} inicial={cliente.produtosServicos || []} podeEditar={ehEquipe} />
+        </div>
+      )}
+
+      {/* Benchmarks — links de referência (dono, 28/09). Só a equipe (a API nem entrega ao cliente). */}
+      {ehEquipe && (
+        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 22, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginTop: 16 }}>
+          <BenchmarksMarca key={`bm-${clienteId}`} clienteId={clienteId as string} inicial={cliente.benchmarks || []} />
         </div>
       )}
 

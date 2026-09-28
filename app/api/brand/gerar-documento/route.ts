@@ -5,6 +5,7 @@ import { redis, Cliente } from '@/lib/redis'
 import { revalidateTag } from 'next/cache'
 import { registrarGasto, custoEstimado } from '@/lib/anthropicSaldo'
 import Anthropic from '@anthropic-ai/sdk'
+import { textoMarcaExtras } from '@/lib/marcaExtras'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300 // Vercel Pro: até 5 min para a pesquisa + geração
@@ -47,6 +48,8 @@ export async function POST(req: NextRequest) {
     cliente.publicoAlvo ? `Público-alvo: ${cliente.publicoAlvo}` : '',
     cliente.tomDeVoz ? `Tom de voz: ${cliente.tomDeVoz}` : '',
     cliente.preferencias ? `Preferências / restrições da marca: ${cliente.preferencias}` : '',
+    // Produtos/serviços e benchmarks da Marca (lib/marcaExtras) — o mesmo bloco em todo gerador.
+    textoMarcaExtras(cliente as any),
   ].filter(Boolean).join('\n')
 
   const prompt = `Você é um(a) estrategista de conteúdo sênior de uma agência de marketing. A partir do Brand Board abaixo, pesquise mais a fundo o nicho deste cliente (tendências atuais, comportamento do público, concorrência, sazonalidades, formatos que performam) usando busca na web quando útil, e produza um DOCUMENTO DE MARCA completo e prático, em português do Brasil.

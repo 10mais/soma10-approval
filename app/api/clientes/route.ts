@@ -10,6 +10,7 @@ import { registrarAuditoria } from '@/lib/auditoria'
 import { limparSquadPapeis, squadCompleto } from '@/lib/squadPapeis'
 import { contasPublicas } from '@/lib/contasSociais'
 import { v4 as uuid } from 'uuid'
+import { limparProdutos, limparBenchmarks } from '@/lib/marcaExtras'
 import bcrypt from 'bcryptjs'
 
 function gerarSenha() {
@@ -33,8 +34,11 @@ export async function GET(req: NextRequest) {
     if (!c) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
     if (role === 'cliente' && c.id !== (session.user as any).clienteId) return NextResponse.json({ error: 'não autorizado' }, { status: 403 })
     const contasPub = contasPublicas(c)
-    const { facebookPageToken, instagramToken, loginSenha, contas, ...seguro } = c as any
-    return NextResponse.json({ ...seguro, contas: contasPub, temInstagram: !!instagramToken, temFacebook: !!facebookPageToken })
+    // youtubeRefreshToken também fica: é a chave do canal (o token da Meta já era retirado).
+    // Benchmarks são da equipe (lib/marcaExtras): o cliente não recebe.
+    const { facebookPageToken, instagramToken, youtubeRefreshToken, loginSenha, contas, ...seguro } = c as any
+    if (role === 'cliente') delete seguro.benchmarks
+    return NextResponse.json({ ...seguro, contas: contasPub, temInstagram: !!instagramToken, temFacebook: !!facebookPageToken, temYoutube: !!youtubeRefreshToken })
   }
 
   let clientes = await getClientesRaw()
@@ -54,8 +58,9 @@ export async function GET(req: NextRequest) {
   const seguros = clientes
     .map(c => {
       const contasPub = contasPublicas(c)
-      const { facebookPageToken, instagramToken, loginSenha, contas, ...resto } = c as any
-      return { ...resto, contas: contasPub, temInstagram: !!instagramToken, temFacebook: !!facebookPageToken }
+      const { facebookPageToken, instagramToken, youtubeRefreshToken, loginSenha, contas, ...resto } = c as any
+      if (role === 'cliente') delete resto.benchmarks
+      return { ...resto, contas: contasPub, temInstagram: !!instagramToken, temFacebook: !!facebookPageToken, temYoutube: !!youtubeRefreshToken }
     })
     .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt', { sensitivity: 'base' }))
   return NextResponse.json(seguros)
@@ -149,6 +154,10 @@ export async function PUT(req: NextRequest) {
   for (const campo of camposPermitidos) {
     if (campo in updates) (atualizado as any)[campo] = updates[campo]
   }
+  // Marca: produtos/serviços (nome + descrição) e benchmarks — limpos aqui, no servidor
+  // (lib/marcaExtras), venha o salvamento de onde vier.
+  if ('produtosServicos' in updates) (atualizado as any).produtosServicos = limparProdutos(updates.produtosServicos, uuid)
+  if ('benchmarks' in updates) (atualizado as any).benchmarks = limparBenchmarks(updates.benchmarks, uuid)
   // Checklist MANUAL do onboarding: só chaves conhecidas (lib/faseCliente). A
   // FASE em si não entra aqui — muda só pela rota /api/clientes/fase.
   if ('onboardingChecklist' in updates) atualizado.onboardingChecklist = limparChecklist(updates.onboardingChecklist, await lerConfigOnboarding())
@@ -174,8 +183,10 @@ export async function PUT(req: NextRequest) {
   if ('arquivado' in updates && !!updates.arquivado !== !!cliente.arquivado) {
     await registrarAuditoria({ ator: session.user?.name || session.user?.email || 'equipe', acao: updates.arquivado ? 'cliente_arquivado' : 'cliente_restaurado', alvo: cliente.nome })
   }
-  const { facebookPageToken, instagramToken, loginSenha, ...seguro } = atualizado as any
-  return NextResponse.json({ ok: true, cliente: seguro })
+  // Mesma forma segura do GET: nenhum token vai ao navegador (nem o do YouTube, nem os dos
+  // perfis extras em contas[], que viram a forma pública).
+  const { facebookPageToken, instagramToken, youtubeRefreshToken, loginSenha, contas, ...seguro } = atualizado as any
+  return NextResponse.json({ ok: true, cliente: { ...seguro, contas: contasPublicas(atualizado as any), temInstagram: !!instagramToken, temFacebook: !!facebookPageToken, temYoutube: !!youtubeRefreshToken } })
 }
 
 export async function DELETE(req: NextRequest) {

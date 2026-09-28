@@ -194,6 +194,9 @@ async function consultarBrandboard(input: any): Promise<string> {
       publicoAlvo: c.publicoAlvo || null,
       tomDeVoz: c.tomDeVoz || null,
       preferencias: c.preferencias || null,
+      // Marca (lib/marcaExtras): ofertas pelo nome e referências de mercado.
+      produtosServicos: (c as any).produtosServicos?.length ? (c as any).produtosServicos.map((p: any) => ({ nome: p.nome, descricao: p.descricao || null })) : null,
+      benchmarks: (c as any).benchmarks?.length ? (c as any).benchmarks.map((b: any) => ({ nome: b.nome || null, tipo: b.tipo, url: b.url, observar: b.observar || null })) : null,
     },
     playbook: {
       posicionamento: pb.posicionamento || null,

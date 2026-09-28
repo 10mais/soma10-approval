@@ -10,6 +10,7 @@ import { renderHtmlToPng } from '@/lib/renderHtml'
 import { CANVAS, FonteResolvida, promptDesigner, promptRefinar, extrairHtml, montarHtmlFinal } from '@/lib/designCriativo'
 import { objetivoDef } from '@/lib/criativoObjetivos'
 import Anthropic from '@anthropic-ai/sdk'
+import { textoMarcaExtras } from '@/lib/marcaExtras'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -142,6 +143,8 @@ export async function POST(req: NextRequest) {
       cliente.segmento ? `Segmento: ${cliente.segmento}` : '',
       cliente.tomDeVoz ? `Tom de voz: ${cliente.tomDeVoz}` : '',
       cliente.publicoAlvo ? `Público: ${cliente.publicoAlvo}` : '',
+      // Produtos/serviços e benchmarks da Marca (lib/marcaExtras) — o mesmo bloco em todo gerador.
+      textoMarcaExtras(cliente as any, 1200),
       pb?.posicionamento ? `Posicionamento: ${pb.posicionamento}` : '',
       pb?.fazer ? `Sempre fazer: ${pb.fazer}` : '',
       pb?.naoFazer ? `Nunca fazer: ${pb.naoFazer}` : '',

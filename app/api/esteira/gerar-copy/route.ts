@@ -7,6 +7,7 @@ import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
 import Anthropic from '@anthropic-ai/sdk'
 import { REGRA_PTBR } from '@/lib/regraPtBr'
+import { textoMarcaExtras } from '@/lib/marcaExtras'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -52,6 +53,8 @@ export async function POST(req: NextRequest) {
     cliente.publicoAlvo ? `Público-alvo: ${cliente.publicoAlvo}` : '',
     cliente.tomDeVoz ? `Tom de voz: ${cliente.tomDeVoz}` : '',
     cliente.preferencias ? `Preferências/restrições: ${cliente.preferencias}` : '',
+    // Produtos/serviços e benchmarks da Marca (lib/marcaExtras) — o mesmo bloco em todo gerador.
+    textoMarcaExtras(cliente as any, 2000),
     cliente.documentoMarca ? `\nDNA da marca (referência editorial):\n${cliente.documentoMarca.slice(0, 3000)}` : '',
   ].filter(Boolean).join('\n')
 
