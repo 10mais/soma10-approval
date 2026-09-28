@@ -7,6 +7,7 @@ import { toast, confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
 import { podeNivel } from '@/lib/permissoesCatalogo'
 import { podeAcaoGranular } from '@/lib/permissoesGranular'
+import { ordenarPorDataDePostagem } from '@/lib/ordemAprovacao'
 
 function capaDoPost(post: any): string {
   const ehVideo = (u: string) => /\.(mp4|mov|m4v)(\?|$)/i.test(u || '')
@@ -123,7 +124,8 @@ export default function AprovacoesPagina() {
     toast(tr('portal.material-excluido'), 'sucesso')
   }
 
-  const pendentes = posts.filter(p => p.etapa === 'aprovacao_copy' || p.etapa === 'aprovacao_criativo')
+  // Mesma ordem do link público: postagem mais próxima primeiro (lib/ordemAprovacao).
+  const pendentes = ordenarPorDataDePostagem(posts.filter(p => p.etapa === 'aprovacao_copy' || p.etapa === 'aprovacao_criativo'))
   // "aguardando" = os que precisam da decisão do cliente; EM AJUSTE (corrigir) ficam visíveis mas não contam no banner/lote.
   const aguardando = pendentes.filter(p => p.status !== 'corrigir')
   // espera mais antiga (para o banner "o que está esperando você")

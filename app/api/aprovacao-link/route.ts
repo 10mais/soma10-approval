@@ -5,6 +5,7 @@ import { redis, Cliente, Post } from '@/lib/redis'
 import { esperandoCliente } from '@/lib/bolaDaVez'
 import { v4 as uuid } from 'uuid'
 import { checarRate } from '@/lib/rateLimit'
+import { compararPorDataDePostagem } from '@/lib/ordemAprovacao'
 
 export const runtime = 'nodejs'
 
@@ -62,7 +63,8 @@ export async function GET(req: NextRequest) {
     // público dizia "Tudo aprovado" — o cliente não tinha como aprovar.
     .filter(p => p.clienteId === clienteId && !(p as any).excluidoEm
       && (esperandoCliente(p as any) || p.status === 'corrigir'))
-    .sort((a, b) => (a.criadoEm || '').localeCompare(b.criadoEm || ''))
+    // Primeiro o que vai ao ar antes (atrasado no topo); sem data no fim (lib/ordemAprovacao).
+    .sort(compararPorDataDePostagem as any)
     .map(p => ({
       id: p.id, codigo: (p as any).codigo, imagens: p.imagens || [], legenda: p.legenda || '',
       formato: (p as any).formato || '', dataAgendada: (p as any).dataAgendada || '', capasVideo: (p as any).capasVideo || {},
