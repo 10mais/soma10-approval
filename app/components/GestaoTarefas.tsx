@@ -153,7 +153,12 @@ function TextoComMencoes({ texto }: { texto: string }) {
 
 function ConfirmPopup({ mensagem, onConfirm, onCancel }: { mensagem: string; onConfirm: () => void; onCancel: () => void }) {
   const tr = useT()
-  return (
+  // PORTAL no body, como o TarefaModal (dono, 29/09, com vídeo: "as opções de confirmação
+  // ficam para trás do modal em tarefas"). O modal da tarefa vive num portal no body (z 1000);
+  // este popup ficava DENTRO da página — cujo contexto de empilhamento inteiro fica abaixo do
+  // portal — e o z 2000 daqui não valia nada: Excluir abria a confirmação escondida atrás.
+  if (typeof document === 'undefined') return null
+  return createPortal(
     <div onClick={fecharFora(onCancel)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
       <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '24px 28px', maxWidth: 400, width: '90%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
@@ -168,7 +173,8 @@ function ConfirmPopup({ mensagem, onConfirm, onCancel }: { mensagem: string; onC
           <button onClick={onConfirm} style={{ padding: '9px 20px', background: 'var(--v2-hot)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, color: 'var(--v2-surface)', cursor: 'pointer' }}>{tr('comum.excluir')}</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
