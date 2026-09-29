@@ -46,3 +46,25 @@ export function limparSquadPapeis(bruto: any): SquadPapeis {
   }
   return limpo
 }
+
+// O CAMINHO DE VOLTA: em quais squads esta pessoa está (dono, 29/09: "Em EQUIPE, preciso que
+// apareçam quais clientes o integrante está no Squad"). O squad mora no CLIENTE (lista +
+// papéis); a tela da Equipe olha pela pessoa. Estar num papel já é estar no squad (mesma
+// regra do squadCompleto); e-mail comparado sem diferenciar maiúscula.
+export type SquadDaPessoa = { clienteId: string; clienteNome: string; papeis: PapelSquad[] }
+
+export function squadsDaPessoa(
+  email: string,
+  clientes: { id: string; nome?: string; squad?: string[]; squadPapeis?: SquadPapeis; arquivado?: boolean }[],
+): SquadDaPessoa[] {
+  const alvo = String(email || '').trim().toLowerCase()
+  if (!alvo) return []
+  const out: SquadDaPessoa[] = []
+  for (const c of clientes || []) {
+    if (!c?.id || c.arquivado) continue
+    const papeis = PAPEIS_SQUAD.filter(p => (c.squadPapeis?.[p.chave] || '').trim().toLowerCase() === alvo).map(p => p.chave)
+    const naLista = (c.squad || []).some(e => String(e || '').trim().toLowerCase() === alvo)
+    if (papeis.length || naLista) out.push({ clienteId: c.id, clienteNome: c.nome || 'Cliente', papeis })
+  }
+  return out.sort((a, b) => a.clienteNome.localeCompare(b.clienteNome, 'pt', { sensitivity: 'base' }))
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PAPEIS_SQUAD, squadCompleto, limparSquadPapeis, labelDoPapel } from '@/lib/squadPapeis'
+import { PAPEIS_SQUAD, squadCompleto, limparSquadPapeis, labelDoPapel, squadsDaPessoa } from '@/lib/squadPapeis'
 
 describe('PAPEIS_SQUAD', () => {
   it('tem os quatro papéis, com chave única', () => {
@@ -64,5 +64,33 @@ describe('limparSquadPapeis', () => {
   it('sobrevive a lixo', () => {
     expect(limparSquadPapeis(null)).toEqual({})
     expect(limparSquadPapeis('texto')).toEqual({})
+  })
+})
+
+describe('squadsDaPessoa — em quais squads a pessoa está (tela Equipe)', () => {
+  const clientes = [
+    { id: 'c1', nome: 'Universal', squad: ['ana@10mais.com.br', 'bia@10mais.com.br'], squadPapeis: { designer: 'Ana@10mais.com.br' } },
+    { id: 'c2', nome: 'Clínica Norah', squad: ['ana@10mais.com.br'] },
+    { id: 'c3', nome: 'Arquivado', squad: ['ana@10mais.com.br'], arquivado: true },
+    { id: 'c4', nome: 'Beta', squadPapeis: { gestor_trafego: 'ana@10mais.com.br', gestor_projetos: 'ana@10mais.com.br' } },
+    { id: 'c5', nome: 'Outro', squad: ['caio@10mais.com.br'] },
+  ]
+
+  it('acha pela lista E pelos papéis, sem diferenciar maiúscula, em ordem alfabética', () => {
+    const r = squadsDaPessoa('ANA@10mais.com.br', clientes)
+    expect(r.map(x => x.clienteNome)).toEqual(['Beta', 'Clínica Norah', 'Universal'])
+  })
+
+  it('traz os papéis que a pessoa ocupa (vazio quando está só na lista)', () => {
+    const r = squadsDaPessoa('ana@10mais.com.br', clientes)
+    expect(r.find(x => x.clienteId === 'c1')?.papeis).toEqual(['designer'])
+    expect(r.find(x => x.clienteId === 'c2')?.papeis).toEqual([])
+    expect(r.find(x => x.clienteId === 'c4')?.papeis).toEqual(['gestor_projetos', 'gestor_trafego'])
+  })
+
+  it('ignora cliente arquivado; quem não está em squad nenhum volta vazio', () => {
+    expect(squadsDaPessoa('ana@10mais.com.br', clientes).some(x => x.clienteId === 'c3')).toBe(false)
+    expect(squadsDaPessoa('ninguem@10mais.com.br', clientes)).toEqual([])
+    expect(squadsDaPessoa('', clientes)).toEqual([])
   })
 })

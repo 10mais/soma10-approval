@@ -28,7 +28,7 @@ export type ResumoPessoa = {
   concluidas7d: TarefaPessoa[]
   minutos7d: number
   porCliente: { clienteId: string; clienteNome: string; abertas: number }[]
-  clientes: string[] // ids: responsabilidade explícita + onde tem tarefa aberta
+  clientes: string[] // ids: squad + responsabilidade explícita + onde tem tarefa aberta
 }
 
 const DIA = 86400000
@@ -51,6 +51,9 @@ export function resumoDaPessoa(input: {
   email: string
   tarefas?: TarefaPessoa[]
   clientesResponsavel?: string[]
+  // Clientes em cujo SQUAD a pessoa está (lib/squadPapeis.squadsDaPessoa). Contam como
+  // "clientes em que atua" mesmo sem tarefa aberta.
+  clientesSquad?: string[]
   agora?: number
 }): ResumoPessoa {
   const agora = input.agora ?? Date.now()
@@ -93,7 +96,7 @@ export function resumoDaPessoa(input: {
   }
   const porCliente = Array.from(mapa.values()).sort((a, b) => b.abertas - a.abertas)
 
-  const clientes = new Set<string>(input.clientesResponsavel || [])
+  const clientes = new Set<string>([...(input.clientesSquad || []), ...(input.clientesResponsavel || [])])
   for (const c of porCliente) if (c.clienteId) clientes.add(c.clienteId)
 
   return { abertas: abertas.length, atrasadas, hoje, semana, depois, semPrazo, concluidas7d, minutos7d, porCliente, clientes: Array.from(clientes) }

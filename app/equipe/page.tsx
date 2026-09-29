@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useEffect, useMemo, useState } from 'react'
 import AvatarPessoa from '@/app/components/AvatarPessoa'
 import { resumoDaPessoa, fmtMinutos } from '@/lib/hubPessoa'
+import { squadsDaPessoa, type SquadPapeis } from '@/lib/squadPapeis'
 
 // TODOS OS CARDS (só admin): a equipe inteira, um card por pessoa, com o que
 // está assinalado para cada um. Quem não é admin cai no próprio card.
@@ -17,7 +18,7 @@ export default function EquipeCards() {
   const role = (session?.user as any)?.role
   const [pessoas, setPessoas] = useState<Pessoa[]>([])
   const [tarefas, setTarefas] = useState<any[]>([])
-  const [clientes, setClientes] = useState<{ id: string; nome: string }[]>([])
+  const [clientes, setClientes] = useState<{ id: string; nome: string; squad?: string[]; squadPapeis?: SquadPapeis }[]>([])
   const [carregado, setCarregado] = useState(false)
 
   useEffect(() => {
@@ -27,12 +28,16 @@ export default function EquipeCards() {
     Promise.all([j('/api/equipe'), j('/api/tarefas'), j('/api/clientes')]).then(([p, t, c]) => {
       setPessoas(Array.isArray(p) ? p : [])
       setTarefas(Array.isArray(t) ? t : [])
-      setClientes(Array.isArray(c) ? c.map((x: any) => ({ id: x.id, nome: x.nome })) : [])
+      setClientes(Array.isArray(c) ? c.map((x: any) => ({ id: x.id, nome: x.nome, squad: x.squad, squadPapeis: x.squadPapeis })) : [])
       setCarregado(true)
     })
   }, [status, role, router])
 
-  const cards = useMemo(() => pessoas.map(p => ({ p, r: resumoDaPessoa({ email: p.email, tarefas, clientesResponsavel: p.clientesResponsavel }) })), [pessoas, tarefas])
+  // Squad mora no cliente; aqui vira "em quais squads esta pessoa está" (lib/squadPapeis).
+  const cards = useMemo(() => pessoas.map(p => {
+    const squads = squadsDaPessoa(p.email, clientes)
+    return { p, squads, r: resumoDaPessoa({ email: p.email, tarefas, clientesResponsavel: p.clientesResponsavel, clientesSquad: squads.map(s => s.clienteId) }) }
+  }), [pessoas, tarefas, clientes])
   const nomeCliente = (id: string) => clientes.find(c => c.id === id)?.nome || ''
   const totalAbertas = cards.reduce((s, c) => s + c.r.abertas, 0)
   const totalAtrasadas = cards.reduce((s, c) => s + c.r.atrasadas.length, 0)
@@ -51,7 +56,7 @@ export default function EquipeCards() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: 12 }}>
-        {cards.map(({ p, r }) => {
+        {cards.map(({ p, r, squads }) => {
           const sobrecarga = r.abertas >= 10 || r.atrasadas.length >= 3
           return (
             <button key={p.email} className="eq-card" onClick={() => router.push(`/equipe/${encodeURIComponent(p.email)}`)}
@@ -85,9 +90,22 @@ export default function EquipeCards() {
                 ))}
               </div>
 
-              <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {r.clientes.length ? `Clientes: ${r.clientes.map(nomeCliente).filter(Boolean).slice(0, 4).join(', ')}${r.clientes.length > 4 ? ` +${r.clientes.length - 4}` : ''}` : 'Sem cliente atribuído'}
+              {/* SQUAD primeiro (dono, 29/09): em quais clientes a pessoa está no squad. */}
+              <p style={{ margin: 0, fontSize: 12, color: squads.length ? 'var(--v2-ink2)' : 'var(--v2-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {squads.length
+                  ? <><strong style={{ fontWeight: 700 }}>Squad ({squads.length}):</strong> {squads.slice(0, 4).map(x => x.clienteNome).join(', ')}{squads.length > 4 ? ` +${squads.length - 4}` : ''}</>
+                  : 'Não está em nenhum squad'}
               </p>
+              {(() => {
+                // Outros clientes em que atua sem estar no squad (responsável ou tarefa aberta).
+                const outros = r.clientes.filter(id => !squads.some(x => x.clienteId === id)).map(nomeCliente).filter(Boolean)
+                if (!outros.length) return null
+                return (
+                  <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    Também em: {outros.slice(0, 3).join(', ')}{outros.length > 3 ? ` +${outros.length - 3}` : ''}
+                  </p>
+                )
+              })()}
             </button>
           )
         })}

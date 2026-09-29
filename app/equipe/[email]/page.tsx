@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import AvatarPessoa from '@/app/components/AvatarPessoa'
 import { TarefaModal } from '@/app/components/GestaoTarefas'
 import { resumoDaPessoa, fmtMinutos, type TarefaPessoa } from '@/lib/hubPessoa'
+import { squadsDaPessoa, labelDoPapel } from '@/lib/squadPapeis'
 import { toast, confirmar } from '@/lib/toast'
 
 // CARD DO COLABORADOR: quem é (cargo, atribuições, responsabilidades), em quais
@@ -109,7 +110,14 @@ export default function CardPessoa() {
   }, [status, email, seg, ehAdmin, ehMeu])
   useEffect(() => { const t = setInterval(() => setTick(x => x + 1), 1000); return () => clearInterval(t) }, [])
 
-  const r = useMemo(() => resumoDaPessoa({ email, tarefas, clientesResponsavel: pessoa?.clientesResponsavel }), [email, tarefas, pessoa])
+  // Squads da pessoa: o squad mora no cliente (lista + papéis) — lib/squadPapeis.
+  const squads = useMemo(() => squadsDaPessoa(pessoa?.email || email, clientes), [pessoa, email, clientes])
+  const r = useMemo(() => {
+    const base = resumoDaPessoa({ email, tarefas, clientesResponsavel: pessoa?.clientesResponsavel, clientesSquad: squads.map(x => x.clienteId) })
+    // Quem é do squad aparece primeiro na lista de clientes.
+    const ehSquad = (id: string) => squads.some(x => x.clienteId === id)
+    return { ...base, clientes: [...base.clientes.filter(ehSquad), ...base.clientes.filter(id => !ehSquad(id))] }
+  }, [email, tarefas, pessoa, squads])
   const nomeCliente = (id: string) => clientes.find(c => c.id === id)?.nome || ''
 
   // ---- edição (admin)
@@ -267,16 +275,23 @@ export default function CardPessoa() {
         </Cartao>
 
         {/* Clientes */}
-        <Cartao titulo="Clientes em que atua">
+        <Cartao titulo={squads.length ? `Clientes em que atua · squad de ${squads.length}` : 'Clientes em que atua'}>
           {r.clientes.length === 0 ? <Vazio texto="Nenhum cliente atribuído." /> : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               {r.clientes.map(id => {
                 const nome = nomeCliente(id); if (!nome) return null
                 const ab = r.porCliente.find(c => c.clienteId === id)?.abertas || 0
                 const explicito = (pessoa.clientesResponsavel || []).includes(id)
+                // No squad: mostra o PAPEL (Designer, Gestor de tráfego...) ou só "squad" quando está na lista sem papel.
+                const sq = squads.find(x => x.clienteId === id)
                 return (
-                  <div key={id} onClick={() => router.push(`/cliente/${id}`)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid var(--v2-rule)', cursor: 'pointer' }}>
-                    <span style={{ flex: 1, fontSize: 13.5 }}>{nome}</span>
+                  <div key={id} onClick={() => router.push(`/cliente/${id}`)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid var(--v2-rule)', cursor: 'pointer', flexWrap: 'wrap' }}>
+                    <span style={{ flex: 1, fontSize: 13.5, minWidth: 120 }}>{nome}</span>
+                    {sq && (sq.papeis.length ? sq.papeis.map(pp => (
+                      <span key={pp} style={{ fontSize: 10.5, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>{labelDoPapel(pp)}</span>
+                    )) : (
+                      <span style={{ fontSize: 10.5, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>squad</span>
+                    ))}
                     {explicito && <span style={{ fontSize: 10.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--v2-amber)' }}>responsável</span>}
                     <span style={{ fontSize: 12, color: 'var(--v2-ink3)', fontVariantNumeric: 'tabular-nums' }}>{ab ? `${ab} aberta${ab > 1 ? 's' : ''}` : ''}</span>
                   </div>

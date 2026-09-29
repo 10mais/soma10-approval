@@ -73,3 +73,10 @@ describe('resumoDaPessoa — últimos 7 dias e clientes', () => {
     expect(r.clientes.sort()).toEqual(['c1', 'c9'])
   })
 })
+
+describe('resumoDaPessoa — squad conta como cliente em que atua', () => {
+  it('cliente do squad entra mesmo sem tarefa aberta, sem repetir', () => {
+    const r = resumoDaPessoa({ email: 'ana@x.com', tarefas: [], clientesSquad: ['c1', 'c2'], clientesResponsavel: ['c2', 'c3'] })
+    expect(r.clientes.sort()).toEqual(['c1', 'c2', 'c3'])
+  })
+})
