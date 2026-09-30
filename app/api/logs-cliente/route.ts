@@ -20,10 +20,12 @@ export async function GET(req: NextRequest) {
   // cliente (o log em si é histórico e não muda).
   const postIds = Array.from(new Set(logs.map(l => l.postId).filter(Boolean))) as string[]
   const postsArr = postIds.length ? await redis.mget<(Post | null)[]>(...postIds.map(id => `post:${id}`)) : []
-  const porPost = new Map<string, { status?: string; etapa?: string }>()
-  postIds.forEach((id, i) => { const p = postsArr[i]; if (p) porPost.set(id, { status: (p as any).excluidoEm ? 'excluido' : p.status, etapa: (p as any).etapa }) })
+  const porPost = new Map<string, { status?: string; etapa?: string; versaoNova?: boolean }>()
+  postIds.forEach((id, i) => { const p = postsArr[i]; if (p) porPost.set(id, { status: (p as any).excluidoEm ? 'excluido' : p.status, etapa: (p as any).etapa, versaoNova: !!(p as any).versaoNova }) })
+  // postVersaoNova: o designer entregou a nova versão e ela espera a revisão da equipe
+  // (lib/rodadaAjuste) — é a próxima ação da mesa de ajustes.
   const enriquecidos = logs.map(l => l.postId
-    ? { ...l, postStatus: porPost.get(l.postId)?.status, postEtapa: porPost.get(l.postId)?.etapa, postExiste: porPost.has(l.postId) }
+    ? { ...l, postStatus: porPost.get(l.postId)?.status, postEtapa: porPost.get(l.postId)?.etapa, postExiste: porPost.has(l.postId), postVersaoNova: porPost.get(l.postId)?.versaoNova }
     : l)
   return NextResponse.json(enriquecidos)
 }

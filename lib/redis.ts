@@ -1120,6 +1120,12 @@ export type Post = {
   criativoRevisaoInternaEm?: string // ISO — equipe aprovou internamente o criativo entregue (lib/esteiraFluxo.revisaoInternaDoCriativo)
   criativoRevisaoInternaPor?: string
   ajusteInterno?: string // último pedido de ajuste da REVISÃO INTERNA ao designer (limpo na próxima entrega)
+  // RODADA DE AJUSTE (lib/rodadaAjuste): arte que o designer entregou e ainda espera a revisão
+  // da equipe (o cliente segue vendo a anterior), histórico de versões com o pedido de cada
+  // uma, e o número da rodada com o cliente.
+  versaoNova?: import('./rodadaAjuste').VersaoNova
+  versoes?: import('./rodadaAjuste').VersaoArquivada[]
+  rodada?: number
   // Carrossel: a copy separada lâmina por lâmina, cada uma com seu anexo (referência da arte daquela lâmina)
   laminas?: { texto: string; anexo?: { nome: string; url: string; tipo: string } }[]
   // Material gráfico (formato 'grafico'): specs do material impresso/aplicado

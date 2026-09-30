@@ -1,16 +1,24 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { apareceNoPlanner } from '@/lib/plannerFiltro'
+import { pedidoDaEntrada, emRodadaDeAjuste, type VersaoNova } from '@/lib/rodadaAjuste'
+import { aprovarEReenviar } from '@/lib/reenvioCliente'
+import { toast } from '@/lib/toast'
 
 type Cliente = { id: string; nome: string }
 type Log = {
   id: string; ts: number; clienteId: string; clienteNome: string
   tipo: string; acao: string; postId?: string; resumo?: string; motivo?: string; origem?: string
   postStatus?: string; postEtapa?: string; postExiste?: boolean // status ATUAL do criativo
+  postVersaoNova?: boolean // o designer entregou e a versão espera a revisão da equipe (lib/rodadaAjuste)
   mudancas?: { campo: string; antes: string; depois: string }[] // antes -> depois do pedido
 }
 type Anot = { x: number; y: number; text: string; id?: number; img?: number }
-type PostDet = { id: string; imagens?: string[]; legenda?: string; anotacoes?: Anot[]; motivoReprovacao?: string; ajusteCriativo?: string; formato?: string }
+type PostDet = {
+  id: string; clienteId?: string; status?: string; etapa?: string; dataAgendada?: string
+  imagens?: string[]; legenda?: string; anotacoes?: Anot[]; motivoReprovacao?: string; ajusteCriativo?: string; formato?: string
+  versaoNova?: VersaoNova; versoes?: any[]; rodada?: number
+}
 
 const ESTILO: Record<string, { cor: string; bg: string; label: string }> = {
   aprovacao: { cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)', label: 'Aprovação' },
@@ -43,6 +51,7 @@ function chipStatusPost(l: Log): { label: string; cor: string; bg: string } | nu
   const st = l.postStatus || '', et = l.postEtapa || ''
   if (st === 'excluido') return { label: 'Na lixeira', cor: 'var(--v2-ink3)', bg: 'var(--v2-surface2)' }
   if (st === 'aguardando_aprovacao' || et === 'aprovacao_copy' || et === 'aprovacao_criativo') return { label: 'Em revisão', cor: 'var(--v2-info)', bg: 'var(--v2-info-bg)' }
+  if ((st === 'corrigir' || st === 'reprovado') && l.postVersaoNova) return { label: 'Nova versão para revisar', cor: 'var(--v2-info)', bg: 'var(--v2-info-bg)' }
   if (st === 'corrigir') return { label: 'A refazer', cor: 'var(--v2-amber)', bg: '#fff7ed' }
   if (st === 'reprovado') return { label: 'Reprovado', cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)' }
   if (st === 'agendado' || st === 'aprovado') return { label: 'Agendado', cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' }
@@ -59,6 +68,33 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
   const [busca, setBusca] = useState('')
   const [expandido, setExpandido] = useState<string | null>(null)
   const [postCache, setPostCache] = useState<Record<string, PostDet | 'loading' | 'erro'>>({})
+  // Mesa de ajustes (dono, 29/09): reenviar a versão nova e devolver ao designer, daqui mesmo.
+  const [acaoEm, setAcaoEm] = useState<string | null>(null)
+  const [mensagens, setMensagens] = useState<Record<string, string>>({}) // postId -> mensagem pronta do reenvio
+  const [devolvendo, setDevolvendo] = useState<{ postId: string; texto: string } | null>(null)
+
+  async function reenviar(post: PostDet) {
+    setAcaoEm(post.id)
+    const r = await aprovarEReenviar(post)
+    setAcaoEm(null)
+    if (!r.ok) { toast(r.erro || 'Não foi possível reenviar.', 'erro'); return }
+    if (r.post) setPostCache(c => ({ ...c, [post.id]: r.post }))
+    if (r.mensagem) setMensagens(m => ({ ...m, [post.id]: r.mensagem! }))
+    toast(r.copiado ? 'Reenviado ao cliente. Mensagem copiada — cole no WhatsApp dele.' : (r.erro || 'Reenviado ao cliente. Copie a mensagem abaixo.'), 'sucesso')
+    carregar()
+  }
+
+  async function devolverAoDesigner(post: PostDet, texto: string) {
+    setAcaoEm(post.id)
+    const r = await fetch('/api/esteira/aprovar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postId: post.id, acao: 'ajuste_interno', comentario: texto.trim() }) })
+      .then(x => x.json()).catch(() => null)
+    setAcaoEm(null)
+    if (!r?.ok) { toast(r?.error || 'Não foi possível devolver ao designer.', 'erro'); return }
+    setDevolvendo(null)
+    toast(r.tarefaReaberta ? 'Devolvido ao designer: a tarefa foi reaberta com o seu pedido.' : 'Pedido registrado, mas esta peça não tem tarefa vinculada.', r.tarefaReaberta ? 'sucesso' : 'erro')
+    fetch(`/api/posts?id=${post.id}`).then(x => x.ok ? x.json() : null).then(p => { if (p && !p.error) setPostCache(c => ({ ...c, [post.id]: p })) }).catch(() => {})
+    carregar()
+  }
 
   // Abrir o card = LER o pedido aqui mesmo (busca o material para mostrar os
   // pontos marcados/legenda). Navegar para o editor fica só no link explícito.
@@ -144,9 +180,15 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
           const aberto = expandido === l.id
           const p = l.postId ? postCache[l.postId] : undefined
           const post = (p && p !== 'loading' && p !== 'erro') ? p as PostDet : null
-          const anot = post?.anotacoes || []
-          const mostrarPins = (l.tipo === 'ajuste_layout' || l.tipo === 'reprovacao') && anot.length > 0
-          const obs = post ? (post.motivoReprovacao || '') : (l.motivo || '')
+          // O pedido sobre a ARTE QUE O CLIENTE VIU (lib/rodadaAjuste.pedidoDaEntrada): rodada
+          // já reenviada lê do histórico — antes os pinos velhos iam para cima da arte nova.
+          // Lê também o pedido feito pelo portal (ajusteCriativo), que antes aparecia vazio.
+          const ehPedidoDeArte = l.tipo === 'ajuste_layout' || l.tipo === 'reprovacao'
+          const pedido = post && ehPedidoDeArte ? pedidoDaEntrada(l.ts, post) : null
+          const anot = (pedido?.anotacoes || []) as Anot[]
+          const mostrarPins = ehPedidoDeArte && anot.length > 0
+          const obs = pedido ? (pedido.texto || l.motivo || '') : (l.motivo || '')
+          const versaoPendente = post && post.versaoNova && emRodadaDeAjuste(post) && pedido && !pedido.encerrado ? post.versaoNova : null
           const legenda = post ? (post.legenda || '') : (l.resumo || '')
           const mudancas = l.mudancas || []
           const mudouLegenda = mudancas.some(m => m.campo === 'Legenda')
@@ -209,7 +251,7 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
                         <p style={rotuloExp}>Pontos marcados no layout ({anot.length})</p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                           {imgsComPins.map(imgIdx => {
-                            const src = post?.imagens?.[imgIdx]
+                            const src = pedido?.imagens?.[imgIdx]
                             if (!src) return null
                             return (
                               <div key={imgIdx} style={{ position: 'relative', width: 220, maxWidth: '100%', flexShrink: 0, borderRadius: 10, overflow: 'hidden', border: '1px solid var(--v2-rule)', lineHeight: 0 }}>
@@ -241,6 +283,70 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
 
                     {p !== 'loading' && !obs && !mostrarPins && !legenda && !mudancas.length && (
                       <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink3)' }}>{p === 'erro' ? 'Não foi possível carregar o material.' : 'Sem detalhes de texto — abra no editor para ver o material.'}</p>
+                    )}
+
+                    {/* NOVA VERSÃO do designer esperando a revisão da equipe (lib/rodadaAjuste).
+                        Aprovar e reenviar = revisão + reenvio num clique (decisão do dono, 29/09). */}
+                    {versaoPendente && post && (
+                      <div onClick={ev => ev.stopPropagation()} style={{ border: '1px solid #bfdbfe', background: 'var(--v2-info-bg)', borderRadius: 12, padding: 12, cursor: 'default' }}>
+                        <p style={{ ...rotuloExp, color: 'var(--v2-info)' }}>Nova versão entregue{versaoPendente.por ? ` por ${versaoPendente.por}` : ''}</p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, margin: '6px 0 10px' }}>
+                          {versaoPendente.imagens.map((u, i) => (
+                            <a key={i} href={u} target="_blank" rel="noreferrer" style={{ lineHeight: 0, borderRadius: 9, overflow: 'hidden', border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)' }}>
+                              {/\.(mp4|mov|m4v)(\?|$)/i.test(u)
+                                ? <video src={u} style={{ width: 120, height: 120, objectFit: 'cover' }} muted />
+                                : <img src={u} alt="" style={{ width: 120, height: 120, objectFit: 'cover' }} />}
+                            </a>
+                          ))}
+                        </div>
+                        {versaoPendente.completa ? (
+                          <p style={{ margin: '0 0 10px', fontSize: 12.5, color: 'var(--v2-ink2)' }}>O cliente ainda vê a versão anterior. Ao reenviar, esta entra no lugar e a anterior fica guardada no histórico.</p>
+                        ) : (
+                          <p style={{ margin: '0 0 10px', fontSize: 12.5, color: 'var(--v2-amber)' }}>Entrega parcial: {versaoPendente.imagens.length} arquivo(s) para um carrossel de {(post.imagens || []).length} lâminas. Monte a sequência no editor e reenvie por lá.</p>
+                        )}
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          {versaoPendente.completa && (
+                            <button onClick={() => reenviar(post)} disabled={acaoEm === post.id}
+                              style={{ padding: '9px 16px', background: 'var(--v2-ok)', color: '#fff', border: 'none', borderRadius: 9, fontSize: 12.5, fontWeight: 800, cursor: acaoEm === post.id ? 'wait' : 'pointer', fontFamily: 'inherit' }}>
+                              {acaoEm === post.id ? 'Reenviando…' : 'Aprovar e reenviar ao cliente'}
+                            </button>
+                          )}
+                          <button onClick={() => setDevolvendo(d => d?.postId === post.id ? null : { postId: post.id, texto: '' })} disabled={acaoEm === post.id}
+                            style={{ padding: '9px 14px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                            Pedir outro ajuste ao designer
+                          </button>
+                        </div>
+                        {devolvendo?.postId === post.id && (
+                          <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <textarea value={devolvendo.texto} onChange={e => setDevolvendo({ postId: post.id, texto: e.target.value })} autoFocus
+                              placeholder="O que ainda precisa mudar nesta versão?"
+                              style={{ width: '100%', boxSizing: 'border-box', minHeight: 70, padding: '9px 11px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical', background: 'var(--v2-surface)' }} />
+                            <button onClick={() => devolverAoDesigner(post, devolvendo.texto)} disabled={!devolvendo.texto.trim() || acaoEm === post.id}
+                              style={{ alignSelf: 'flex-start', padding: '8px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontSize: 12.5, fontWeight: 700, cursor: !devolvendo.texto.trim() ? 'not-allowed' : 'pointer', opacity: !devolvendo.texto.trim() ? 0.5 : 1, fontFamily: 'inherit' }}>
+                              Devolver ao designer
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Mensagem pronta do reenvio (link + o que mudou), para colar no WhatsApp do cliente. */}
+                    {post && mensagens[post.id] && (
+                      <div onClick={ev => ev.stopPropagation()} style={{ border: '1px solid var(--v2-ok-bg)', background: 'var(--v2-ok-bg)', borderRadius: 12, padding: 12, cursor: 'default' }}>
+                        <p style={{ ...rotuloExp, color: 'var(--v2-ok)' }}>Mensagem para o cliente</p>
+                        <pre style={{ margin: '6px 0 10px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: 13, color: 'var(--v2-ink)' }}>{mensagens[post.id]}</pre>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <button onClick={() => { navigator.clipboard?.writeText(mensagens[post.id]).then(() => toast('Mensagem copiada.', 'sucesso')).catch(() => toast('Não foi possível copiar. Selecione o texto e copie.', 'erro')) }}
+                            style={{ padding: '8px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ok)', border: '1px solid var(--v2-ok)', borderRadius: 9, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                            Copiar de novo
+                          </button>
+                          {/* Abre o WhatsApp com o texto pronto; a pessoa escolhe o contato e envia (nada sai sozinho). */}
+                          <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(mensagens[post.id])}`, '_blank', 'noopener')}
+                            style={{ padding: '8px 14px', background: '#25d366', color: '#fff', border: 'none', borderRadius: 9, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                            Abrir no WhatsApp
+                          </button>
+                        </div>
+                      </div>
                     )}
 
                     {abrivel && (

@@ -8,6 +8,7 @@ import { aoConcluirTarefa } from '@/lib/esteiraFluxo'
 import { camposDoCorpo } from '@/lib/tarefaCampos'
 import { podeSerFilha, camposAoVincular } from '@/lib/hierarquiaTarefas'
 import { midiasParaPauta, deveEntregarCriativo } from '@/lib/producaoVinculo'
+import { entregaNaRodada, emRodadaDeAjuste } from '@/lib/rodadaAjuste'
 import { dispararEvento } from '@/lib/automacoesEngine'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
@@ -300,6 +301,30 @@ export async function PUT(req: NextRequest) {
         const emailCriador = await resolverEmailPorNome(post.criadoPor).catch(() => null)
         if (emailCriador && emailCriador !== (session.user as any).email) {
           await notificar(emailCriador, 'geral', `Criativo pronto — ${post.clienteNome || 'Cliente'}`, `${autor} concluiu a tarefa "${atualizado.titulo}". O criativo pronto voltou ao Studio: revise e envie ao cliente ou ao Planner.`, post.id).catch(() => {})
+        }
+      } else if (post && emRodadaDeAjuste(post)) {
+        // RODADA DE AJUSTE (lib/rodadaAjuste, dono 29/09): o cliente pediu ajuste e o designer
+        // concluiu. Antes NADA acontecia aqui (a peça fica em aprovacao_criativo/corrigir e o
+        // gancho acima só age em 'criativo'). Agora a arte nova vira VERSÃO PENDENTE: a equipe
+        // revisa e reenvia; até lá o cliente segue vendo a versão que ele comentou.
+        const rodada = entregaNaRodada(post as any, atualizado.anexos || [], autor, id, agora)
+        const cliente = post.clienteId ? await redis.get<any>(`cliente:${post.clienteId}`) : null
+        const emailCriador = await resolverEmailPorNome(post.criadoPor).catch(() => null)
+        const avisar = Array.from(new Set([emailCriador, ...((cliente?.squad || []) as string[])].filter((e): e is string => !!e && e !== (session.user as any).email)))
+        const nome = post.clienteNome || 'Cliente'
+        if (rodada) {
+          await redis.set(`post:${post.id}`, { ...post, ...rodada, anexosTarefa: atualizado.anexos || post.anexosTarefa })
+          atualizado.atividades = [...(atualizado.atividades || []), { id: uuid(), tipo: 'status' as const, descricao: 'Nova versão entregue — aguardando a revisão da equipe para voltar ao cliente', autor, criadoEm: agora }]
+          for (const email of avisar) {
+            await notificar(email, 'geral', `Nova versão para revisar — ${nome}`, `${autor} entregou a nova versão pedida pelo cliente. Revise e reenvie em Solicitações do cliente (ou no Studio).`, post.id).catch(() => {})
+          }
+        } else {
+          // Concluiu sem arte nova marcada como criativo pronto: a peça continua em ajuste, e
+          // quem conduz precisa saber — senão ela fica parada esperando uma entrega que não veio.
+          atualizado.atividades = [...(atualizado.atividades || []), { id: uuid(), tipo: 'status' as const, descricao: 'Concluída sem arte nova marcada como criativo pronto — a peça continua em ajuste', autor, criadoEm: agora }]
+          for (const email of avisar) {
+            await notificar(email, 'geral', `Ajuste concluído sem arte nova — ${nome}`, `${autor} concluiu a tarefa "${atualizado.titulo}" sem anexar uma nova versão como criativo pronto. A peça continua em ajuste com o cliente.`, post.id).catch(() => {})
+          }
         }
       }
     } catch { /* sync nunca bloqueia a conclusão */ }

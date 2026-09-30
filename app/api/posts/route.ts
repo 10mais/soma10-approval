@@ -9,6 +9,7 @@ import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
 import { clienteSuspenso } from '@/lib/suspensao'
 import { clientesAtivosIds } from '@/lib/cache'
 import { configYouTubeDoCorpo } from '@/lib/youtubePost'
+import { patchDoReenvio } from '@/lib/rodadaAjuste'
 
 function gerarCodigo() {
   return Math.floor(100000 + Math.random() * 900000).toString()
@@ -217,6 +218,18 @@ export async function PUT(req: NextRequest) {
   if (Array.isArray(updates.redes) && Array.isArray(post.redesSuspensas)) {
     const resto = post.redesSuspensas.filter(r => !updates.redes.includes(r))
     atualizado.redesSuspensas = resto.length ? resto : undefined
+  }
+  // RODADA DE AJUSTE (lib/rodadaAjuste, dono 29/09): a peça volta ao cliente depois de um
+  // pedido de ajuste. Regra ÚNICA para os três botões de reenviar (Studio, Planner, editor) e
+  // para Solicitações: a versão que o cliente viu vai para o histórico com o pedido dela, a
+  // versão nova do designer entra, o pedido é limpo (o link não recarrega pinos velhos), a
+  // rodada soma 1 e o prazo de resposta reinicia.
+  if (atualizado.status === 'aguardando_aprovacao' && post.status !== 'aguardando_aprovacao') {
+    const reenvio = patchDoReenvio(post as any, Array.isArray(updates.imagens) ? updates.imagens : undefined, atualizado.atualizadoEm)
+    if (reenvio) {
+      Object.assign(atualizado, reenvio)
+      for (const k of Object.keys(reenvio)) if (reenvio[k] === undefined) delete atualizado[k]
+    }
   }
   // SLA de aprovação: marca quando entra numa etapa de aprovação; limpa ao sair
   const ETAPAS_APROVACAO = ['aprovacao_copy', 'aprovacao_criativo']

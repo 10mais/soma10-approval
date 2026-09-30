@@ -2938,6 +2938,13 @@ function Dashboard() {
                         </div>
                       )
                     })()}
+                    {/* RODADA DE AJUSTE (lib/rodadaAjuste): versão nova do designer esperando a
+                        revisão. O reenvio daqui aplica a versão nova (regra única no servidor). */}
+                    {role !== 'cliente' && (postPreview as any).versaoNova && ['corrigir', 'reprovado'].includes(postPreview.status) && (
+                      <div style={{ margin: '0 0 10px', fontSize: 12.5, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 8, padding: '9px 12px', lineHeight: 1.5 }}>
+                        <strong>Nova versão entregue pelo designer</strong> ({(postPreview as any).versaoNova.imagens?.length || 0} arquivo(s)). O cliente ainda vê a arte atual; ao reenviar, a nova entra no lugar e a anterior fica guardada. Revise e reenvie em Solicitações do cliente ou no Studio.
+                      </div>
+                    )}
                     {/* SUSPENDER / REATIVAR (post inteiro ou uma rede) — lib/suspenderPost */}
                     {role !== 'cliente' && podeNivelDash('producao', 'editar') && (
                       <SuspensaoPost post={postPreview} onAtualizado={(p: any) => {

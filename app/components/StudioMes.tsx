@@ -1,6 +1,8 @@
 'use client'
 import { tarefaDaPauta, tarefaAberta, anexosCriativoPronto, STATUS_TAREFA_LABEL } from '@/lib/producaoVinculo'
 import { revisaoInternaDoCriativo, podeEnviarAoCliente } from '@/lib/esteiraFluxo'
+import { emRodadaDeAjuste } from '@/lib/rodadaAjuste'
+import { aprovarEReenviar } from '@/lib/reenvioCliente'
 import { FORMATOS as FORMATOS_LIB } from '@/lib/formatoPost'
 import { opcoesEtapas, separarValor, juntarValor, rotuloEtapa, opcaoDoValorAtual, type MarcoOpcao } from '@/lib/etapaPlaybook'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
@@ -65,7 +67,10 @@ function estadoStudio(p: Pauta, tr: (c: string) => string): { label: string; cor
     case 'agendado': return { label: tr('pauta.agendado'), cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' }
     case 'aprovado': return { label: tr('pauta.aprovado'), cor: 'var(--v2-ok)', bg: 'var(--v2-ok-bg)' }
     case 'aguardando_aprovacao': return { label: tr('pauta.no-cliente'), cor: 'var(--v2-amber)', bg: 'var(--v2-amber-bg)' }
-    case 'corrigir': return { label: tr('pauta.ajuste-pedido'), cor: 'var(--v2-amber)', bg: '#fff3cd' }
+    case 'corrigir':
+      // Rodada de ajuste (lib/rodadaAjuste): o designer já entregou — a bola é da equipe.
+      if ((p as any).versaoNova) return { label: tr('pauta.nova-versao'), cor: 'var(--v2-info)', bg: 'var(--v2-info-bg)' }
+      return { label: tr('pauta.ajuste-pedido'), cor: 'var(--v2-amber)', bg: '#fff3cd' }
     case 'reprovado': return { label: tr('pauta.reprovado'), cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)' }
     case 'falha_publicacao': return { label: tr('pauta.falha'), cor: 'var(--v2-hot)', bg: 'var(--v2-hot-bg)' }
     default: // rascunho
@@ -221,7 +226,24 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const [gerandoFoto, setGerandoFoto] = useState<string | null>(null) // foto realista por IA
   const [ideogramOn, setIdeogramOn] = useState(false) // algum motor de foto ligado
   const [motorFoto, setMotorFoto] = useState<string | null>(null) // 'nano-banana' | 'ideogram'
-  const [linkModal, setLinkModal] = useState<{ url: string; cliente: string } | null>(null) // compartilhar link de aprovação
+  const [linkModal, setLinkModal] = useState<{ url: string; cliente: string; mensagem?: string } | null>(null) // compartilhar link de aprovação (+ mensagem pronta do reenvio)
+  const [reenviandoId, setReenviandoId] = useState<string | null>(null)
+
+  // RODADA DE AJUSTE — "Aprovar e reenviar ao cliente" (dono, 29/09: revisão interna
+  // obrigatória em 1 clique; aviso ao cliente = mensagem pronta para copiar). O servidor troca
+  // a arte e arquiva a anterior (lib/rodadaAjuste); aqui é o clique e a mensagem.
+  async function aprovarNovaVersao(p: Pauta) {
+    setReenviandoId(p.id)
+    const r = await aprovarEReenviar(p as any)
+    setReenviandoId(null)
+    if (!r.ok) { toast(r.erro || 'Não foi possível reenviar.', 'erro'); return }
+    if (r.mensagem) {
+      const url = (r.mensagem.match(/https?:\/\/\S+/) || [''])[0]
+      setLinkModal({ url, cliente: p.clienteNome || 'cliente', mensagem: r.mensagem })
+    }
+    toast(r.copiado ? 'Reenviado ao cliente. Mensagem copiada.' : (r.erro || 'Reenviado ao cliente.'), 'sucesso')
+    carregarPautas(planoSel)
+  }
   const [preview, setPreview] = useState<Pauta | null>(null) // lightbox estilo prévia de post
   // Modal "Gerar arte" — escolher imagem de referência
   const [gerarModal, setGerarModal] = useState<Pauta | null>(null)
@@ -1604,9 +1626,47 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                             <span style={{ width: 6, height: 6, borderRadius: 999, background: 'currentColor' }} />Tarefa · {STATUS_TAREFA_LABEL[t.status || ''] || t.status}{t.responsavelNome ? ` · ${t.responsavelNome}` : ''}
                           </span>
                         ) })()}
+                        {/* RODADA DE AJUSTE: versão nova do designer esperando a revisão da equipe. O cliente
+                            ainda vê a anterior; aprovar aqui troca a arte e reenvia (lib/rodadaAjuste). */}
+                        {(p as any).versaoNova && emRodadaDeAjuste(p) && (() => {
+                          const vn = (p as any).versaoNova as { imagens: string[]; completa: boolean; por?: string }
+                          return (
+                            <div style={{ width: '100%', padding: 12, borderRadius: 12, border: '1px solid #bfdbfe', background: 'var(--v2-info-bg)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                                <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--v2-info)' }}>Nova versão entregue{vn.por ? ` por ${vn.por}` : ''} — o cliente ainda vê a anterior</span>
+                              </div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                                {vn.imagens.map((u, n) => (
+                                  <button key={n} type="button" onClick={() => window.open(u, '_blank', 'noopener')}
+                                    style={{ padding: 0, border: '1px solid var(--v2-rule)', borderRadius: 9, overflow: 'hidden', background: 'var(--v2-surface)', cursor: 'zoom-in', lineHeight: 0 }}>
+                                    {/\.(mp4|mov|m4v)(\?|$)/i.test(u)
+                                      ? <video src={u} style={{ width: 92, height: 92, objectFit: 'cover' }} muted />
+                                      : <img src={u} alt="" style={{ width: 92, height: 92, objectFit: 'cover' }} />}
+                                  </button>
+                                ))}
+                              </div>
+                              {!vn.completa && <p style={{ margin: '0 0 10px', fontSize: 11.5, color: 'var(--v2-amber)' }}>Entrega parcial: {vn.imagens.length} arquivo(s) para {(p.imagens || []).length} lâminas. Monte a sequência no Planner e reenvie por lá.</p>}
+                              {podeEditar && (
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                  {vn.completa && podeEnviarCliente && (
+                                    <button className="st-btn st-cta" onClick={() => aprovarNovaVersao(p)} disabled={reenviandoId === p.id}
+                                      style={{ padding: '9px 15px', background: 'var(--v2-ok)', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: reenviandoId === p.id ? 'wait' : 'pointer' }}>
+                                      {reenviandoId === p.id ? 'Reenviando…' : 'Aprovar e reenviar ao cliente'}
+                                    </button>
+                                  )}
+                                  <button className="st-btn" onClick={() => { setAjusteInternoPara(p); setAjusteInternoTexto('') }}
+                                    style={{ padding: '9px 13px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 10, fontWeight: 600, fontSize: 11.5, cursor: 'pointer' }}>
+                                    Pedir outro ajuste ao designer
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })()}
                         {/* CRIATIVO PRONTO vindo da tarefa (dono, 07/09): a arte entregue pelo designer.
-                            Se a pauta ainda não tem mídia, um clique usa; se já tem, fica como referência. */}
-                        {((p as any).anexosTarefa?.length || 0) > 0 && (() => {
+                            Se a pauta ainda não tem mídia, um clique usa; se já tem, fica como referência.
+                            Enquanto há versão nova da rodada de ajuste, quem aparece é o bloco acima. */}
+                        {!(p as any).versaoNova && ((p as any).anexosTarefa?.length || 0) > 0 && (() => {
                           // CRIATIVO PRONTO vindo da tarefa (dono, 07/09 e 09/09): a arte entregue pelo
                           // designer aparece AQUI, para a revisão interna acontecer olhando a peça.
                           // Antes era só um botão de texto e, quando a pauta já tinha mídia, ele ficava
@@ -2113,14 +2173,22 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
               </span>
               <h3 style={{ margin: 0, fontSize: 16.5, color: 'var(--v2-ink)' }}>Link de aprovação — {linkModal.cliente}</h3>
             </div>
-            <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>{tr('est.link-ajuda')}</p>
+            <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>{linkModal.mensagem ? 'Nova versão reenviada. A mensagem abaixo já foi copiada — cole no WhatsApp do cliente (nada é enviado sozinho).' : tr('est.link-ajuda')}</p>
+            {linkModal.mensagem ? (
+              <div style={{ marginBottom: 12 }}>
+                <pre style={{ margin: '0 0 8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit', fontSize: 12.5, color: 'var(--v2-ink)', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)', borderRadius: 9, padding: '10px 12px', maxHeight: 220, overflow: 'auto' }}>{linkModal.mensagem}</pre>
+                <button onClick={() => { if (navigator.clipboard?.writeText) navigator.clipboard.writeText(linkModal.mensagem || '').then(() => toast('Mensagem copiada!', 'sucesso')).catch(() => {}) }}
+                  style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>Copiar mensagem</button>
+              </div>
+            ) : (
             <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
               <input readOnly value={linkModal.url} onFocus={e => e.currentTarget.select()} style={{ flex: 1, minWidth: 0, padding: '10px 12px', borderRadius: 9, border: '1px solid var(--v2-rule)', fontSize: 12.5, color: 'var(--v2-ink)', background: 'var(--v2-surface1)', fontFamily: 'inherit' }} />
               <button onClick={() => { if (navigator.clipboard?.writeText) navigator.clipboard.writeText(linkModal.url).then(() => toast('Link copiado!', 'sucesso')).catch(() => {}) }}
                 style={{ padding: '10px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12.5, cursor: 'pointer', whiteSpace: 'nowrap' }}>{tr('est.copiar')}</button>
             </div>
+            )}
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent('Olá! Segue o material para sua aprovação:\n' + linkModal.url)}`, '_blank')}
+              <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(linkModal.mensagem || ('Olá! Segue o material para sua aprovação:\n' + linkModal.url))}`, '_blank')}
                 style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '11px 0', background: '#25d366', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.2-1.8-.9-2-1s-.5-.2-.7.1-.8 1-1 1.2-.4.2-.7.1a8 8 0 0 1-2.4-1.5 9 9 0 0 1-1.6-2c-.2-.3 0-.5.1-.6l.5-.6.3-.5v-.5l-1-2.3c-.2-.6-.5-.5-.7-.5h-.6a1.2 1.2 0 0 0-.8.4A3.4 3.4 0 0 0 4.5 9c0 2 1.5 4 1.7 4.2s2.9 4.4 7 6c2.4 1 3.4 1 4.6.9.7 0 1.8-.8 2.1-1.5.3-.8.3-1.4.2-1.5l-.6-.3z" /><path d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.4A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z" /></svg>
                 WhatsApp

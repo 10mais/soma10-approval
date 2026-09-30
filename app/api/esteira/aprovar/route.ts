@@ -5,6 +5,7 @@ import { redis, Post, Cliente, podeCliente } from '@/lib/redis'
 import { notificarDono, notificar } from '@/lib/notificacoes'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
+import { feedbackParaTarefa, emRodadaDeAjuste, descartarVersaoNova, versaoNaAprovacao } from '@/lib/rodadaAjuste'
 
 export const runtime = 'nodejs'
 
@@ -117,6 +118,9 @@ export async function POST(req: NextRequest) {
     if (!post.dataAgendada) {
       return NextResponse.json({ error: 'Defina a data e horario da postagem antes de aprovar o criativo.', semData: true }, { status: 400 })
     }
+    // Versão do designer ainda pendente de revisão (lib/rodadaAjuste): o cliente aprovou o que
+    // viu (a anterior); a equipe, por cima, aprova a nova.
+    Object.assign(post, versaoNaAprovacao(post as any, role !== 'cliente', agora))
     post.etapa = 'pronto'
     post.criativoAprovadoEm = agora
     post.ajusteCriativo = undefined
@@ -149,6 +153,7 @@ export async function POST(req: NextRequest) {
     if (!post.dataAgendada) {
       return NextResponse.json({ error: 'Defina a data e horário da postagem antes de aprovar.', semData: true }, { status: 400 })
     }
+    Object.assign(post, versaoNaAprovacao(post as any, role !== 'cliente', agora))
     post.etapa = 'pronto'; post.criativoAprovadoEm = agora; post.ajusteCriativo = undefined
     post.status = 'agendado'; post.rascunhoInterno = false
     await redis.sadd('agendados', postId)
@@ -173,7 +178,9 @@ export async function POST(req: NextRequest) {
     post.etapaDesde = agora; post.aguardandoDesde = undefined
     await redis.set(`post:${postId}`, post)
     // Linha de montagem: devolve a peça pra estação do designer (reabre a tarefa).
-    try { const { reabrirTarefaDaPauta } = await import('@/lib/tarefasDaPauta'); await reabrirTarefaDaPauta(postId, comentario || '', quem) } catch { /* segue */ }
+    // Mesmo texto do link público (lib/rodadaAjuste.feedbackParaTarefa): o recado E os pontos
+    // marcados na arte. Antes, pelo portal, os pinos nunca chegavam ao designer.
+    try { const { reabrirTarefaDaPauta } = await import('@/lib/tarefasDaPauta'); await reabrirTarefaDaPauta(postId, feedbackParaTarefa(comentario, Array.isArray(annotations) ? annotations : []), quem) } catch { /* segue */ }
     // Notifica o responsável pela pauta: criador + squad do cliente.
     const msg = `${quem} pediu ajuste no layout: "${comentario || 'sem comentário'}". A programação foi cancelada.`
     await notificarDono(post.criadoPor, 'geral', `Ajuste de layout — ${nome}`, msg, postId)
@@ -203,9 +210,18 @@ export async function POST(req: NextRequest) {
     post.ajusteInterno = comentario || 'Ajuste solicitado pela equipe'
     post.criativoEntregueEm = undefined
     post.criativoRevisaoInternaEm = undefined
-    post.etapa = 'criativo'
-    post.status = 'rascunho'
-    post.etapaDesde = agora; post.aguardandoDesde = undefined; post.atualizadoEm = agora
+    if (emRodadaDeAjuste(post)) {
+      // RODADA DE AJUSTE (lib/rodadaAjuste): a equipe devolveu a versão nova ao designer. A
+      // peça CONTINUA em ajuste com o cliente (etapa e status ficam) — mandar para
+      // 'criativo'/'rascunho' a tirava do link do cliente e a próxima entrega não trocava a
+      // arte. A versão devolvida fica registrada para não voltar como "nova".
+      Object.assign(post, descartarVersaoNova(post as any, `Devolvida ao designer pela revisão interna: ${comentario || 'sem comentário'}`, agora))
+      post.atualizadoEm = agora
+    } else {
+      post.etapa = 'criativo'
+      post.status = 'rascunho'
+      post.etapaDesde = agora; post.aguardandoDesde = undefined; post.atualizadoEm = agora
+    }
     await redis.set(`post:${postId}`, post)
     let reaberta = false
     try { const { reabrirTarefaDaPauta } = await import('@/lib/tarefasDaPauta'); reaberta = await reabrirTarefaDaPauta(postId, comentario || '', quem, 'equipe') } catch { /* segue */ }

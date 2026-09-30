@@ -9,6 +9,7 @@ import { clienteSuspenso } from '@/lib/suspensao'
 import { checarRate } from '@/lib/rateLimit'
 import { capturarErro } from '@/lib/erros'
 import { ajusteSemRetrabalho, dataValida } from '@/lib/ajusteCliente'
+import { feedbackParaTarefa, versaoNaAprovacao } from '@/lib/rodadaAjuste'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -248,8 +249,8 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
   if (type === 'corrected' || type === 'rejected') {
     try {
       const { reabrirTarefaDaPauta } = await import('@/lib/tarefasDaPauta')
-      const pontos = Array.isArray(annotations) ? annotations.map((a: any) => a?.text).filter(Boolean).join(' · ') : ''
-      const feedback = [rejectReason, pontos].filter(Boolean).join(' — ')
+      // Mesmo texto do portal (lib/rodadaAjuste.feedbackParaTarefa): recado + pontos numerados.
+      const feedback = feedbackParaTarefa(rejectReason, Array.isArray(annotations) ? annotations : [])
       await reabrirTarefaDaPauta(id, feedback, (post as any).clienteNome || (post as any).cliente || 'Cliente')
     } catch { /* segue */ }
   }
@@ -317,7 +318,9 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
 
     // etapa -> 'pronto' para o criativo aprovado APARECER no Planner (que só mostra
     // posts sem etapa ou 'pronto'). Sem isso ele fica preso com 'aprovacao_criativo'.
-    await redis.set(`post:${id}`, { ...atualizado, status: 'agendado', dataAgendada: quando, ...((post as any).etapa ? { etapa: 'pronto' } : {}), atualizadoEm: new Date().toISOString() })
+    // "Aprovar assim mesmo" com versão do designer pendente: o cliente aprovou o que VIU (a
+    // anterior). A pendente é descartada com registro, nunca publicada sem ele ver (lib/rodadaAjuste).
+    await redis.set(`post:${id}`, { ...atualizado, ...versaoNaAprovacao(atualizado as any, false, new Date().toISOString()), status: 'agendado', dataAgendada: quando, ...((post as any).etapa ? { etapa: 'pronto' } : {}), atualizadoEm: new Date().toISOString() })
     await redis.sadd('agendados', id)
 
     // Automação: post aprovado -> cria tarefa de publicação para a equipe

@@ -869,6 +869,7 @@ export const TEXTOS: Record<string, Entrada> = {
   'pauta.aprovado': { pt: 'Aprovado', en: 'Approved', es: 'Aprobado' },
   'pauta.no-cliente': { pt: 'No cliente', en: 'With the client', es: 'Con el cliente' },
   'pauta.ajuste-pedido': { pt: 'Ajuste pedido', en: 'Fix requested', es: 'Ajuste pedido' },
+  'pauta.nova-versao': { pt: 'Nova versão para revisar', en: 'New version to review', es: 'Nueva versión para revisar' },
   'pauta.reprovado': { pt: 'Reprovado', en: 'Rejected', es: 'Rechazado' },
   'pauta.falha': { pt: 'Falha', en: 'Failed', es: 'Falla' },
   'pauta.revisao-interna': { pt: 'Revisão interna', en: 'Internal review', es: 'Revisión interna' },
