@@ -13,7 +13,7 @@ type ProgItem = { id: string; dataAgendada: string; formato: string; status: str
 export default function AprovacoesPublicas() {
   const tr = useT()
   const { token } = useParams()
-  const [dados, setDados] = useState<{ clienteNome?: string; logo?: string; logoAlt?: string; instagram?: string; posts: PostA[]; programacao?: ProgItem[] } | null>(null)
+  const [dados, setDados] = useState<{ clienteNome?: string; logo?: string; logoAlt?: string; instagram?: string; corMarca?: string; posts: PostA[]; programacao?: ProgItem[] } | null>(null)
   const [erro, setErro] = useState('')
   // Tema do link público: o cliente escolhe (persistido no navegador dele);
   // sem escolha, segue o sistema operacional. Cor oposta sempre disponível.
@@ -114,7 +114,7 @@ export default function AprovacoesPublicas() {
           const criativos = dados.posts.filter(p => !p.ehCopy)
           const handle = (dados.instagram || dados.clienteNome || 'perfil').replace(/^@/, '')
           return (<>
-            {copies.length > 0 && <TabelaCopies posts={copies} enviar={enviarPeloLink} onDecidido={removerPost} />}
+            {copies.length > 0 && <TabelaCopies posts={copies} enviar={enviarPeloLink} onDecidido={removerPost} corMarca={dados.corMarca} fotoUrl={`/api/foto-cliente?token=${encodeURIComponent(String(token))}`} />}
             {criativos.map(p => <CartaoCriativo key={p.id} post={p} fotoUrl={`/api/foto-cliente?token=${encodeURIComponent(String(token))}`} handle={handle} enviar={enviarPeloLink} onDecidido={() => removerPost(p.id)} />)}
           </>)
         })()}

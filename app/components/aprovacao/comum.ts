@@ -15,6 +15,8 @@ export type PostA = {
   // Copy em aprovação (linha de montagem): o card vira "arte de texto"
   ehCopy?: boolean; headline?: string; subheadline?: string; textoImagem?: string; cta?: string
   laminas?: { texto: string }[]; medidas?: string; localAplicacao?: string; ajusteCopy?: string
+  // Prévia da arte (MockupCopy): cor e logo do cliente — por post quando a tela mistura clientes.
+  corMarca?: string; fotoUrl?: string
 }
 
 /** O corpo de uma decisão (o mesmo de /api/decision, sem a credencial). */
@@ -26,6 +28,7 @@ export type CorpoDecisao = {
   novaData?: string
   annotations?: Anot[]
   novosCampos?: { headline?: string; subheadline?: string; textoImagem?: string; cta?: string }
+  novasLaminas?: string[] // carrossel: o texto de cada lâmina, na ordem
 }
 
 /** Resposta da rota de decisão (o que as telas leem dela). */

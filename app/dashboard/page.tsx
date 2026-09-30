@@ -275,7 +275,11 @@ function ImagemComFallback({ src }: { src: string }) {
 function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; clientes: any[]; onAtualizado: () => void }) {
   const tr = useT()
   const pendentes = ordenarPorDataDePostagem(posts.filter(p => p && !p.excluidoEm && (esperandoCliente(p) || p.status === 'corrigir')))
-  const copies = pendentes.filter(p => p.etapa === 'aprovacao_copy').map(paraCartaoAprovacao)
+  // Esta aba pode misturar clientes: a prévia da copy leva a cor e a logo de CADA um.
+  const copies = pendentes.filter(p => p.etapa === 'aprovacao_copy').map(p => {
+    const cli = clientes.find((c: any) => c.id === p.clienteId)
+    return { ...paraCartaoAprovacao(p), corMarca: cli?.corPrimaria, fotoUrl: `/api/foto-cliente?clienteId=${encodeURIComponent(p.clienteId || '')}` }
+  })
   const criativos = pendentes.filter(p => p.etapa !== 'aprovacao_copy').map(paraCartaoAprovacao)
   const enviar = (corpo: CorpoDecisao) => postarDecisao(corpo)
 

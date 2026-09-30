@@ -153,7 +153,8 @@ export default function AprovacoesPagina() {
       ) : (
         <div style={{ maxWidth: 760 }}>
           {copies.length > 0 && (
-            <TabelaCopies posts={copies} enviar={enviarPeloPortal} onDecidido={() => carregar()} somenteLeitura={!permAprovar} extra={podeExcluir ? botaoExcluir : undefined} />
+            <TabelaCopies posts={copies} enviar={enviarPeloPortal} onDecidido={() => carregar()} somenteLeitura={!permAprovar} extra={podeExcluir ? botaoExcluir : undefined}
+              corMarca={cliente?.corPrimaria} fotoUrl={`/api/foto-cliente?clienteId=${encodeURIComponent(String(clienteId))}`} />
           )}
           {criativos.map(p => (
             <CartaoCriativo key={p.id} post={p} handle={handle}

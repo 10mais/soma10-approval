@@ -102,7 +102,9 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
   if (type === 'corrected') {
     const ehCopyPedido = (post as any).etapa === 'aprovacao_copy'
     const novosC = (body.novosCampos || {}) as Record<string, unknown>
-    const mudouCampos = ehCopyPedido && ['headline', 'subheadline', 'textoImagem', 'cta'].some(k => typeof novosC[k] === 'string' && novosC[k] !== ((post as any)[k] || ''))
+    const novasL = Array.isArray(body.novasLaminas) ? body.novasLaminas as unknown[] : []
+    const mudouCampos = ehCopyPedido && (['headline', 'subheadline', 'textoImagem', 'cta'].some(k => typeof novosC[k] === 'string' && novosC[k] !== ((post as any)[k] || ''))
+      || novasL.some((t, i) => typeof t === 'string' && t !== (((post as any).laminas || [])[i]?.texto || '')))
     const mudouLegenda = typeof novaLegenda === 'string' && novaLegenda.trim() !== '' && novaLegenda !== (post.legenda || '')
     const problema = problemaDoPedido({
       anotacoes: Array.isArray(annotations) ? annotations : [],
@@ -142,6 +144,12 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
     { chave: 'cta', rotulo: 'CTA' },
     { chave: 'legenda', rotulo: 'Legenda' },
   ]
+  // Carrossel: cada lâmina entra no antes -> depois (o cliente edita lâmina por lâmina, 30/09).
+  ;(((post as any).laminas || []) as { texto?: string }[]).forEach((l, i) => {
+    antesDoPedido[`lamina${i}`] = l?.texto || ''
+    CAMPOS_COPY.push({ chave: `lamina${i}`, rotulo: `Lâmina ${i + 1}` })
+  })
+  const novasLaminas = Array.isArray(body.novasLaminas) ? (body.novasLaminas as unknown[]) : null
 
   // ===== LINHA DE MONTAGEM: COPY em aprovação (etapa aprovacao_copy) =====
   // Pelo mesmo link público do criativo, a decisão aqui é sobre o TEXTO.
@@ -157,6 +165,10 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
         if (typeof novos[k] === 'string') (post as any)[k] = novos[k]
       }
       if (typeof novaLegenda === 'string') (post as any).legenda = novaLegenda
+      if (novasLaminas) {
+        ;(post as any).laminas = (((post as any).laminas || []) as { texto?: string }[]).map((l, i) =>
+          typeof novasLaminas[i] === 'string' ? { ...l, texto: String(novasLaminas[i]).slice(0, 4000) } : l)
+      }
     }
     try {
       const { registrarLogCliente, diffCampos } = await import('@/lib/logCliente')
@@ -165,6 +177,7 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
       // e o post são o estado original.
       const editados: Record<string, unknown> = { ...novos }
       if (typeof novaLegenda === 'string') editados.legenda = novaLegenda
+      if (novasLaminas) novasLaminas.forEach((t, i) => { if (typeof t === 'string') editados[`lamina${i}`] = t })
       const mudancas = diffCampos(antesDoPedido, editados, CAMPOS_COPY)
       await registrarLogCliente({
         clienteId: (post as any).clienteId || '', clienteNome: clienteNomeCopy,

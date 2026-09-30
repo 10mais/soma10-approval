@@ -104,5 +104,6 @@ export async function GET(req: NextRequest) {
   // Logo do perfil: cliente.logo pode estar expirado (URL do IG → 403). Manda
   // também o ativo 'logo' da marca (Blob permanente) como fallback pro mockup.
   const assetLogo = (Array.isArray(cliente.assetsMarca) ? cliente.assetsMarca : []).find(a => a?.categoria === 'logo')?.url || ''
-  return NextResponse.json({ clienteNome: cliente.nome, logo: cliente.logo || '', logoAlt: assetLogo, instagram: cliente.instagram || '', posts, programacao })
+  // corMarca: a prévia da arte das copies usa a cor do cliente no CTA e na faixa (30/09).
+  return NextResponse.json({ clienteNome: cliente.nome, logo: cliente.logo || '', logoAlt: assetLogo, instagram: cliente.instagram || '', corMarca: (cliente as any).corPrimaria || '', posts, programacao })
 }
