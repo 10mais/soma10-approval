@@ -7,6 +7,7 @@
 // A arte fica em "papel" branco nos dois temas: é a representação da peça, não um painel da
 // tela. Espaço da imagem hachurado (ou a foto, quando o post já tem uma), CTA como botão na
 // cor da marca, logo do cliente no canto, carrossel com um quadro por lâmina lado a lado.
+import { useEffect, useRef, useState } from 'react'
 import { useT } from '@/app/components/Idioma'
 import { previaDaCopy, escalaDoQuadro, type CopyDoPost, type Quadro } from '@/lib/mockupCopy'
 
@@ -34,17 +35,121 @@ export default function MockupCopy({ copy, corMarca, fotoUrl, imagemUrl, largura
   const vertical = previa.proporcao === '9 / 16'
   const w = vertical ? Math.round(largura * 0.8) : largura
   const cor = corValida(corMarca) || '#ffc00f'
-  const varios = previa.quadros.length > 1
+  const total = previa.quadros.length
+  const varios = total > 1
+
+  // CARROSSEL NO MOUSE (dono, 30/09: "está passando somente com touch, e não com o clique do
+  // mouse"). A fileira rola sozinha no toque; no computador, sem trackpad, não havia como
+  // passar. Agora: setas nas laterais, bolinhas clicáveis e arrastar com o mouse.
+  const trilho = useRef<HTMLDivElement>(null)
+  const passo = w + 10 // um quadro + o espaço entre eles
+  const [nav, setNav] = useState({ atual: 0, voltar: false, avancar: false, rola: false })
+  const arraste = useRef<{ x: number; scroll: number } | null>(null)
+
+  // Lâmina atual lida da POSIÇÃO REAL da fileira (encostada no fim = a última).
+  function indiceAtual(el: HTMLDivElement): number {
+    const noFim = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4
+    return el.scrollWidth > el.clientWidth + 4 && noFim ? total - 1 : Math.round(el.scrollLeft / passo)
+  }
+  function medir() {
+    const el = trilho.current
+    if (!el) return
+    const rola = el.scrollWidth > el.clientWidth + 4
+    const noFim = el.scrollLeft + el.clientWidth >= el.scrollWidth - 4
+    setNav({ rola, voltar: el.scrollLeft > 4, avancar: !noFim, atual: indiceAtual(el) })
+  }
+  // Setas: andam a partir de onde a fileira ESTÁ agora (não do último valor guardado).
+  function andar(delta: number) {
+    const el = trilho.current
+    if (el) irPara(indiceAtual(el) + delta)
+  }
+  useEffect(() => {
+    medir()
+    const el = trilho.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => medir())
+    ro.observe(el)
+    return () => ro.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [total, passo])
+
+  function irPara(i: number) {
+    const el = trilho.current
+    if (!el) return
+    const alvo = Math.max(0, Math.min(total - 1, i)) * passo
+    const inicio = el.scrollLeft
+    el.scrollTo({ left: alvo, behavior: 'smooth' })
+    // Garantia: há navegador (e janela sem desenhar) em que a rolagem suave num carrossel com
+    // encaixe nem começa. Se nada se mexeu, vai direto — nunca "clicou e não aconteceu nada".
+    setTimeout(() => {
+      if (trilho.current && trilho.current.scrollLeft === inicio && inicio !== alvo) trilho.current.scrollTo({ left: alvo })
+      medir() // setas e bolinhas em dia mesmo se o evento de rolagem não vier
+    }, 400)
+  }
+
+  // Arrastar com o MOUSE (no toque o navegador já rola sozinho). O encaixe da lâmina sai
+  // durante o arraste (senão briga com a mão) e volta ao soltar, na lâmina mais próxima.
+  function aoApertar(e: React.PointerEvent<HTMLDivElement>) {
+    const el = trilho.current
+    if (e.pointerType !== 'mouse' || e.button !== 0 || !el || !nav.rola) return
+    arraste.current = { x: e.clientX, scroll: el.scrollLeft }
+    el.style.scrollSnapType = 'none'
+    el.style.cursor = 'grabbing'
+    try { el.setPointerCapture(e.pointerId) } catch { /* sem captura, o arraste segue pelo trilho */ }
+  }
+  function aoMover(e: React.PointerEvent<HTMLDivElement>) {
+    const a = arraste.current
+    if (!a || !trilho.current) return
+    trilho.current.scrollLeft = a.scroll - (e.clientX - a.x)
+  }
+  function aoSoltar(e: React.PointerEvent<HTMLDivElement>) {
+    const el = trilho.current
+    if (!arraste.current || !el) return
+    arraste.current = null
+    try { el.releasePointerCapture(e.pointerId) } catch { /* já solto */ }
+    el.style.scrollSnapType = 'x mandatory'
+    el.style.cursor = 'grab'
+    irPara(Math.round(el.scrollLeft / passo))
+  }
+
+  const seta = (lado: 'voltar' | 'avancar'): React.CSSProperties => ({
+    position: 'absolute', top: '50%', transform: 'translateY(-50%)', ...(lado === 'voltar' ? { left: 4 } : { right: 4 }), zIndex: 2,
+    width: 32, height: 32, borderRadius: '50%', border: '1px solid rgba(0,0,0,0.08)', background: 'rgba(255,255,255,0.95)', color: TINTA,
+    boxShadow: '0 2px 8px rgba(0,0,0,0.18)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0,
+  })
 
   return (
     <div style={{ minWidth: 0 }}>
-      <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: varios ? 6 : 0, scrollSnapType: varios ? 'x mandatory' : undefined, alignItems: 'flex-start' }}>
-        {previa.quadros.map((q, i) => (
-          <QuadroArte key={i} q={q} proporcao={previa.proporcao} largura={w} cor={cor} fotoUrl={fotoUrl}
-            imagemUrl={i === 0 ? imagemUrl : undefined} rotulo={varios || q.lamina ? (q.lamina === 1 ? tr('aprov.capa') : tr('aprov.lamina-n', { n: q.lamina || i + 1 })) : ''} />
-        ))}
+      <div style={{ position: 'relative' }}>
+        <div ref={trilho} onScroll={medir} onPointerDown={aoApertar} onPointerMove={aoMover} onPointerUp={aoSoltar} onPointerCancel={aoSoltar}
+          style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: varios ? 6 : 0, scrollSnapType: varios ? 'x mandatory' : undefined, alignItems: 'flex-start', cursor: nav.rola ? 'grab' : undefined, userSelect: nav.rola ? 'none' : undefined }}>
+          {previa.quadros.map((q, i) => (
+            <QuadroArte key={i} q={q} proporcao={previa.proporcao} largura={w} cor={cor} fotoUrl={fotoUrl}
+              imagemUrl={i === 0 ? imagemUrl : undefined} rotulo={varios || q.lamina ? (q.lamina === 1 ? tr('aprov.capa') : tr('aprov.lamina-n', { n: q.lamina || i + 1 })) : ''} />
+          ))}
+        </div>
+        {nav.rola && nav.voltar && (
+          <button type="button" onClick={() => andar(-1)} aria-label={tr('aprov.lamina-anterior')} title={tr('aprov.lamina-anterior')} style={seta('voltar')}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+          </button>
+        )}
+        {nav.rola && nav.avancar && (
+          <button type="button" onClick={() => andar(1)} aria-label={tr('aprov.proxima-lamina')} title={tr('aprov.proxima-lamina')} style={seta('avancar')}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+          </button>
+        )}
       </div>
-      {previa.quadros.length > 2 && <p style={{ margin: '4px 0 0', fontSize: 10.5, color: 'var(--v2-ink3)' }}>{tr('aprov.n-laminas-role', { n: previa.quadros.length })}</p>}
+      {nav.rola && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 5 }}>
+            {previa.quadros.map((_, i) => (
+              <button key={i} type="button" onClick={() => irPara(i)} aria-label={i === 0 ? tr('aprov.capa') : tr('aprov.lamina-n', { n: i + 1 })}
+                style={{ width: i === nav.atual ? 18 : 7, height: 7, borderRadius: 999, border: 'none', padding: 0, cursor: 'pointer', background: i === nav.atual ? 'var(--v2-ink)' : 'var(--v2-rule2, #cfc8b8)', transition: 'width .15s' }} />
+            ))}
+          </div>
+          <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)' }}>{tr('aprov.n-laminas-role', { n: total })}</span>
+        </div>
+      )}
       {previa.roteiro && (
         <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 8, background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule)' }}>
           <p style={{ margin: '0 0 3px', fontSize: 10, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{tr('aprov.roteiro-video')}</p>
