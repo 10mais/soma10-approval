@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
@@ -10,6 +10,7 @@ import LimiteDeErro from './LimiteDeErro'
 import { opcoesEtapas, separarValor, juntarValor, opcaoDoValorAtual } from '@/lib/etapaPlaybook'
 import { podeSerFilha, camposAoVincular, progressoDaMae, validarEmMassa } from '@/lib/hierarquiaTarefas'
 import RichText from './RichText'
+import { ordenarPorNome } from '@/lib/ordenarNomes'
 import OptImg from './OptImg'
 import UploadProgress from './UploadProgress'
 import { fecharFora } from '@/lib/fecharModal'
@@ -339,9 +340,12 @@ function ehAtrasado(prazo?: string, status?: string) {
   return new Date(prazo).getTime() < Date.now()
 }
 
-export default function GestaoTarefas({ clientes, usuarios, clienteFixo, responsavelFixo, abrirTarefaId, onAbriuTarefa, podeEditar = true, podeExcluir = true, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false }: { clientes: Cliente[]; usuarios: Usuario[]; clienteFixo?: string; responsavelFixo?: string; abrirTarefaId?: string | null; onAbriuTarefa?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean }) {
+export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, clienteFixo, responsavelFixo, abrirTarefaId, onAbriuTarefa, podeEditar = true, podeExcluir = true, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false }: { clientes: Cliente[]; usuarios: Usuario[]; clienteFixo?: string; responsavelFixo?: string; abrirTarefaId?: string | null; onAbriuTarefa?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean }) {
   const { rotuloTipo, rotuloStatus, rotuloPrioridade } = useRotulos()
   const tr = useT()
+  // Pessoas em ORDEM ALFABÉTICA em todo seletor desta tela — filtro, atribuição em massa e o
+  // modal (dono, 29/09: "Ana em primeiro da lista, Willian por último"). lib/ordenarNomes.
+  const usuarios = useMemo(() => ordenarPorNome(usuariosEntrada), [usuariosEntrada])
   // Propaga o perfil para o catálogo de tipos (módulo — TarefaModal também usa)
   PERFIL_CLINICA_TAREFAS = perfilClinica
   PERFIL_TURISMO_TAREFAS = perfilTurismo
@@ -984,7 +988,7 @@ export function TarefaModal(props: Parameters<typeof TarefaModalInterno>[0]) {
   )
 }
 
-function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, responsavelPadrao, responsavelPorTipo, tiposCustom = [], onTiposCustom, onClose, onSalvo, onExcluir, onRecarregar, viewMode = 'modal', onChangeViewMode }: {
+function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuariosEntrada, responsavelPadrao, responsavelPorTipo, tiposCustom = [], onTiposCustom, onClose, onSalvo, onExcluir, onRecarregar, viewMode = 'modal', onChangeViewMode }: {
   tarefa: Tarefa | null; clientes: Cliente[]; usuarios: Usuario[]; responsavelPadrao?: string
   // Playbook: quem recebe a tarefa segundo o squad do cliente, por tipo (lib/responsavelPorTipo). So em tarefa NOVA.
   responsavelPorTipo?: (tipo: string) => string
@@ -995,6 +999,9 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios, respons
 }) {
   const { rotuloTipo, rotuloStatus, rotuloPrioridade } = useRotulos()
   const tr = useT()
+  // Responsável, squad e menções em ORDEM ALFABÉTICA (dono, 29/09) — o modal também é aberto
+  // por outras telas (Equipe, Meu dia), com listas montadas por elas. lib/ordenarNomes.
+  const usuarios = useMemo(() => ordenarPorNome(usuariosEntrada), [usuariosEntrada])
   // `tarefa` = edição (existe no banco). O Playbook passa um objeto SEM id só para
   // pré-preencher (cliente, marco, tipo): isso é criação — POST, sem atividade/comentários.
   const tarefa: Tarefa | null = tarefaEntrada && tarefaEntrada.id ? tarefaEntrada : null

@@ -1,5 +1,6 @@
 import { unstable_cache } from 'next/cache'
 import { redis, Cliente, Usuario, ConfigAgencia } from './redis'
+import { ordenarPorNome } from './ordenarNomes'
 
 // Leituras cacheadas de dados que mudam pouco. O cache de dados do Next persiste
 // entre invocacoes (na Vercel) e e invalidado por tag nas escritas (revalidateTag).
@@ -32,7 +33,9 @@ export async function clientesAtivosIds(): Promise<Set<string>> {
 export const getUsuariosRaw = unstable_cache(
   async (): Promise<Usuario[]> => {
     const emails = await redis.smembers('usuarios')
-    return emails.length > 0 ? ((await redis.mget<(Usuario | null)[]>(...emails.map(e => `usuario:${e}`))).filter(Boolean) as Usuario[]) : []
+    // Ordem alfabética na ORIGEM (dono, 29/09): o conjunto do Redis não tem ordem, e todo
+    // seletor de pessoa do sistema vem daqui (/api/usuarios, /api/equipe). lib/ordenarNomes.
+    return emails.length > 0 ? ordenarPorNome((await redis.mget<(Usuario | null)[]>(...emails.map(e => `usuario:${e}`))).filter(Boolean) as Usuario[]) : []
   },
   ['usuarios-raw'],
   { tags: ['usuarios'], revalidate: 120 }
