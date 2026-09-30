@@ -90,6 +90,32 @@ export function feedbackParaTarefa(texto?: string, anotacoes?: AnotacaoPedido[])
   return [t, lista ? `Pontos marcados na arte: ${lista}` : ''].filter(Boolean).join(' — ')
 }
 
+// PEDIDO CLARO (Fase 1, dono 07/09 e 29/09 — o exemplo do print era "é a mesma coisa do post
+// anterior"): pedido de ajuste precisa ser acionável. Marcar o ponto na arte basta (o ponto já
+// diz ONDE). Sem marcação, o recado precisa dizer o quê: pelo menos 3 palavras e 12 letras.
+// Só legenda/data/campos da copy reescritos, sem recado, também é pedido completo (o servidor
+// aplica sozinho). Vale na tela (aviso na hora) e no servidor (a tela não é autoridade).
+export type ProblemaPedido = 'vazio' | 'vago'
+
+export function observacaoClara(obs?: string): boolean {
+  const t = String(obs || '').replace(/\s+/g, ' ').trim()
+  const palavras = t.split(' ').filter(w => /[0-9A-Za-zÀ-ÿ]/.test(w))
+  return t.length >= 12 && palavras.length >= 3
+}
+
+export function problemaDoPedido(p: { anotacoes?: AnotacaoPedido[]; observacao?: string; mudouLegenda?: boolean; mudouData?: boolean; mudouCampos?: boolean }): ProblemaPedido | null {
+  if ((p.anotacoes || []).some(a => textoDoPino(a))) return null
+  const obs = String(p.observacao || '').trim()
+  if (obs) return observacaoClara(obs) ? null : 'vago'
+  if (p.mudouLegenda || p.mudouData || p.mudouCampos) return null
+  return 'vazio'
+}
+
+export const TEXTO_PEDIDO: Record<ProblemaPedido, string> = {
+  vazio: 'Diga o que precisa mudar: clique na arte para marcar o ponto ou escreva o ajuste.',
+  vago: 'Conte um pouco mais: o que está errado e como deveria ficar (ex.: "o título está pequeno, aumentar e trocar para branco"). Se for em um ponto da arte, clique nela para marcar.',
+}
+
 // Toda URL que já passou por esta peça: a arte atual, as do histórico e a versão pendente.
 function urlsConhecidas(p: PostRodada): Set<string> {
   const s = new Set<string>(p.imagens || [])

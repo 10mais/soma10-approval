@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Post, Cliente } from '@/lib/redis'
+import { redis, Post, Cliente, podeCliente } from '@/lib/redis'
 import { list } from '@vercel/blob'
 import nodemailer from 'nodemailer'
 import { notificarEquipe, notificarDono, notificar } from '@/lib/notificacoes'
@@ -9,7 +9,9 @@ import { clienteSuspenso } from '@/lib/suspensao'
 import { checarRate } from '@/lib/rateLimit'
 import { capturarErro } from '@/lib/erros'
 import { ajusteSemRetrabalho, dataValida } from '@/lib/ajusteCliente'
-import { feedbackParaTarefa, versaoNaAprovacao } from '@/lib/rodadaAjuste'
+import { feedbackParaTarefa, versaoNaAprovacao, problemaDoPedido, TEXTO_PEDIDO } from '@/lib/rodadaAjuste'
+import { bloqueiaPapel } from '@/lib/permissoesPapel'
+import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -66,8 +68,50 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
     autorizadoPorToken = !!cid && cid === post.clienteId
   }
 
-  if (!autorizadoPorSessao && !autorizadoPorCodigo && !autorizadoPorToken) {
+  // EQUIPE decidindo pelo portal do cliente, em nome dele (Fase 1 da rodada de ajuste, dono
+  // 29/09: link e portal = mesmo formulário e mesma rota). Antes o portal ia por outra rota,
+  // sem marcar pontos na arte e com "Rejeitar" virando ajuste. Mesmas travas da rota antiga
+  // (/api/esteira/aprovar): Produção › editar no papel e a ação granular "aprovar".
+  // Comercial (vendas) fica de fora da operação.
+  let autorizadoPorEquipe = false
+  if (!autorizadoPorSessao && !autorizadoPorCodigo && !autorizadoPorToken && session && ['admin', 'gerente', 'usuario'].includes(sessionRole)) {
+    const u = session.user as any
+    autorizadoPorEquipe = !(await bloqueiaPapel(sessionRole, 'producao', 'editar', u.permissoes)) && !(await bloqueiaAcao(sessionRole, 'aprovar', u.permissoesGranular))
+  }
+
+  if (!autorizadoPorSessao && !autorizadoPorCodigo && !autorizadoPorToken && !autorizadoPorEquipe) {
     return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  }
+
+  // Cliente LOGADO sem "aprovar" (Configurações › Clientes) vê o material mas não decide — a
+  // mesma regra que o portal já tinha na rota antiga. O link por token segue livre: quem tem
+  // o link é quem a agência escolheu para aprovar.
+  if (autorizadoPorSessao) {
+    const cli = await redis.get<Cliente>(`cliente:${post.clienteId}`)
+    if (!podeCliente(cli?.permissoes, 'aprovar')) {
+      return NextResponse.json({ error: 'sem permissão para aprovar conteúdo' }, { status: 403 })
+    }
+  }
+  // Origem da decisão no registro de Solicitações do cliente.
+  const origemDecisao = autorizadoPorEquipe ? 'equipe' : autorizadoPorSessao ? 'portal' : autorizadoPorToken ? 'link' : 'codigo'
+  const sufixoEquipe = autorizadoPorEquipe ? ' (pela equipe)' : ''
+
+  // PEDIDO CLARO (Fase 1, lib/rodadaAjuste.problemaDoPedido): pedido de ajuste precisa dizer
+  // onde (ponto marcado na arte) ou o quê (recado que diga o que está errado e como deveria
+  // ficar). A tela avisa antes; aqui é a garantia — a tela não é autoridade.
+  if (type === 'corrected') {
+    const ehCopyPedido = (post as any).etapa === 'aprovacao_copy'
+    const novosC = (body.novosCampos || {}) as Record<string, unknown>
+    const mudouCampos = ehCopyPedido && ['headline', 'subheadline', 'textoImagem', 'cta'].some(k => typeof novosC[k] === 'string' && novosC[k] !== ((post as any)[k] || ''))
+    const mudouLegenda = typeof novaLegenda === 'string' && novaLegenda.trim() !== '' && novaLegenda !== (post.legenda || '')
+    const problema = problemaDoPedido({
+      anotacoes: Array.isArray(annotations) ? annotations : [],
+      observacao: rejectReason,
+      mudouLegenda,
+      mudouData: !ehCopyPedido && dataValida(novaData),
+      mudouCampos,
+    })
+    if (problema) return NextResponse.json({ error: TEXTO_PEDIDO[problema], motivo: `pedido-${problema}` }, { status: 400 })
   }
 
   // Post SUSPENSO pela equipe (lib/suspenderPost): a decisão não pode recolocá-lo na fila.
@@ -125,9 +169,9 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
       await registrarLogCliente({
         clienteId: (post as any).clienteId || '', clienteNome: clienteNomeCopy,
         tipo: type === 'approved' || type === 'caption' ? 'aprovacao' : type === 'rejected' ? 'reprovacao' : 'ajuste_copy',
-        acao: type === 'approved' || type === 'caption' ? 'Aprovou a copy' : type === 'rejected' ? 'Recusou a copy' : 'Pediu ajuste na copy',
+        acao: (type === 'approved' || type === 'caption' ? 'Aprovou a copy' : type === 'rejected' ? 'Recusou a copy' : 'Pediu ajuste na copy') + sufixoEquipe,
         postId: id, resumo: ((post as any).headline || post.legenda || (post as any).briefing || '').slice(0, 140),
-        motivo: rejectReason || undefined, origem: autorizadoPorSessao ? 'portal' : autorizadoPorToken ? 'link' : 'codigo',
+        motivo: rejectReason || undefined, origem: origemDecisao,
         mudancas: mudancas.length ? mudancas : undefined,
       })
     } catch { /* nunca bloqueia */ }
@@ -212,13 +256,13 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
       clienteId: (post as any).clienteId || '',
       clienteNome: (post as any).clienteNome || (post as any).cliente || 'Cliente',
       tipo: soLegenda ? 'corrigir_legenda' : semRetrabalho ? 'ajuste_aplicado' : type === 'approved' ? 'aprovacao' : type === 'corrected' ? 'ajuste_layout' : 'reprovacao',
-      acao: soLegenda ? 'Corrigiu a legenda'
+      acao: (soLegenda ? 'Corrigiu a legenda'
         : semRetrabalho ? (temNovaLegenda && temNovaData ? 'Ajustou a legenda e reprogramou' : temNovaData ? 'Reprogramou a publicação' : 'Ajustou a legenda')
-        : type === 'approved' ? 'Aprovou' : type === 'corrected' ? 'Pediu ajuste no layout' : 'Reprovou',
+        : type === 'approved' ? 'Aprovou' : type === 'corrected' ? 'Pediu ajuste no layout' : 'Reprovou') + sufixoEquipe,
       postId: id,
       resumo: (post.legenda || '').slice(0, 140),
       motivo: [rejectReason, pontos].filter(Boolean).join(' — ') || undefined,
-      origem: autorizadoPorSessao ? 'portal' : autorizadoPorToken ? 'link' : 'codigo',
+      origem: origemDecisao,
       mudancas: mudancas.length ? mudancas : undefined,
     })
   } catch { /* nunca bloqueia a decisão */ }
@@ -251,7 +295,8 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
       const { reabrirTarefaDaPauta } = await import('@/lib/tarefasDaPauta')
       // Mesmo texto do portal (lib/rodadaAjuste.feedbackParaTarefa): recado + pontos numerados.
       const feedback = feedbackParaTarefa(rejectReason, Array.isArray(annotations) ? annotations : [])
-      await reabrirTarefaDaPauta(id, feedback, (post as any).clienteNome || (post as any).cliente || 'Cliente')
+      const quemPediu = autorizadoPorEquipe ? `${(session?.user as any)?.name || 'Equipe'} (pelo cliente)` : ((post as any).clienteNome || (post as any).cliente || 'Cliente')
+      await reabrirTarefaDaPauta(id, feedback, quemPediu)
     } catch { /* segue */ }
   }
 
@@ -320,7 +365,7 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
     // posts sem etapa ou 'pronto'). Sem isso ele fica preso com 'aprovacao_criativo'.
     // "Aprovar assim mesmo" com versão do designer pendente: o cliente aprovou o que VIU (a
     // anterior). A pendente é descartada com registro, nunca publicada sem ele ver (lib/rodadaAjuste).
-    await redis.set(`post:${id}`, { ...atualizado, ...versaoNaAprovacao(atualizado as any, false, new Date().toISOString()), status: 'agendado', dataAgendada: quando, ...((post as any).etapa ? { etapa: 'pronto' } : {}), atualizadoEm: new Date().toISOString() })
+    await redis.set(`post:${id}`, { ...atualizado, ...versaoNaAprovacao(atualizado as any, autorizadoPorEquipe, new Date().toISOString()), status: 'agendado', dataAgendada: quando, ...((post as any).etapa ? { etapa: 'pronto' } : {}), atualizadoEm: new Date().toISOString() })
     await redis.sadd('agendados', id)
 
     // Automação: post aprovado -> cria tarefa de publicação para a equipe

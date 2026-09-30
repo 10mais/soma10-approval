@@ -16,6 +16,11 @@ import { localeDe } from '@/lib/i18n'
 import { statusAoSalvarEdicao } from '@/lib/composerPendencias'
 import { camposYouTube } from '@/lib/youtubePost'
 import SuspensaoPost from '@/app/components/SuspensaoPost'
+import CartaoCriativo from '@/app/components/aprovacao/CartaoCriativo'
+import TabelaCopies from '@/app/components/aprovacao/TabelaCopies'
+import { postarDecisao, paraCartaoAprovacao, type CorpoDecisao } from '@/app/components/aprovacao/comum'
+import { ordenarPorDataDePostagem } from '@/lib/ordemAprovacao'
+import { esperandoCliente } from '@/lib/bolaDaVez'
 import { PAPEIS_SQUAD } from '@/lib/squadPapeis'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
@@ -262,26 +267,17 @@ function ImagemComFallback({ src }: { src: string }) {
   return <img src={src} alt="" onError={() => setErro(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
 }
 
-// Área de aprovações do cliente (fila simples com os 2 portões)
+// Área de aprovações do cliente DENTRO do dashboard (o cliente logado e a equipe em "ver como
+// cliente"). FASE 1 da rodada de ajuste (dono, 29/09): os MESMOS componentes e a MESMA rota do
+// link público e do portal (app/components/aprovacao) — pontos marcados na arte, reprovar de
+// verdade (antes o "Rejeitar" virava ajuste com "REJEITADO:" no texto) e o mesmo conjunto de
+// materiais, na mesma ordem (postagem mais próxima primeiro).
 function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; clientes: any[]; onAtualizado: () => void }) {
   const tr = useT()
-  const [enviando, setEnviando] = useState<string | null>(null)
-  const [comentario, setComentario] = useState<Record<string, string>>({})
-  const [rejeitar, setRejeitar] = useState<{ id: string; ehCopy: boolean } | null>(null)
-  const [motivoRejeicao, setMotivoRejeicao] = useState('')
-  const pendentes = posts.filter(p => p.etapa === 'aprovacao_copy' || p.etapa === 'aprovacao_criativo')
-
-  async function agir(postId: string, acao: string, comentarioOverride?: string) {
-    setEnviando(postId)
-    const r = await fetch('/api/esteira/aprovar', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ postId, acao, comentario: comentarioOverride ?? (comentario[postId] || '') }),
-    }).then(x => x.json()).catch(() => ({ error: tr('dash.erro-conexao') }))
-    if (r?.semData) { toast(tr('dash.av-defina-data'), 'erro'); setEnviando(null); return }
-    if (r?.error) { toast(r.error, 'erro'); setEnviando(null); return }
-    setEnviando(null)
-    onAtualizado()
-  }
+  const pendentes = ordenarPorDataDePostagem(posts.filter(p => p && !p.excluidoEm && (esperandoCliente(p) || p.status === 'corrigir')))
+  const copies = pendentes.filter(p => p.etapa === 'aprovacao_copy').map(paraCartaoAprovacao)
+  const criativos = pendentes.filter(p => p.etapa !== 'aprovacao_copy').map(paraCartaoAprovacao)
+  const enviar = (corpo: CorpoDecisao) => postarDecisao(corpo)
 
   return (
     <div>
@@ -291,84 +287,16 @@ function AprovacoesCli({ posts, clientes, onAtualizado }: { posts: any[]; client
           <p>{tr('dash.nenhuma-pendencia-aprovacao-mo')}</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {pendentes.map(p => {
-            const ehCopy = p.etapa === 'aprovacao_copy'
-            const cli = clientes.find((c: any) => c.id === p.clienteId)
-            const capa = capaDoPost(p)
+        <div style={{ maxWidth: 760 }}>
+          {copies.length > 0 && <TabelaCopies posts={copies} enviar={enviar} onDecidido={() => onAtualizado()} />}
+          {criativos.map(p => {
+            const cli = clientes.find((c: any) => c.id === (p as any).clienteId)
             return (
-              <div key={p.id} style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
-                <div style={{ padding: '16px 18px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                  {capa && (
-                    <div style={{ width: 80, height: 80, borderRadius: 10, overflow: 'hidden', background: 'var(--v2-surface2)', flexShrink: 0 }}>
-                      {/\.(mp4|mov|m4v)(\?|$)/i.test(capa) ? <video src={capa} muted preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        : <img src={capa} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                    </div>
-                  )}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                      {cli?.logo && (
-                        <span style={{ width: 22, height: 22, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-surface2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 10, color: 'var(--v2-ink)', flexShrink: 0 }}>
-                          <AvatarCliente logo={cli.logo} nome={p.clienteNome} />
-                        </span>
-                      )}
-                      <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--v2-ink)' }}>{p.clienteNome}</span>
-                      <span style={{ background: ehCopy ? 'var(--v2-info-bg)' : 'var(--v2-amber-bg)', borderRadius: 999, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: ehCopy ? 'var(--v2-info)' : 'var(--v2-amber)' }}>
-                        {ehCopy ? tr('dash.aprovar-copy') : tr('dash.aprovar-criativo')}
-                      </span>
-                    </div>
-                    {p.briefing && <p style={{ margin: '0 0 6px', fontSize: 12, color: 'var(--v2-ink3)' }}>Briefing: {p.briefing}</p>}
-                    <p style={{ margin: '0 0 6px', fontSize: 13, color: 'var(--v2-ink)', whiteSpace: 'pre-wrap', maxHeight: 100, overflow: 'auto', lineHeight: 1.5 }}>{p.legenda || '(sem texto)'}</p>
-                    {(p.imagens || []).length > 0 && !ehCopy && (
-                      <div style={{ display: 'flex', gap: 6, marginBottom: 8, overflowX: 'auto' }}>
-                        {p.imagens.map((m: string, i: number) => (
-                          <div key={i} style={{ width: 60, height: 60, borderRadius: 8, overflow: 'hidden', background: 'var(--v2-surface2)', flexShrink: 0 }}>
-                            {/\.(mp4|mov|m4v)(\?|$)/i.test(m) ? <video src={m} muted preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              : <img src={m} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
-                      <button onClick={() => agir(p.id, ehCopy ? 'aprovar_copy' : 'aprovar_criativo')} disabled={enviando === p.id}
-                        style={{ padding: '8px 20px', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer', opacity: enviando === p.id ? 0.6 : 1 }}>
-                        Aprovar
-                      </button>
-                      <button onClick={() => { setComentario(c => ({ ...c, [p.id]: '' })); agir(p.id, ehCopy ? 'ajuste_copy' : 'ajuste_criativo') }} disabled={enviando === p.id}
-                        style={{ padding: '8px 16px', background: 'var(--v2-surface)', color: 'var(--v2-amber)', border: '1px solid var(--v2-amber-bg)', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer', opacity: enviando === p.id ? 0.6 : 1 }}>
-                        Pedir ajuste
-                      </button>
-                      <button onClick={() => { setRejeitar({ id: p.id, ehCopy }); setMotivoRejeicao('') }} disabled={enviando === p.id}
-                        style={{ padding: '8px 16px', background: 'var(--v2-surface)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer', opacity: enviando === p.id ? 0.6 : 1 }}>
-                        Rejeitar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <CartaoCriativo key={p.id} post={p} enviar={enviar} onDecidido={() => onAtualizado()}
+                handle={String(cli?.instagram || cli?.nome || (p as any).clienteNome || 'perfil').replace(/^@/, '')}
+                fotoUrl={`/api/foto-cliente?clienteId=${encodeURIComponent((p as any).clienteId || '')}`} />
             )
           })}
-        </div>
-      )}
-
-      {/* Modal de rejeicao */}
-      {rejeitar && (
-        <div onClick={fecharFora(() => setRejeitar(null))} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 440, width: '100%', padding: 22 }}>
-            <h3 style={{ margin: '0 0 4px', fontSize: 16, color: 'var(--v2-hot)' }}>Rejeitar {rejeitar.ehCopy ? 'copy' : 'criativo'}</h3>
-            <p style={{ margin: '0 0 14px', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('dash.informe-motivo-rejeicao-criati')}</p>
-            <textarea lang="pt-BR" value={motivoRejeicao} onChange={e => setMotivoRejeicao(e.target.value)} placeholder={tr('dash.motivo-rejeicao')}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-hot-bg)', fontSize: 13, minHeight: 80, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: 14 }} autoFocus />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => setRejeitar(null)} style={{ padding: '9px 16px', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
-              <button disabled={!motivoRejeicao.trim() || enviando === rejeitar.id} onClick={async () => {
-                await agir(rejeitar.id, rejeitar.ehCopy ? 'ajuste_copy' : 'ajuste_criativo', `REJEITADO: ${motivoRejeicao}`)
-                setRejeitar(null)
-              }} style={{ padding: '9px 20px', background: motivoRejeicao.trim() ? 'var(--v2-hot)' : 'var(--v2-surface2)', color: motivoRejeicao.trim() ? 'var(--v2-surface)' : 'var(--v2-ink3)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: motivoRejeicao.trim() ? 'pointer' : 'not-allowed' }}>
-                Confirmar rejeicao
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>

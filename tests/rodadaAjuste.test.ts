@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   emRodadaDeAjuste, feedbackParaTarefa, itensDoPedido, novaVersaoDaTarefa, entregaNaRodada,
   descartarVersaoNova, patchDoReenvio, versaoNaAprovacao, pedidoDaEntrada, itensDaUltimaRodada,
-  mensagemNovaVersao, type PostRodada,
+  mensagemNovaVersao, problemaDoPedido, observacaoClara, TEXTO_PEDIDO, type PostRodada,
 } from '@/lib/rodadaAjuste'
 
 const T0 = '2026-09-29T12:00:00.000Z'
@@ -158,5 +158,30 @@ describe('Solicitações — o pedido sobre a arte que o cliente VIU', () => {
     expect(mensagemNovaVersao({ itens: ['Trocar a cor do fundo', 'Logo maior'], link: 'https://x/aprovacoes/tk', dataPostagem: '2026-10-03T15:00:00.000Z' }))
       .toBe('Olá! A nova versão do post do dia 03/10 está pronta para a sua aprovação, com os ajustes que você pediu:\n• Trocar a cor do fundo\n• Logo maior\n\nPara aprovar ou pedir outro ajuste: https://x/aprovacoes/tk')
     expect(mensagemNovaVersao({ itens: [], link: 'L' })).toBe('Olá! A nova versão do post está pronta para a sua aprovação.\n\nPara aprovar ou pedir outro ajuste: L')
+  })
+})
+
+describe('Fase 1 — pedido claro (o link e o portal recusam pedido vago)', () => {
+  it('um ponto marcado na arte basta', () => {
+    expect(problemaDoPedido({ anotacoes: [{ text: 'logo' }] })).toBeNull()
+  })
+
+  it('sem marcação, o recado precisa dizer o quê', () => {
+    expect(problemaDoPedido({ observacao: 'ver anterior' })).toBe('vago')
+    expect(problemaDoPedido({ observacao: 'mudar' })).toBe('vago')
+    expect(problemaDoPedido({ observacao: 'Trocar a foto do fundo' })).toBeNull()
+    expect(observacaoClara('O título está pequeno, aumentar')).toBe(true)
+  })
+
+  it('só legenda, data ou campos da copy reescritos, sem recado: pedido completo', () => {
+    expect(problemaDoPedido({ mudouLegenda: true })).toBeNull()
+    expect(problemaDoPedido({ mudouData: true })).toBeNull()
+    expect(problemaDoPedido({ mudouCampos: true })).toBeNull()
+  })
+
+  it('nada preenchido: vazio; marcação sem texto não conta', () => {
+    expect(problemaDoPedido({})).toBe('vazio')
+    expect(problemaDoPedido({ anotacoes: [{ x: 1, y: 1, text: '  ' }] })).toBe('vazio')
+    expect(TEXTO_PEDIDO.vago).toContain('como deveria ficar')
   })
 })
