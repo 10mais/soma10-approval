@@ -5,6 +5,7 @@ import { redis } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
 import { getPerfilInstancia } from '@/lib/perfisInstancia'
 import { PLAYBOOK_CLINICA } from '@/lib/playbookClinica'
+import { padraoDoPerfil } from '@/lib/playbookPadrao'
 
 export const runtime = 'nodejs'
 
@@ -39,6 +40,11 @@ function padrao(): PlaybookQualificacao {
   }
 }
 
+// Playbook em branco — para perfil que não tem script próprio aqui.
+function vazio(): PlaybookQualificacao {
+  return { roteiro: '', cadencia: [] }
+}
+
 async function carregar(): Promise<PlaybookQualificacao> {
   const t = await redis.get<PlaybookQualificacao>(CHAVE)
   if (t && Array.isArray(t.cadencia)) {
@@ -50,7 +56,16 @@ async function carregar(): Promise<PlaybookQualificacao> {
     }
     return t
   }
-  const novo = (await getPerfilInstancia()) === 'clinica' ? padraoClinica() : padrao()
+  // QUEM RECEBE O PADRÃO DA AGÊNCIA É SÓ A AGÊNCIA. Até 01/10 qualquer perfil
+  // que não fosse clínica caía no `padrao()` — o script do 10+ ("aqui é {sdr}
+  // da 10+", "vi o trabalho de vocês", "[segmento] está atraindo clientes") foi
+  // implantado na Deny, na Sua Dupla e na Missões, e de lá a migração o levou
+  // para a Biblioteca como "Playbook anterior". O dono viu na tela da Deny:
+  // "estão todos com o caso do 10+ (agência) e não turismo".
+  // Perfil sem playbook próprio nasce VAZIO: conteúdo de nicho agora vive na
+  // Biblioteca de Vendas (lib/bibliotecaSeeds/*), que é onde deve ser escrito.
+  const dono = padraoDoPerfil(await getPerfilInstancia())
+  const novo = dono === 'clinica' ? padraoClinica() : dono === 'agencia' ? padrao() : vazio()
   await redis.set(CHAVE, novo)
   return novo
 }
