@@ -98,3 +98,52 @@ export function bibliotecaParaPrompt(b: BibliotecaVendas): string {
   }
   return partes.join('\n\n')
 }
+
+// MESCLAR O CONTEÚDO DO NICHO numa biblioteca que JÁ TEM coisa escrita.
+//
+// O seed só é instalado na primeira leitura (ver /api/crm/biblioteca). Quem já
+// mexeu na tela — como a Deny, que digitou alguns itens à mão para testar —
+// nunca mais receberia o conteúdo do nicho, porque existe algo salvo.
+//
+// Regra: NADA é apagado e NADA é sobrescrito. O que a equipe escreveu manda
+// sempre; do seed entra só o que não existe ainda. Item igual é reconhecido
+// pelo nome/título, ignorando maiúsculas, acentos e espaço sobrando — "Muito
+// caro" e "MUITO CARO" são o mesmo item, e duplicar isso seria devolver à
+// equipe uma biblioteca com tudo em dobro.
+function chaveDe(s: string): string {
+  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase()
+}
+
+/** Junta `novo` (nicho) em `atual` (o que está salvo) sem perder nem duplicar. */
+export function mesclarSeed(atual: BibliotecaVendas, novo: BibliotecaVendas): BibliotecaVendas {
+  const base = atual && Array.isArray(atual.objecoes) ? atual : vazia()
+
+  // Junta duas listas por uma chave de texto: mantém tudo de `a`, acrescenta de
+  // `b` só o que falta, e quando o item existe nos dois, funde o que está dentro.
+  function unir<T>(a: T[], b: T[], chave: (x: T) => string, fundir?: (existente: T, novo: T) => T): T[] {
+    const saida = [...(a || [])]
+    const indice = new Map(saida.map((x, i) => [chaveDe(chave(x)), i]))
+    for (const item of b || []) {
+      const k = chaveDe(chave(item))
+      const i = indice.get(k)
+      if (i === undefined) { indice.set(k, saida.length); saida.push(item) }
+      else if (fundir) saida[i] = fundir(saida[i], item)
+    }
+    return saida
+  }
+
+  return {
+    objecoes: unir(base.objecoes, novo.objecoes, c => c.nome,
+      (ex, nv) => ({ ...ex, respostas: unir(ex.respostas, nv.respostas, r => r.titulo) })),
+    cadencias: unir(base.cadencias, novo.cadencias, c => c.nome,
+      (ex, nv) => ({ ...ex, mensagens: unir(ex.mensagens, nv.mensagens, m => m.titulo) })),
+    roteiros: unir(base.roteiros, novo.roteiros, r => r.nome,
+      (ex, nv) => ({ ...ex, perguntas: unir(ex.perguntas, nv.perguntas, p => p.pergunta) })),
+    reaquecimento: {
+      leads: unir(base.reaquecimento?.leads || [], novo.reaquecimento?.leads || [], s => s.nome,
+        (ex, nv) => ({ ...ex, mensagens: unir(ex.mensagens, nv.mensagens, m => m.titulo) })),
+      clientes: unir(base.reaquecimento?.clientes || [], novo.reaquecimento?.clientes || [], s => s.nome,
+        (ex, nv) => ({ ...ex, mensagens: unir(ex.mensagens, nv.mensagens, m => m.titulo) })),
+    },
+  }
+}

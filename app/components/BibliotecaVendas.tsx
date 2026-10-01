@@ -97,6 +97,24 @@ export default function BibliotecaVendasTela({ podeEditar }: { podeEditar: boole
   useEffect(() => { if (!selRot && b.roteiros[0]) setSelRot(b.roteiros[0].id) }, [b.roteiros, selRot])
   useEffect(() => { const l = b.reaquecimento[trilha]; if (l[0] && !l.some(s => s.id === selSeq)) setSelSeq(l[0].id) }, [b.reaquecimento, trilha, selSeq])
 
+  // Instalar o conteúdo do nicho POR CIMA do que já existe. A tela nasce vazia
+  // em instância nova, mas quem já digitou alguma coisa nunca mais receberia o
+  // conteúdo pronto — o seed só roda na primeira leitura. Nada é apagado: o que
+  // a equipe escreveu manda, e rodar duas vezes não duplica (mesclarSeed).
+  const [instalando, setInstalando] = useState(false)
+  async function instalarNicho() {
+    const ok = await confirmar(
+      'Isso traz o conteúdo pronto do seu segmento (objeções, cadências, roteiros e reaquecimento) para dentro da sua biblioteca. O que você já escreveu NÃO é alterado nem apagado — entra só o que falta.',
+      { titulo: 'Trazer o conteúdo pronto', okLabel: 'Trazer conteúdo' },
+    )
+    if (!ok) return
+    setInstalando(true)
+    const r = await fetch('/api/crm/biblioteca', { method: 'POST' }).then(x => x.json()).catch(() => null)
+    setInstalando(false)
+    if (r && !r.error) { setB({ ...vazia(), ...r, reaquecimento: { leads: r.reaquecimento?.leads || [], clientes: r.reaquecimento?.clientes || [] } }); toast('Conteúdo instalado na biblioteca.', 'sucesso') }
+    else toast(r?.error || 'Não foi possível instalar o conteúdo.', 'erro')
+  }
+
   async function salvar() {
     setSalvando(true)
     const r = await fetch('/api/crm/biblioteca', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }).then(x => x.json()).catch(() => null)
@@ -145,7 +163,13 @@ export default function BibliotecaVendasTela({ podeEditar }: { podeEditar: boole
             <button onClick={() => { carregar(); setEditando(false) }} style={{ padding: '8px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('comum.cancelar')}</button>
           </>
         ) : (
-          <button onClick={() => setEditando(true)} style={{ padding: '8px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('comum.editar')}</button>
+          <>
+            <button onClick={instalarNicho} disabled={instalando} title="Traz o conteúdo pronto do seu segmento sem apagar o que você já escreveu"
+              style={{ padding: '8px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: instalando ? 'wait' : 'pointer' }}>
+              {instalando ? 'Trazendo...' : 'Trazer conteúdo pronto'}
+            </button>
+            <button onClick={() => setEditando(true)} style={{ padding: '8px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>{tr('comum.editar')}</button>
+          </>
         ))}
       </div>
 

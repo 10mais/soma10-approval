@@ -4,10 +4,11 @@ import { authOptions } from '@/lib/auth'
 import { redis } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
 import { getPerfilInstancia } from '@/lib/perfisInstancia'
-import { BibliotecaVendas, BibliotecaSeed, CHAVE_BIBLIOTECA, vazia, FASES } from '@/lib/bibliotecaVendas'
+import { BibliotecaVendas, BibliotecaSeed, CHAVE_BIBLIOTECA, vazia, FASES, mesclarSeed } from '@/lib/bibliotecaVendas'
 import { migrarPlaybook, juntar, PlaybookAntigo } from '@/lib/bibliotecaMigrar'
 import { SEED_MARKETING } from '@/lib/bibliotecaSeeds/marketing'
 import { SEED_CLINICA } from '@/lib/bibliotecaSeeds/clinica'
+import { SEED_TURISMO } from '@/lib/bibliotecaSeeds/turismo'
 
 export const runtime = 'nodejs'
 
@@ -18,8 +19,9 @@ const CHAVE_PLAYBOOK_ANTIGO = 'crm:playbookQualificacao'
 
 function seedDoPerfil(perfil: string | null): BibliotecaSeed | null {
   if (perfil === 'clinica') return SEED_CLINICA
+  if (perfil === 'turismo') return SEED_TURISMO
   if (!perfil) return SEED_MARKETING // instância sem perfil = agência (o 10+)
-  return null // gestão/turismo: estrutura pronta, conteúdo a escrever
+  return null // gestão: estrutura pronta, conteúdo a escrever
 }
 
 // Dá id a tudo que veio do seed (o seed é escrito sem id, para não repetir uuid
@@ -49,6 +51,28 @@ async function carregar(): Promise<BibliotecaVendas> {
   const nova = juntar(instalar(seedDoPerfil(perfil)), migrarPlaybook(antigo))
   await redis.set(CHAVE_BIBLIOTECA, nova)
   return nova
+}
+
+// POST — instala o conteúdo do nicho numa biblioteca QUE JÁ TEM COISA ESCRITA.
+//
+// O seed roda só na primeira leitura. Quem já mexeu na tela (a Deny digitou
+// itens à mão para testar) nunca mais receberia o conteúdo do nicho. Este
+// caminho resolve SEM APAGAR nada: o que a equipe escreveu manda, do nicho
+// entra o que falta, e rodar duas vezes não duplica (lib/bibliotecaVendas,
+// mesclarSeed, com testes).
+export async function POST() {
+  const session = await getServerSession(authOptions)
+  const role = (session?.user as any)?.role
+  if (!session || (role !== 'admin' && role !== 'gerente')) return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+
+  const perfil = await getPerfilInstancia()
+  const seed = seedDoPerfil(perfil)
+  if (!seed) return NextResponse.json({ error: 'esta instância não tem conteúdo de nicho para instalar' }, { status: 400 })
+
+  const atual = await carregar()
+  const nova = mesclarSeed(atual, instalar(seed))
+  await redis.set(CHAVE_BIBLIOTECA, nova)
+  return NextResponse.json(nova)
 }
 
 export async function GET() {
