@@ -376,6 +376,8 @@ export default function PostComposer({
   const videosSemCapa = midias.filter(m => m.tipo === 'video' && !m.capa).length
   // Story no IG nao usa legenda, capa nem collab — o backend ja ignora (lib/publicar.ts).
   const ehStory = formato === 'story'
+  // O texto fica no estado (voltar para Feed/Reel o devolve), mas Story não grava legenda.
+  const legendaGravada = ehStory ? '' : legenda
 
   // Redes independentes (dono, 27/09): o que é do Instagram/Facebook (formato Feed/Reel/Story,
   // collab, capa e legenda obrigatórias) só aparece e só trava quando uma delas está marcada.
@@ -427,7 +429,7 @@ export default function PostComposer({
 
   // Reporta o estado atual a cada mudança (ver prop `aoMudar`).
   useEffect(() => {
-    aoMudar?.({ clienteId, marcoId, subetapaId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, ...configYouTube(), ...(multiPerfil ? { contaIds } : {}) })
+    aoMudar?.({ clienteId, marcoId, subetapaId, legenda: legendaGravada, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, ...configYouTube(), ...(multiPerfil ? { contaIds } : {}) })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clienteId, marcoId, subetapaId, legenda, midias, dataAgendada, formato, colaboradores, redes, contaIds, multiPerfil, youtubeTitulo, ytDescricao, ytTags, ytFormato, ytVisibilidade, ytDataPropria, ytPublicarEm, ytCategoria, ytInfantil, ytMiniatura])
 
@@ -455,7 +457,7 @@ export default function PostComposer({
         if (!ok) return
       }
     }
-    onSubmit({ clienteId, marcoId, subetapaId, legenda, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, ...configYouTube(), ...(multiPerfil ? { contaIds } : {}), acao })
+    onSubmit({ clienteId, marcoId, subetapaId, legenda: legendaGravada, imagens: midias.map(m => m.url), dataAgendada, formato, colaboradores, capasVideo: montarCapasVideo(), redes, ...configYouTube(), ...(multiPerfil ? { contaIds } : {}), acao })
   }
 
   const enviandoArquivo = emEnvio.length > 0
@@ -845,10 +847,11 @@ export default function PostComposer({
         </div>
 
         {/* Legenda, formato e collab são do Instagram/Facebook. Post só de YouTube usa a
-            descrição do bloco do YouTube e não vê nada disto. */}
-        {temMeta && (
+            descrição do bloco do YouTube e não vê nada disto. Story NÃO tem legenda (dono,
+            06/10): o campo some e o texto não é gravado (legendaGravada). */}
+        {temMeta && !ehStory && (
         <div>
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('composer.legenda')}{temYouTube && <span style={{ fontWeight: 400, color: 'var(--v2-ink3)', marginLeft: 6 }}>· {tr('composer.meta-bloco')}</span>}{ehStory && <span style={{ fontWeight: 400, color: 'var(--v2-ink3)', marginLeft: 6 }}>{tr('composer.legenda-story')}</span>}</label>
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('composer.legenda')}{temYouTube && <span style={{ fontWeight: 400, color: 'var(--v2-ink3)', marginLeft: 6 }}>· {tr('composer.meta-bloco')}</span>}</label>
           <textarea lang="pt-BR" value={legenda} onChange={e => setLegenda(e.target.value)}
             placeholder={tr('composer.legenda-placeholder')}
             style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 14, minHeight: 130, resize: 'vertical', fontFamily: 'inherit', boxSizing: 'border-box' }} />
@@ -1075,7 +1078,7 @@ export default function PostComposer({
             ) : (
               <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                 <strong>{cliente ? (cliente.instagram || cliente.nome || '').replace(/^@/, '') : 'seu_cliente'}</strong>{' '}
-                {legenda || <span style={{ color: 'var(--v2-ink3)' }}>{tr('composer.legenda-previa')}</span>}
+                {!ehStory && (legenda || <span style={{ color: 'var(--v2-ink3)' }}>{tr('composer.legenda-previa')}</span>)}
               </p>
             )}
             {dataAgendada && (
