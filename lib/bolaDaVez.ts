@@ -47,6 +47,7 @@ export type PostBola = {
   aguardandoDesde?: string
   atualizadoEm?: string
   excluidoEm?: string
+  suspenso?: { em?: string; por?: string; statusAnterior?: string } // lib/suspenderPost
 }
 
 export type TarefaBola = {
@@ -74,6 +75,10 @@ function rotuloPost(p: PostBola): string {
 
 export function esperandoCliente(p: PostBola): boolean {
   if (p.excluidoEm) return false
+  // SUSPENSO pela equipe (lib/suspenderPost): virou rascunho mas guarda a etapa de aprovação
+  // para a reativação voltar ao mesmo ponto. Não está esperando o cliente — e não pode ficar
+  // no link de aprovação (dono, 06/10: suspendeu e o material seguia no link).
+  if (p.suspenso) return false
   if (STATUS_DE_AJUSTE.includes(p.status || '')) return false // já voltou para a agência
   return p.status === 'aguardando_aprovacao' || ETAPAS_DO_CLIENTE.includes(p.etapa || '')
 }

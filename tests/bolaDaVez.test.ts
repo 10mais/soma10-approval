@@ -31,6 +31,14 @@ describe('esperandoCliente', () => {
     expect(esperandoCliente({ status: 'reprovado', etapa: 'aprovacao_copy' })).toBe(false)
   })
 
+  it('post SUSPENSO sai do lado do cliente (e do link de aprovação), mesmo com a etapa de aprovação', () => {
+    const suspenso = { em: dias(0), por: 'equipe', statusAnterior: 'aguardando_aprovacao' }
+    expect(esperandoCliente({ status: 'rascunho', etapa: 'aprovacao_criativo', suspenso })).toBe(false)
+    expect(esperandoCliente({ status: 'rascunho', etapa: 'aprovacao_copy', suspenso })).toBe(false)
+    // Rascunho da esteira SEM suspensão continua esperando o cliente.
+    expect(esperandoCliente({ status: 'rascunho', etapa: 'aprovacao_criativo' })).toBe(true)
+  })
+
   it('post na lixeira não cobra ninguém', () => {
     expect(esperandoCliente({ status: 'aguardando_aprovacao', excluidoEm: dias(1) })).toBe(false)
     expect(esperandoAgencia({ status: 'corrigir', excluidoEm: dias(1) })).toBe(false)
