@@ -9,13 +9,14 @@
 // da imagem — e SÓ com os campos que o Studio usa no formato (o texto escondido no Studio era o
 // que aparecia "no lugar errado"). No ajuste, a prévia acompanha o que o cliente escreve, e o
 // carrossel é editado lâmina por lâmina.
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useT, useIdioma } from '@/app/components/Idioma'
 import { labelFormato } from '@/lib/formatoPost'
 import { toast } from '@/lib/toast'
 import { problemaDoPedido } from '@/lib/rodadaAjuste'
 import { camposDoFormato, normalizarFormato } from '@/lib/mockupCopy'
 import MockupCopy from './MockupCopy'
+import BotaoAprovar, { useAprovacaoAnimada } from './BotaoAprovar'
 import { ehVideoUrl, campoAj, type PostA, type EnviarDecisao } from './comum'
 
 // Uma LINHA por postagem — Prévia da arte | Legenda | Aprovação — no molde da planilha que a
@@ -68,6 +69,8 @@ function LinhaCopy({ post, idx, enviar, somenteLeitura, extra, corMarca, fotoUrl
   const editaveis = camposDoFormato(formato)
   const [modo, setModo] = useState<'view' | 'ajuste' | 'reject'>('view')
   const [enviando, setEnviando] = useState(false)
+  const aprov = useAprovacaoAnimada() // o botão de aprovar carrega, confirma e a linha recolhe
+  const raiz = useRef<HTMLDivElement>(null)
   const [obs, setObs] = useState('')
   const vazio: Campos = { headline: '', subheadline: '', textoImagem: '', cta: '', legenda: '', laminas: [] }
   const [campos, setCampos] = useState<Campos>(vazio)
@@ -91,7 +94,9 @@ function LinhaCopy({ post, idx, enviar, somenteLeitura, extra, corMarca, fotoUrl
   }
 
   async function decidir(type: 'approved' | 'corrected' | 'rejected' | 'caption', comCampos: boolean) {
+    const comMovimento = type === 'approved' || type === 'caption'
     setEnviando(true)
+    if (comMovimento) aprov.comecar()
     const r = await enviar({
       id: post.id, type, rejectReason: obs.trim() || '',
       ...(comCampos ? {
@@ -100,20 +105,23 @@ function LinhaCopy({ post, idx, enviar, somenteLeitura, extra, corMarca, fotoUrl
         ...(editaveis.includes('laminas') ? { novasLaminas: campos.laminas } : {}),
       } : {}),
     })
-    setEnviando(false)
-    if (!r?.ok) { toast(r?.error || tr('aprov.falha-registrar'), 'erro'); return }
+    if (!r?.ok) { setEnviando(false); if (comMovimento) aprov.falhar(); toast(r?.error || tr('aprov.falha-registrar'), 'erro'); return }
     if (type === 'corrected') {
+      setEnviando(false)
       setSt(s => ({ ...s, status: 'corrigir', ...(comCampos ? { ...campos } : {}), obs: obs.trim() }))
       setModo('view')
       toast(tr('aprov.ajustes-enviados-copy'), 'sucesso')
       return
     }
+    if (comMovimento) await aprov.aprovado()
     toast(type === 'rejected' ? tr('aprov.briefing-rejeitado') : tr('aprov.briefing-aprovado'), type === 'rejected' ? 'erro' : 'sucesso')
+    if (comMovimento) await aprov.sair(raiz.current); else setEnviando(false)
     onDecidido()
   }
 
   const bloco = (t: string, estilo?: React.CSSProperties) => <p style={{ margin: 0, fontSize: 12.5, color: 'var(--v2-ink)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word', ...estilo }}>{t}</p>
-  const mini = (bg: string, color: string, border?: string): React.CSSProperties => ({ padding: '9px 10px', background: bg, color, border: border ? `1.5px solid ${border}` : 'none', borderRadius: 10, fontWeight: 600, fontSize: 12.5, cursor: 'pointer', width: '100%', fontFamily: 'inherit' })
+  // Enquanto o aprovar carrega, as outras ações da linha recuam.
+  const mini = (bg: string, color: string, border?: string): React.CSSProperties => ({ padding: '9px 10px', background: bg, color, border: border ? `1.5px solid ${border}` : 'none', borderRadius: 10, fontWeight: 600, fontSize: 12.5, cursor: 'pointer', width: '100%', fontFamily: 'inherit', opacity: aprov.ocupado ? 0.4 : 1, transition: 'opacity 220ms ease' })
   const rotuloCampo: React.CSSProperties = { display: 'block', fontSize: 10.5, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 4px' }
   // Rótulo de cada campo no formato (os mesmos nomes do Studio, na língua de quem lê).
   const rotulo = (c: 'headline' | 'subheadline' | 'textoImagem' | 'cta') => tr(
@@ -123,7 +131,7 @@ function LinhaCopy({ post, idx, enviar, somenteLeitura, extra, corMarca, fotoUrl
           : 'aprov.campo-cta')
 
   return (
-    <div className="copy-tab-row" style={{ background: emAjuste ? 'var(--v2-amber-bg)' : 'var(--v2-surface)' }}>
+    <div ref={raiz} className="copy-tab-row" style={{ background: emAjuste ? 'var(--v2-amber-bg)' : 'var(--v2-surface)' }}>
       {/* Col 1 — PRÉVIA DA ARTE */}
       <div style={{ minWidth: 0 }}>
         <span className="copy-cell-label">{tr('aprov.previa-arte')}</span>
@@ -176,7 +184,7 @@ function LinhaCopy({ post, idx, enviar, somenteLeitura, extra, corMarca, fotoUrl
         {somenteLeitura && <p style={{ margin: 0, fontSize: 11.5, color: 'var(--v2-ink3)', fontStyle: 'italic' }}>{tr('portal.somente-visualizacao-aprovacao')}</p>}
         {!somenteLeitura && modo === 'view' && !emAjuste && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <button onClick={() => decidir('approved', false)} disabled={enviando} style={mini('#16a34a', '#fff')}>{tr('aprov.aprovar')}</button>
+            <BotaoAprovar fase={aprov.fase} onClick={() => decidir('approved', false)} disabled={enviando} compacto rotulo={tr('aprov.aprovar')} style={{ width: '100%' }} />
             <button onClick={abrirAjuste} disabled={enviando} style={mini('var(--v2-amber-on)', '#17150E')}>{tr('aprov.pedir-ajustes')}</button>
             <button onClick={() => { setObs(''); setModo('reject') }} disabled={enviando} style={mini('#fff', '#dc2626', '#dc2626')}>{tr('aprov.rejeitar')}</button>
           </div>
@@ -186,19 +194,19 @@ function LinhaCopy({ post, idx, enviar, somenteLeitura, extra, corMarca, fotoUrl
             <span style={{ alignSelf: 'flex-start', fontSize: 10, fontWeight: 800, color: '#b45309', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 999, padding: '3px 10px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{tr('aprov.ajuste')}</span>
             {st.obs && <p style={{ margin: 0, fontSize: 11.5, color: '#9a6b2e', lineHeight: 1.45 }}>{st.obs}</p>}
             <button onClick={abrirAjuste} disabled={enviando} style={mini('var(--v2-amber-on)', '#17150E')}>{tr('aprov.editar-ajuste')}</button>
-            <button onClick={() => decidir('approved', false)} disabled={enviando} style={mini('var(--v2-surface)', 'var(--v2-ok)', 'var(--v2-ok)')}>{tr('aprov.aprovar-assim-mesmo')}</button>
+            <BotaoAprovar fase={aprov.fase} onClick={() => decidir('approved', false)} disabled={enviando} compacto contorno rotulo={tr('aprov.aprovar-assim-mesmo')} style={{ width: '100%' }} />
           </div>
         )}
         {modo === 'ajuste' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <p style={{ margin: '0 0 2px', fontSize: 11.5, color: 'var(--v2-ink3)', lineHeight: 1.4 }}>{tr('aprov.edite-previa-atualiza')}</p>
             <textarea lang="pt-BR" value={obs} onChange={e => setObs(e.target.value)} placeholder={tr('aprov.observacao-opcional-se-voce-ja')} style={{ ...campoAj, minHeight: 64, fontSize: 12 }} />
-            {mudouAlgo && !obs.trim() && <button onClick={() => decidir('caption', true)} disabled={enviando} style={mini('#16a34a', '#fff')}>{tr('aprov.aprovar-meus-ajustes')}</button>}
+            {mudouAlgo && !obs.trim() && <BotaoAprovar fase={aprov.fase} onClick={() => decidir('caption', true)} disabled={enviando} compacto rotulo={tr('aprov.aprovar-meus-ajustes')} style={{ width: '100%' }} />}
             <button onClick={() => {
               const problema = problemaDoPedido({ observacao: obs, mudouCampos: mudouAlgo })
               if (problema) { toast(problema === 'vago' ? tr('aprov.pedido-vago') : tr('aprov.edite-algo'), 'erro'); return }
               decidir('corrected', true)
-            }} disabled={enviando} style={mini('var(--v2-amber-on)', '#17150E')}>{enviando ? '...' : tr('aprov.enviar-ajustes')}</button>
+            }} disabled={enviando} style={mini('var(--v2-amber-on)', '#17150E')}>{enviando && !aprov.ocupado ? '...' : tr('aprov.enviar-ajustes')}</button>
             <button onClick={() => setModo('view')} disabled={enviando} style={mini('var(--v2-surface2)', 'var(--v2-ink2)')}>{tr('aprov.cancelar')}</button>
           </div>
         )}

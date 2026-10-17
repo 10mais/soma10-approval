@@ -109,6 +109,29 @@ aside,
    containing block, entao qualquer modal aberto fica intacto. */
 .anim-aba { animation: soma-fade-in 180ms ease-out both; }
 
+/* Botao de APROVAR (app/components/aprovacao/BotaoAprovar.tsx) — dono, 17/10: o cliente
+   clicava e "nada acontecia" ate o cartao sumir. Afunda no toque, da um leve repique ao
+   comecar a carregar, pulsa ao confirmar e treme no erro. A barra que enche e a troca de
+   texto sao transicoes inline do componente; aqui ficam o toque e os keyframes.
+   So transform/opacity/box-shadow/stroke (regras 1 e 2: o botao nao tem filho fixed). */
+@keyframes soma-aprovar-pop { 0% { transform: scale(.96) } 50% { transform: scale(1.02) } 100% { transform: none } }
+@keyframes soma-aprovar-ok  { 0% { transform: none; box-shadow: 0 0 0 0 rgba(22,163,74,.45) } 40% { transform: scale(1.035) } 100% { transform: none; box-shadow: 0 0 0 10px rgba(22,163,74,0) } }
+@keyframes soma-tremer      { 0%, 100% { transform: none } 20% { transform: translateX(-4px) } 40% { transform: translateX(4px) } 60% { transform: translateX(-3px) } 80% { transform: translateX(2px) } }
+@keyframes soma-desenhar    { to { stroke-dashoffset: 0 } }
+.botao-aprovar { transition: transform 120ms ease-out, background-color 260ms ease, color 260ms ease, border-color 260ms ease, opacity 200ms ease; }
+.botao-aprovar:not(:disabled):active { transform: scale(.96); }
+.botao-aprovar.fase-aprovando { animation: soma-aprovar-pop 380ms var(--ease-out); }
+.botao-aprovar.fase-aprovado  { animation: soma-aprovar-ok 620ms var(--ease-out); }
+.botao-aprovar.fase-erro      { animation: soma-tremer 380ms ease-in-out; }
+.botao-aprovar-barra { position: absolute; inset: 0; z-index: 0; transform-origin: left center; pointer-events: none; }
+.botao-aprovar-camadas { position: relative; z-index: 1; display: grid; }
+.botao-aprovar-camadas .camada { transition: opacity 200ms ease, transform 320ms var(--ease-out); text-align: center; }
+.botao-aprovar-girar { display: block; flex-shrink: 0; transform-origin: 50% 50%; }
+.botao-aprovar.fase-aprovando .botao-aprovar-girar { animation: soma-girar 800ms linear infinite; }
+.botao-aprovar-check { display: block; flex-shrink: 0; }
+.botao-aprovar-check path { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.botao-aprovar.fase-aprovado .botao-aprovar-check path { animation: soma-desenhar 360ms 140ms var(--ease-out) forwards; }
+
 /* Acessibilidade: respeita quem pediu menos movimento no sistema. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

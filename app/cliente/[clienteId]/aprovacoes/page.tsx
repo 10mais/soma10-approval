@@ -19,6 +19,7 @@ import { ordenarPorDataDePostagem } from '@/lib/ordemAprovacao'
 import { esperandoCliente } from '@/lib/bolaDaVez'
 import CartaoCriativo from '@/app/components/aprovacao/CartaoCriativo'
 import TabelaCopies from '@/app/components/aprovacao/TabelaCopies'
+import BotaoAprovar, { useAprovacaoAnimada } from '@/app/components/aprovacao/BotaoAprovar'
 import { postarDecisao, paraCartaoAprovacao as paraCartao, type PostA, type CorpoDecisao } from '@/app/components/aprovacao/comum'
 
 // Retorna { texto, atrasado } da espera em aprovacao (SLA 24h)
@@ -40,12 +41,15 @@ export default function AprovacoesPagina() {
   const [cliente, setCliente] = useState<any>(null)
   const [enviando, setEnviando] = useState<string | null>(null)
   const [aprovandoTodos, setAprovandoTodos] = useState(false)
+  // "Aprovar todos" carrega com o avanço REAL (aprova um a um) e confirma antes de recarregar.
+  const aprovLote = useAprovacaoAnimada()
+  const [avancoLote, setAvancoLote] = useState({ feitos: 0, total: 0 })
   // Config de permissao (papel + granular) para saber se a equipe pode EXCLUIR material.
   const [permPapel, setPermPapel] = useState<Record<string, any>>({})
   const [permGranular, setPermGranular] = useState<Record<string, any>>({})
 
   function carregar() {
-    fetch(`/api/posts?clienteId=${clienteId}`).then(r => r.json()).then(d => setPosts(Array.isArray(d) ? d : [])).catch(() => {})
+    return fetch(`/api/posts?clienteId=${clienteId}`).then(r => r.json()).then(d => setPosts(Array.isArray(d) ? d : [])).catch(() => {})
   }
   useEffect(() => {
     // Troca de cliente: nunca mostrar material do anterior.
@@ -99,17 +103,28 @@ export default function AprovacoesPagina() {
 
   async function aprovarTodos() {
     if (!(await confirmar(tr('portal.dlg-aprovar-lote', { n: aguardando.length }), { titulo: tr('portal.aprovar-lote'), okLabel: tr('portal.aprovar-todos') }))) return
+    const fila = [...aguardando]
     setAprovandoTodos(true)
+    setAvancoLote({ feitos: 0, total: fila.length })
+    aprovLote.comecar()
     const semData: string[] = []
     const falhas: string[] = []
-    for (const p of aguardando) {
+    for (let i = 0; i < fila.length; i++) {
+      const p = fila[i]
       // Criativo sem data seria publicado na hora: em lote isso não sai sem alguém olhar um a um.
-      if (p.etapa !== 'aprovacao_copy' && !p.dataAgendada) { semData.push((p.legenda || p.id).slice(0, 30)); continue }
-      const r = await postarDecisao({ id: p.id, type: 'approved' })
-      if (!r?.ok) falhas.push(r?.error || (p.legenda || p.id).slice(0, 30))
+      if (p.etapa !== 'aprovacao_copy' && !p.dataAgendada) semData.push((p.legenda || p.id).slice(0, 30))
+      else {
+        const r = await postarDecisao({ id: p.id, type: 'approved' })
+        if (!r?.ok) falhas.push(r?.error || (p.legenda || p.id).slice(0, 30))
+      }
+      setAvancoLote({ feitos: i + 1, total: fila.length })
     }
+    // Aprovou ao menos um: mostra "Aprovado" antes de a lista recarregar. Nenhum: o botão treme.
+    if (semData.length + falhas.length < fila.length) { await aprovLote.aprovado(); await aprovLote.sair(null) }
+    else aprovLote.falhar()
+    await carregar()
     setAprovandoTodos(false)
-    carregar()
+    aprovLote.voltar()
     if (semData.length) toast(`Estes criativos ainda não têm data e ficaram de fora do lote (aprove um a um ou peça a data à equipe): ${semData.join(', ')}`, 'erro')
     else if (falhas.length) toast(`Não foi possível aprovar: ${falhas.join(' · ')}`, 'erro')
   }
@@ -138,10 +153,11 @@ export default function AprovacoesPagina() {
             <p style={{ margin: '2px 0 0', fontSize: 12, color: urgente ? 'var(--v2-hot)' : 'var(--v2-amber)', opacity: 0.85 }}>{tr('portal.aprovar-rapido-mantem-ritmo-su')}</p>
           </div>
           {permAprovar && aguardando.length > 1 && (
-            <button onClick={aprovarTodos} disabled={aprovandoTodos}
-              style={{ padding: '10px 20px', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: aprovandoTodos ? 'default' : 'pointer', whiteSpace: 'nowrap' }}>
-              {aprovandoTodos ? tr('portal.aprovando') : tr('portal.aprovar-todos-n', { n: aguardando.length })}
-            </button>
+            <BotaoAprovar fase={aprovLote.fase} onClick={aprovarTodos} disabled={aprovandoTodos}
+              rotulo={tr('portal.aprovar-todos-n', { n: aguardando.length })}
+              progresso={avancoLote.total ? avancoLote.feitos / avancoLote.total : 0}
+              detalhe={avancoLote.total ? `${avancoLote.feitos}/${avancoLote.total}` : undefined}
+              style={{ padding: '10px 20px', borderRadius: 10, fontWeight: 800, fontSize: 13, whiteSpace: 'nowrap' }} />
           )}
         </div>
       ) })()}

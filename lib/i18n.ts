@@ -2114,6 +2114,8 @@ export const TEXTOS: Record<string, Entrada> = {
   'aprov.ajustes-enviados-copy': { pt: 'Ajustes enviados! A linha fica marcada como EM AJUSTE — você pode editar o pedido quando quiser.', en: 'Changes sent! The row is marked as BEING ADJUSTED — you can edit the request whenever you want.', es: '¡Ajustes enviados! La fila queda marcada como EN AJUSTE — puede editar el pedido cuando quiera.' },
   'aprov.ajustes-enviados-criativo': { pt: 'Ajustes enviados! O criativo fica marcado como EM AJUSTE — você pode editar o pedido quando quiser.', en: 'Changes sent! The creative is marked as BEING ADJUSTED — you can edit the request whenever you want.', es: '¡Ajustes enviados! El creativo queda marcado como EN AJUSTE — puede editar el pedido cuando quiera.' },
   'aprov.aprovado-ok': { pt: 'Aprovado!', en: 'Approved!', es: '¡Aprobado!' },
+  'aprov.aprovando': { pt: 'Aprovando...', en: 'Approving...', es: 'Aprobando...' },
+  'aprov.aprovado': { pt: 'Aprovado', en: 'Approved', es: 'Aprobado' },
   'aprov.aprovar-com-legenda': { pt: 'Aprovar com esta legenda', en: 'Approve with this caption', es: 'Aprobar con esta leyenda' },
   'aprov.aprovar-com-ajustes': { pt: 'Aprovar com estes ajustes', en: 'Approve with these changes', es: 'Aprobar con estos ajustes' },
   'aprov.aprovar-nesta-data': { pt: 'Aprovar nesta data', en: 'Approve on this date', es: 'Aprobar en esta fecha' },

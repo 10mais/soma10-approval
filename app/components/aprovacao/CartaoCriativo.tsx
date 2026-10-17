@@ -3,12 +3,13 @@
 // rodada de ajuste, dono 29/09: "um único formulário de pedido no link e no portal"). Veio da
 // página do link sem mudar o comportamento; o que muda por tela vem nas props (`enviar`,
 // `fotoUrl`, `somenteLeitura`). Tipos e utilitários em ./comum.
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useT, useIdioma } from '@/app/components/Idioma'
 import { seloFormato } from '@/lib/formatoPost'
 import { toast, confirmar } from '@/lib/toast'
 import { problemaDoPedido } from '@/lib/rodadaAjuste'
 import { ehVideoUrl, btn, toLocalInput, rotuloAj, campoAj, type Anot, type PostA, type EnviarDecisao } from './comum'
+import BotaoAprovar, { useAprovacaoAnimada } from './BotaoAprovar'
 
 // A foto do cliente é resolvida INTEIRA no servidor (/api/foto-cliente): ele tenta
 // cliente.logo → ativo 'logo' → ícone → qualquer ativo → referência visual, conserta
@@ -29,6 +30,8 @@ export default function CartaoCriativo({ post, fotoUrl, handle, enviar, onDecidi
   const [legendaTxt, setLegendaTxt] = useState('')
   const [dataTxt, setDataTxt] = useState('')       // data/hora desejada (datetime-local)
   const [enviando, setEnviando] = useState(false)
+  const aprov = useAprovacaoAnimada() // o botão de aprovar carrega, confirma e o cartão recolhe
+  const raiz = useRef<HTMLDivElement>(null)
   const [logoErro, setLogoErro] = useState(false)
   const [annotations, setAnnotations] = useState<Anot[]>([])
   const [pendingPin, setPendingPin] = useState<{ x: number; y: number; cx: number; cy: number } | null>(null)
@@ -72,25 +75,31 @@ export default function CartaoCriativo({ post, fotoUrl, handle, enviar, onDecidi
     setPendingPin(null); setPinText('')
   }
 
-  async function decidir(type: 'approved' | 'corrected' | 'rejected' | 'caption', opts?: { motivo?: string; novaLegenda?: string; novaData?: string }) {
+  async function decidir(type: 'approved' | 'corrected' | 'rejected' | 'caption', opts?: { motivo?: string; novaLegenda?: string; novaData?: string; peloBotaoAprovar?: boolean }) {
     // Sem data marcada, aprovar PUBLICA EM SEGUIDA (regra da rota: entra na fila como "agora").
     // O portal antigo barrava sem explicar; o link publicava sem avisar. Agora pergunta.
     if ((type === 'approved' || type === 'caption') && !st.dataAgendada && !(await confirmar(tr('aprov.sem-data-publica-agora'), { titulo: tr('aprov.aprovar'), okLabel: tr('aprov.aprovar-publicar-agora') }))) return
+    // Aprovar (de qualquer jeito) mexe o botão: carrega, confirma e o cartão recolhe antes de sair.
+    const comMovimento = type === 'approved' || type === 'caption' || !!opts?.peloBotaoAprovar
     setEnviando(true)
+    if (comMovimento) aprov.comecar()
     const r = await enviar({ id: post.id, type, rejectReason: opts?.motivo || '', novaLegenda: opts?.novaLegenda, novaData: opts?.novaData, annotations: type === 'corrected' ? annotations : [] })
-    setEnviando(false)
-    if (!r?.ok) { toast(r?.error || tr('aprov.falha-registrar'), 'erro'); return }
+    if (!r?.ok) { setEnviando(false); if (comMovimento) aprov.falhar(); toast(r?.error || tr('aprov.falha-registrar'), 'erro'); return }
     if (type === 'corrected') {
       // Só legenda/data, sem marcação no layout: o servidor APLICA e reprograma na
       // hora (não há retrabalho). O card não pode dizer "em ajuste" nesse caso.
       if (r.aplicadoAutomaticamente) {
         const quando = r.agendadoPara ? new Date(r.agendadoPara) : null
+        if (comMovimento) await aprov.aprovado()
         toast(quando
           ? `Pronto! Ajustes aplicados e publicação reprogramada para ${quando.toLocaleString('pt-BR')}.`
           : tr('aprov.ajustes-aplicados'), 'sucesso')
+        if (comMovimento) await aprov.sair(raiz.current); else setEnviando(false)
         onDecidido()
         return
       }
+      setEnviando(false)
+      if (comMovimento) aprov.voltar()
       // Fica EM AJUSTE — não some. Atualiza o card no lugar.
       setSt(s => ({
         ...s, status: 'corrigir',
@@ -102,9 +111,13 @@ export default function CartaoCriativo({ post, fotoUrl, handle, enviar, onDecidi
       toast(tr('aprov.ajustes-enviados-criativo'), 'sucesso')
       return
     }
+    if (comMovimento) await aprov.aprovado()
     toast(type === 'approved' ? (opts?.novaLegenda ? tr('aprov.legenda-corrigida') : tr('aprov.aprovado-ok')) : tr('aprov.reprovado-ok'), type === 'rejected' ? 'erro' : 'sucesso')
+    if (comMovimento) await aprov.sair(raiz.current); else setEnviando(false)
     onDecidido()
   }
+  // Enquanto o aprovar carrega, as outras ações do cartão recuam (e não mostram "...").
+  const recuo: React.CSSProperties = { opacity: aprov.ocupado ? 0.4 : 1, transition: 'opacity 220ms ease' }
 
   function enviarAjuste() {
     // Pedido CLARO (Fase 1): ponto marcado na arte, ou recado que diga o que está errado e
@@ -115,7 +128,7 @@ export default function CartaoCriativo({ post, fotoUrl, handle, enviar, onDecidi
   }
 
   return (
-    <div style={{ maxWidth: 468, margin: '0 auto 26px', border: emAjuste ? '2px solid #fdba74' : '1px solid var(--v2-rule)', borderRadius: 18, overflow: 'hidden', background: 'var(--v2-surface)' }}>
+    <div ref={raiz} style={{ maxWidth: 468, margin: '0 auto 26px', border: emAjuste ? '2px solid #fdba74' : '1px solid var(--v2-rule)', borderRadius: 18, overflow: 'hidden', background: 'var(--v2-surface)' }}>
       {/* Cabeçalho estilo Instagram */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px' }}>
         <span style={{ width: 34, height: 34, borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 13, color: 'var(--v2-ink)', flexShrink: 0,
@@ -223,8 +236,8 @@ export default function CartaoCriativo({ post, fotoUrl, handle, enviar, onDecidi
             )}
             {st.motivoReprovacao && <p style={{ margin: '0 0 8px', fontSize: 12.5, color: 'var(--v2-ink2)' }}><strong>{tr('aprov.observacao')}</strong> {st.motivoReprovacao}</p>}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={abrirAjuste} disabled={enviando} style={{ flex: '1 1 55%', ...btn('var(--v2-amber-on)', '#17150E') }}>{tr('aprov.editar-ajuste')}</button>
-              <button onClick={() => decidir('approved')} disabled={enviando} style={{ flex: '1 1 38%', ...btn('var(--v2-surface)', 'var(--v2-ok)', 'var(--v2-ok)') }}>{tr('aprov.aprovar-assim-mesmo')}</button>
+              <button onClick={abrirAjuste} disabled={enviando} style={{ flex: '1 1 55%', ...btn('var(--v2-amber-on)', '#17150E'), ...recuo }}>{tr('aprov.editar-ajuste')}</button>
+              <BotaoAprovar fase={aprov.fase} onClick={() => decidir('approved')} disabled={enviando} contorno rotulo={tr('aprov.aprovar-assim-mesmo')} style={{ flex: '1 1 38%' }} />
             </div>
           </div>
         )}
@@ -232,9 +245,9 @@ export default function CartaoCriativo({ post, fotoUrl, handle, enviar, onDecidi
         {/* Ações padrão (aguardando aprovação) */}
         {!somenteLeitura && !emAjuste && modo === 'view' && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            <button onClick={() => decidir('approved')} disabled={enviando} style={{ flex: '1 1 46%', ...btn('#16a34a', '#fff') }}>{tr('aprov.aprovar')}</button>
-            <button onClick={abrirAjuste} disabled={enviando} style={{ flex: '1 1 46%', ...btn('var(--v2-amber-on)', '#17150E') }}>{tr('aprov.solicitar-ajustes')}</button>
-            <button onClick={() => setModo('reject')} disabled={enviando} style={{ flex: '1 1 100%', ...btn('#fff', '#dc2626', '#dc2626') }}>{tr('aprov.rejeitar')}</button>
+            <BotaoAprovar fase={aprov.fase} onClick={() => decidir('approved')} disabled={enviando} rotulo={tr('aprov.aprovar')} style={{ flex: '1 1 46%' }} />
+            <button onClick={abrirAjuste} disabled={enviando} style={{ flex: '1 1 46%', ...btn('var(--v2-amber-on)', '#17150E'), ...recuo }}>{tr('aprov.solicitar-ajustes')}</button>
+            <button onClick={() => setModo('reject')} disabled={enviando} style={{ flex: '1 1 100%', ...btn('#fff', '#dc2626', '#dc2626'), ...recuo }}>{tr('aprov.rejeitar')}</button>
           </div>
         )}
 
@@ -266,16 +279,15 @@ export default function CartaoCriativo({ post, fotoUrl, handle, enviar, onDecidi
             <input type="datetime-local" value={dataTxt} onChange={e => setDataTxt(e.target.value)} style={campoAj} />
 
             <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
-              <button onClick={() => setModo('view')} disabled={enviando} style={{ ...btn('var(--v2-surface2)', 'var(--v2-ink2)'), flex: '0 0 auto', padding: '12px 16px' }}>{tr('aprov.voltar')}</button>
+              <button onClick={() => setModo('view')} disabled={enviando} style={{ ...btn('var(--v2-surface2)', 'var(--v2-ink2)'), flex: '0 0 auto', padding: '12px 16px', ...recuo }}>{tr('aprov.voltar')}</button>
               {(legendaMudou || dataMudou) && annotations.length === 0 && !texto.trim() && (
-                <button onClick={() => dataMudou
-                  ? decidir('corrected', { novaLegenda: legendaMudou ? legendaTxt : undefined, novaData: dataTxt })
-                  : decidir('caption', { novaLegenda: legendaTxt })}
-                  disabled={enviando} style={{ flex: '1 1 40%', ...btn('#16a34a', '#fff') }}>
-                  {legendaMudou && dataMudou ? tr('aprov.aprovar-com-ajustes') : dataMudou ? tr('aprov.aprovar-nesta-data') : tr('aprov.aprovar-com-legenda')}
-                </button>
+                <BotaoAprovar fase={aprov.fase} disabled={enviando} style={{ flex: '1 1 40%' }}
+                  onClick={() => dataMudou
+                    ? decidir('corrected', { novaLegenda: legendaMudou ? legendaTxt : undefined, novaData: dataTxt, peloBotaoAprovar: true })
+                    : decidir('caption', { novaLegenda: legendaTxt })}
+                  rotulo={legendaMudou && dataMudou ? tr('aprov.aprovar-com-ajustes') : dataMudou ? tr('aprov.aprovar-nesta-data') : tr('aprov.aprovar-com-legenda')} />
               )}
-              <button onClick={enviarAjuste} disabled={enviando} style={{ flex: '1 1 45%', minWidth: 150, ...btn('var(--v2-amber-on)', '#17150E') }}>{enviando ? '...' : tr('aprov.enviar-solicitacao')}</button>
+              <button onClick={enviarAjuste} disabled={enviando} style={{ flex: '1 1 45%', minWidth: 150, ...btn('var(--v2-amber-on)', '#17150E'), ...recuo }}>{enviando && !aprov.ocupado ? '...' : tr('aprov.enviar-solicitacao')}</button>
             </div>
           </div>
         )}
