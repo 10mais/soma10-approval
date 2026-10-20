@@ -1,3 +1,4 @@
+import { fimDoDiaBR, fmtDiaDoInstante } from '@/lib/datas'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -109,13 +110,15 @@ export async function PUT(req: NextRequest) {
     const tarefa: Tarefa = {
       id: uuid(),
       titulo: dec.texto.slice(0, 140),
-      descricao: `Decisão da reunião "${atualizada.titulo}" (${new Date(atualizada.data).toLocaleDateString('pt-BR')}).`,
+      descricao: `Decisão da reunião "${atualizada.titulo}" (${fmtDiaDoInstante(atualizada.data)}).`,
       tipo: clinica ? 'reuniao_interna' : 'tarefa',
       status: 'a_fazer',
       prioridade: 'media',
       responsavelEmail: dec.responsavelEmail || undefined,
       responsavelNome: dec.responsavelNome || undefined,
-      prazo: dec.prazo || undefined,
+      // A decisão guarda o dia puro (AAAA-MM-DD); na tarefa vira o fim do dia em Brasília —
+      // o dia puro era lido como meia-noite UTC e aparecia um dia ANTES.
+      prazo: dec.prazo ? (fimDoDiaBR(String(dec.prazo).slice(0, 10)) || dec.prazo) : undefined,
       atividades: [{ id: uuid(), tipo: 'criacao', descricao: `Criada a partir da reunião "${atualizada.titulo}"`, autor: s.user?.name || '', criadoEm: agora }],
       criadoPor: s.user?.name || s.user?.email || '',
       criadoEm: agora,

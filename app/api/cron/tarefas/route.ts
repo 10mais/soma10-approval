@@ -1,3 +1,4 @@
+import { diaDoInstante, fmtDiaDoInstante, horaBR } from '@/lib/datas'
 import { NextRequest, NextResponse } from 'next/server'
 import { redis, Tarefa, Usuario, Veiculo } from '@/lib/redis'
 import { notificar } from '@/lib/notificacoes'
@@ -82,7 +83,7 @@ async function rodarPrazos(): Promise<NextResponse> {
     // das tarefas comuns (um retorno de 90 dias, ou um licenciamento, não se
     // resolve em 1 hora).
     if ((t as any).tipo === 'retorno_paciente' || (t as any).tipo === 'frota_vencimento') {
-      const dataBR = new Date(prazoMs).toLocaleDateString('pt-BR')
+      const dataBR = fmtDiaDoInstante(t.prazo) // o servidor roda em UTC: o dia e a hora são os de Brasília
       const SEMANA = 7 * 24 * UMA_HORA
       const assunto = (t as any).tipo === 'frota_vencimento' ? 'Frota' : 'Abordagem'
       // 1) Entrou na semana da abordagem. Se a tarefa JÁ nasceu dentro da semana,
@@ -97,8 +98,8 @@ async function rodarPrazos(): Promise<NextResponse> {
         }
       }
       // 2) É HOJE — avisa de manhã (a partir das 8h), não de madrugada.
-      const ehHoje = new Date(prazoMs).toDateString() === new Date(agora).toDateString()
-      if (ehHoje && new Date(agora).getHours() >= 8) {
+      const ehHoje = diaDoInstante(t.prazo) === diaDoInstante(new Date(agora).toISOString())
+      if (ehHoje && horaBR(agora) >= 8) {
         const chaveDia = `tarefa_notif_dia:${t.id}`
         if (!(await redis.get(chaveDia))) {
           await notificar(t.responsavelEmail, 'tarefa_prazo_proximo', `${assunto} hoje`, `"${t.titulo}" é hoje (${dataBR}).`, undefined, t.id)

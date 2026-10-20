@@ -944,7 +944,8 @@ export type Tarefa = {
   marcoId?: string // marco do Playbook a que a tarefa pertence
   subetapaId?: string // etapa DENTRO do marco (marco.subetapas[].id), opcional
   tarefaPaiId?: string // tarefa-mãe (subtarefa = filha de outra tarefa)
-  prazo?: string // ISO date
+  prazo?: string // ISO — fim do dia em Brasília (lib/datas: fimDoDiaBR / diaDoInstante)
+  dataInicio?: string // ISO — início do dia em Brasília (lib/datas: inicioDoDiaBR)
   recorrencia?: 'diaria' | 'semanal' | 'quinzenal' | 'mensal' // ao concluir, gera a próxima ocorrência
   anexos?: { nome: string; url: string; tipo: string; papel?: 'referencia' | 'criativo' }[] // papel 'criativo' = arte pronta (lib/producaoVinculo)
   atividades?: TarefaAtividade[]

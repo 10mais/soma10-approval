@@ -17,6 +17,7 @@ import { fecharFora } from '@/lib/fecharModal'
 import { ehTarefaDeProducao, anexosCriativoPronto, avisoAoConcluir } from '@/lib/producaoVinculo'
 import { useT } from '@/app/components/Idioma'
 import { TEXTOS } from '@/lib/i18n'
+import { diaDoInstante, fimDoDiaBR, inicioDoDiaBR, fmtDiaDoInstante, fmtDataBR } from '@/lib/datas'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; squad?: string[] }
 type Usuario = { id: string; nome: string; email: string; role: string; foto?: string }
@@ -26,7 +27,7 @@ type Tarefa = {
   id: string; titulo: string; descricao?: string; tipo?: string; status: string; prioridade: string
   responsavelEmail?: string; responsavelNome?: string; clienteId?: string; clienteNome?: string
   marcoId?: string; tarefaPaiId?: string
-  prazo?: string; anexos?: Anexo[]
+  prazo?: string; dataInicio?: string; anexos?: Anexo[]
   atividades?: any[]; comentarios?: any[]
   criadoPor: string; criadoEm: string; atualizadoEm: string; concluidoEm?: string
   excluidoEm?: string; excluidoPor?: string
@@ -328,11 +329,13 @@ const PRIORIDADES: { key: string; label: string; cor: string }[] = [
 
 function corPrioridade(p: string) { return PRIORIDADES.find(x => x.key === p)?.cor || 'var(--v2-ink3)' }
 
-function prazoFormatado(iso?: string) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+// O dia vem de lib/datas (horário de Brasília): igual em qualquer fuso e no servidor.
+function prazoFormatado(iso?: string) { return fmtDiaDoInstante(iso, false) }
+// "20/10 → 25/10" quando a tarefa tem data de início; só o prazo quando não tem.
+function periodoFormatado(t: { dataInicio?: string; prazo?: string }, inicioEm: (data: string) => string) {
+  const ini = prazoFormatado(t.dataInicio), fim = prazoFormatado(t.prazo)
+  if (ini && fim) return `${ini} → ${fim}`
+  return fim || (ini ? inicioEm(ini) : '')
 }
 
 function ehAtrasado(prazo?: string, status?: string) {
@@ -674,7 +677,7 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
               {PRIORIDADES.map(p => <option key={p.key} value={p.key}>{rotuloPrioridade(p.key, p.label)}</option>)}
             </select>
 
-            <input type="date" disabled={aplicandoMassa} onChange={e => { const v = e.target.value; if (v) aplicarEmMassa({ prazo: new Date(v + 'T12:00:00').toISOString() }, tr('tarefa.massa-prazo', { data: new Date(v + 'T12:00:00').toLocaleDateString() })) }} title={tr('tarefa.definir-prazo')} style={{ ...selEstilo, maxWidth: 150 }} />
+            <input type="date" disabled={aplicandoMassa} onChange={e => { const v = e.target.value; if (v) aplicarEmMassa({ prazo: fimDoDiaBR(v) }, tr('tarefa.massa-prazo', { data: fmtDataBR(v) })) }} title={tr('tarefa.definir-prazo')} style={{ ...selEstilo, maxWidth: 150 }} />
             <button onClick={() => { setBuscaMae(''); setEscolherMae({ ids: selecionadas }) }} disabled={aplicandoMassa} title={tr('tarefa.viram-subtarefas')}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 4v6a4 4 0 0 0 4 4h7M16 10l4 4-4 4" /></svg>
@@ -733,7 +736,7 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
                             {t.clienteNome}
                           </span>
                         )})()}
-                        {t.prazo && <span style={{ fontSize: 10, color: ehAtrasado(t.prazo, t.status) ? 'var(--v2-hot)' : 'var(--v2-ink3)', fontWeight: ehAtrasado(t.prazo, t.status) ? 700 : 500 }}>{prazoFormatado(t.prazo)}{ehAtrasado(t.prazo, t.status) ? ' (atrasado)' : ''}</span>}
+                        {(t.prazo || t.dataInicio) && <span style={{ fontSize: 10, color: ehAtrasado(t.prazo, t.status) ? 'var(--v2-hot)' : 'var(--v2-ink3)', fontWeight: ehAtrasado(t.prazo, t.status) ? 700 : 500 }}>{periodoFormatado(t, data => tr('tarefa.inicio-em', { data }))}{ehAtrasado(t.prazo, t.status) ? ' (atrasado)' : ''}</span>}
                         {(t.anexos || []).length > 0 && <span style={{ fontSize: 10, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '1px 6px' }}>{t.anexos!.length} anexo(s)</span>}
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
@@ -890,7 +893,7 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
                   </span>
                   <span style={{ color: 'var(--v2-ink2)' }}>{x.responsavelNome || '--'}</span>
                   <span style={{ color: 'var(--v2-ink3)' }}>{x.clienteNome || '--'}</span>
-                  <span style={{ color: ehAtrasado(x.prazo, x.status) ? 'var(--v2-hot)' : 'var(--v2-ink3)', fontWeight: ehAtrasado(x.prazo, x.status) ? 700 : 500 }}>{prazoFormatado(x.prazo) || '--'}{ehAtrasado(x.prazo, x.status) ? ' (atrasado)' : ''}</span>
+                  <span style={{ color: ehAtrasado(x.prazo, x.status) ? 'var(--v2-hot)' : 'var(--v2-ink3)', fontWeight: ehAtrasado(x.prazo, x.status) ? 700 : 500 }}>{periodoFormatado(x, data => tr('tarefa.inicio-em', { data })) || '--'}{ehAtrasado(x.prazo, x.status) ? ' (atrasado)' : ''}</span>
                   <span style={{ color: corPrioridade(x.prioridade), fontWeight: 700 }}>{rotuloPrioridade(x.prioridade, PRIORIDADES.find(p => p.key === x.prioridade)?.label || x.prioridade)}</span>
                   <span style={{ fontSize: 11 }}>{rotuloStatus(x.status, COLUNAS.find(c => c.key === x.status)?.label || x.status)}</span>
                   {podeExcluir && <button onClick={e => { e.stopPropagation(); excluirUma(x.id, x.titulo) }} title={ehSub ? 'Excluir subtarefa' : 'Excluir tarefa'}
@@ -1012,7 +1015,8 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
     responsavelEmail: tarefaEntrada?.responsavelEmail || responsavelPadrao || '', clienteId: tarefaEntrada?.clienteId || (clientes.length === 1 ? clientes[0].id : ''),
     marcoId: (tarefaEntrada as any)?.marcoId || '',
     subetapaId: (tarefaEntrada as any)?.subetapaId || '',
-    prazo: tarefaEntrada?.prazo ? tarefaEntrada.prazo.split('T')[0] : '',
+    prazo: diaDoInstante(tarefaEntrada?.prazo),
+    dataInicio: diaDoInstante((tarefaEntrada as any)?.dataInicio),
     recorrencia: (tarefaEntrada as any)?.recorrencia || '',
     origemPostId: (tarefaEntrada as any)?.origemPostId || '',
   })
@@ -1331,10 +1335,18 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
     // Vinculo obrigatorio: tarefa de um cliente precisa de uma etapa do Playbook
     // Pauta vinculada dispensa a etapa do Playbook: a tarefa de produção nasce da esteira.
     if (!PERFIL_CLINICA_TAREFAS && form.clienteId && !form.marcoId && !form.origemPostId) { toast(tr('tarefa.vincule-marco'), 'erro'); return }
+    if (form.dataInicio && form.prazo && form.dataInicio > form.prazo) { toast(tr('tarefa.inicio-depois-prazo'), 'erro'); return }
     setSalvando(true)
     const resp = (usuarios || []).find(u => u.email === form.responsavelEmail)
     const cli = (clientes || []).find(c => c.id === form.clienteId)
-    const body = { ...form, anexos, responsavelNome: resp?.nome || '', clienteNome: cli?.nome || '', prazo: form.prazo ? new Date(form.prazo + 'T23:59:59').toISOString() : '' }
+    // Dia que não mudou mantém o valor gravado (a tarefa do Studio guarda a HORA da postagem;
+    // regravar o mesmo dia geraria "prazo alterado" e aviso para ninguém).
+    const manter = (gravado: string | undefined, dia: string, novo: (d: string) => string) => !dia ? '' : (gravado && diaDoInstante(gravado) === dia ? gravado : novo(dia))
+    const body = {
+      ...form, anexos, responsavelNome: resp?.nome || '', clienteNome: cli?.nome || '',
+      prazo: manter(tarefa?.prazo, form.prazo, fimDoDiaBR),
+      dataInicio: manter((tarefa as any)?.dataInicio, form.dataInicio, inicioDoDiaBR),
+    }
     if (tarefa) {
       // DESFAZER: guarda o valor ANTERIOR de cada campo que o formulário mexe.
       const antes: Record<string, any> = { id: tarefa.id }
@@ -1713,12 +1725,20 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
                 )}
             </div>
             )}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('comum.prazo')}</label>
-                <input type="date" value={form.prazo} onChange={e => setForm(f => ({ ...f, prazo: e.target.value }))}
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('tarefa.data-inicio')}</label>
+                <input type="date" value={form.dataInicio} max={form.prazo || undefined} onChange={e => setForm(f => ({ ...f, dataInicio: e.target.value }))}
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
               </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('tarefa.prazo-final')}</label>
+                <input type="date" value={form.prazo} min={form.dataInicio || undefined} onChange={e => setForm(f => ({ ...f, prazo: e.target.value }))}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${form.dataInicio && form.prazo && form.dataInicio > form.prazo ? 'var(--v2-hot)' : 'var(--v2-rule)'}`, fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              </div>
+              {form.dataInicio && form.prazo && form.dataInicio > form.prazo && <p style={{ gridColumn: '1 / -1', margin: '-4px 0 0', fontSize: 11.5, color: 'var(--v2-hot)', fontWeight: 600 }}>{tr('tarefa.inicio-depois-prazo')}</p>}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('comum.prioridade')}</label>
                 <select value={form.prioridade} onChange={e => setForm(f => ({ ...f, prioridade: e.target.value }))}

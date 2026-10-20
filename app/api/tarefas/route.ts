@@ -6,6 +6,7 @@ import { v4 as uuid } from 'uuid'
 import { notificar } from '@/lib/notificacoes'
 import { aoConcluirTarefa } from '@/lib/esteiraFluxo'
 import { camposDoCorpo } from '@/lib/tarefaCampos'
+import { diaDoInstante, fmtDiaDoInstante } from '@/lib/datas'
 import { podeSerFilha, camposAoVincular } from '@/lib/hierarquiaTarefas'
 import { midiasParaPauta, deveEntregarCriativo } from '@/lib/producaoVinculo'
 import { entregaNaRodada, emRodadaDeAjuste } from '@/lib/rodadaAjuste'
@@ -118,7 +119,7 @@ export async function POST(req: NextRequest) {
   }
   // Notifica o responsavel se for diferente de quem criou
   if (tarefa.responsavelEmail && tarefa.responsavelEmail !== (session.user as any).email) {
-    await notificar(tarefa.responsavelEmail, 'geral', `Nova tarefa atribuida`, `${session.user?.name} atribuiu a tarefa "${tarefa.titulo}" a voce.${tarefa.prazo ? ` Prazo: ${new Date(tarefa.prazo).toLocaleDateString('pt-BR')}.` : ''}`, undefined, tarefa.id)
+    await notificar(tarefa.responsavelEmail, 'geral', `Nova tarefa atribuida`, `${session.user?.name} atribuiu a tarefa "${tarefa.titulo}" a voce.${tarefa.prazo ? ` Prazo: ${fmtDiaDoInstante(tarefa.prazo)}.` : ''}`, undefined, tarefa.id)
   }
   await dispararEvento('tarefa_criada', { tarefaId: tarefa.id, titulo: tarefa.titulo, tipo: tarefa.tipo, prioridade: tarefa.prioridade, clienteId: tarefa.clienteId, clienteNome: tarefa.clienteNome, responsavelEmail: tarefa.responsavelEmail, responsavelNome: tarefa.responsavelNome })
   return NextResponse.json({ ok: true, tarefa })
@@ -157,7 +158,11 @@ export async function PUT(req: NextRequest) {
   if (updates.status && updates.status !== tarefa.status) novasAtividades.push({ id: uuid(), tipo: 'status', descricao: `Status alterado para ${statusLabels[updates.status] || updates.status}`, autor, criadoEm: agora })
   if (updates.responsavelNome && updates.responsavelNome !== tarefa.responsavelNome) novasAtividades.push({ id: uuid(), tipo: 'responsavel', descricao: `Responsavel alterado para ${updates.responsavelNome}`, autor, criadoEm: agora })
   if (updates.prioridade && updates.prioridade !== tarefa.prioridade) novasAtividades.push({ id: uuid(), tipo: 'prioridade', descricao: `Prioridade alterada para ${updates.prioridade}`, autor, criadoEm: agora })
-  if (updates.prazo && updates.prazo !== tarefa.prazo) novasAtividades.push({ id: uuid(), tipo: 'prazo', descricao: `Prazo definido para ${new Date(updates.prazo).toLocaleDateString('pt-BR')}`, autor, criadoEm: agora })
+  const mudouPrazo = !!updates.prazo && diaDoInstante(updates.prazo) !== diaDoInstante(tarefa.prazo)
+  if (mudouPrazo) novasAtividades.push({ id: uuid(), tipo: 'prazo', descricao: `Prazo final definido para ${fmtDiaDoInstante(updates.prazo)}`, autor, criadoEm: agora })
+  if (updates.dataInicio !== undefined && diaDoInstante(updates.dataInicio) !== diaDoInstante(tarefa.dataInicio)) {
+    novasAtividades.push({ id: uuid(), tipo: 'prazo', descricao: updates.dataInicio ? `Data de início definida para ${fmtDiaDoInstante(updates.dataInicio)}` : 'Data de início removida', autor, criadoEm: agora })
+  }
   if (updates.clienteNome && updates.clienteNome !== tarefa.clienteNome) novasAtividades.push({ id: uuid(), tipo: 'cliente', descricao: `Cliente alterado para ${updates.clienteNome}`, autor, criadoEm: agora })
 
   // Editar comentario existente
@@ -343,8 +348,10 @@ export async function PUT(req: NextRequest) {
       else if (atualizado.recorrencia === 'semanal') d.setDate(d.getDate() + 7)
       else if (atualizado.recorrencia === 'quinzenal') d.setDate(d.getDate() + 14)
       else if (atualizado.recorrencia === 'mensal') d.setMonth(d.getMonth() + 1)
+      const passo = d.getTime() - base.getTime()
       const nova: Tarefa = {
         ...atualizado, id: uuid(), status: 'a_fazer', prazo: d.toISOString(),
+        ...(atualizado.dataInicio ? { dataInicio: new Date(new Date(atualizado.dataInicio).getTime() + passo).toISOString() } : {}),
         criadoPor: 'Recorrência', criadoEm: agora, atualizadoEm: agora, concluidoEm: undefined,
         atividades: [{ id: uuid(), tipo: 'criacao', descricao: 'Gerada por recorrência', autor: 'Recorrência', criadoEm: agora }],
         comentarios: [], apontamentos: [],
@@ -364,12 +371,12 @@ export async function PUT(req: NextRequest) {
     await notificar(updates.responsavelEmail, 'tarefa_atribuida', 'Tarefa atribuida a voce', `${autor} atribuiu a tarefa "${tarefa.titulo}" a voce.`, undefined, id)
   }
   // Notificar criador e responsavel sobre alteracoes (exceto quem fez a mudanca)
-  const alterou = (updates.status && updates.status !== tarefa.status) || (updates.prioridade && updates.prioridade !== tarefa.prioridade) || (updates.prazo && updates.prazo !== tarefa.prazo)
+  const alterou = (updates.status && updates.status !== tarefa.status) || (updates.prioridade && updates.prioridade !== tarefa.prioridade) || mudouPrazo
   if (alterou && !updates.novoComentario) {
     const mudancas: string[] = []
     if (updates.status && updates.status !== tarefa.status) mudancas.push(`status para ${statusLabels[updates.status] || updates.status}`)
     if (updates.prioridade && updates.prioridade !== tarefa.prioridade) mudancas.push(`prioridade para ${updates.prioridade}`)
-    if (updates.prazo && updates.prazo !== tarefa.prazo) mudancas.push(`prazo para ${new Date(updates.prazo).toLocaleDateString('pt-BR')}`)
+    if (mudouPrazo) mudancas.push(`prazo final para ${fmtDiaDoInstante(updates.prazo)}`)
     const desc = mudancas.join(', ')
     const notifEmails: string[] = []
     if (tarefa.responsavelEmail && tarefa.responsavelEmail !== meuEmail && !notifEmails.includes(tarefa.responsavelEmail)) notifEmails.push(tarefa.responsavelEmail)

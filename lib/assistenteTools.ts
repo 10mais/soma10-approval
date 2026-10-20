@@ -1,3 +1,4 @@
+import { diaDoInstante } from './datas'
 import { mensalidadeCliente, contratoVigenteNoMes, receitaClienteNoMes, mesDoDia } from './receitaRecorrente'
 import { redis, Cliente, Usuario, Tarefa, Despesa, CrmNegocio } from './redis'
 
@@ -131,7 +132,7 @@ async function consultarTarefas(input: any): Promise<string> {
   const lista = tarefas
     .sort((a, b) => (a.prazo || '').localeCompare(b.prazo || ''))
     .slice(0, 60)
-    .map(t => ({ titulo: t.titulo, status: t.status, responsavel: t.responsavelNome || '—', cliente: t.clienteNome || '—', prazo: t.prazo ? t.prazo.slice(0, 10) : null, prioridade: t.prioridade, subtarefa: !!(t as any).tarefaPaiId }))
+    .map(t => ({ titulo: t.titulo, status: t.status, responsavel: t.responsavelNome || '—', cliente: t.clienteNome || '—', prazo: diaDoInstante(t.prazo) || null, prioridade: t.prioridade, subtarefa: !!(t as any).tarefaPaiId }))
   return JSON.stringify({ total: tarefas.length, porStatus, mostrando: lista.length, tarefas: lista })
 }
 

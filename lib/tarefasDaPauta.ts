@@ -10,6 +10,7 @@ import { redis, Post, Tarefa, Plano, Cliente } from './redis'
 import { v4 as uuid } from 'uuid'
 import { descricaoTarefaDesigner, tituloSubtarefa, tituloTarefaMae, prazoTarefaMae, tipoTarefaDoFormato } from './esteiraFluxo'
 import { notificar } from './notificacoes'
+import { fmtDiaDoInstante } from './datas'
 import { dispararEvento } from './automacoesEngine'
 
 // Etapa da Esteira -> tipo de tarefa (regra herdada do /api/esteira/relacionar).
@@ -185,7 +186,7 @@ export async function nascerTarefaDesigner(postId: string, autor: string, opts: 
   await redis.sadd('tarefas', sub.id)
   await redis.set(`post:${post.id}`, { ...post, tarefaId: sub.id })
   if (designerEmail) {
-    await notificar(designerEmail, 'geral', `Criativo para produzir — ${post.clienteNome || 'Cliente'}`, `Copy aprovada pelo cliente. A tarefa "${sub.titulo}" está com você.${sub.prazo ? ` Prazo: ${new Date(sub.prazo).toLocaleDateString('pt-BR')}.` : ''}`, undefined, sub.id).catch(() => {})
+    await notificar(designerEmail, 'geral', `Criativo para produzir — ${post.clienteNome || 'Cliente'}`, `Copy aprovada pelo cliente. A tarefa "${sub.titulo}" está com você.${sub.prazo ? ` Prazo: ${fmtDiaDoInstante(sub.prazo)}.` : ''}`, undefined, sub.id).catch(() => {})
   }
   await dispararEvento('tarefa_criada', { tarefaId: sub.id, titulo: sub.titulo, tipo: sub.tipo, prioridade: sub.prioridade, clienteId: sub.clienteId, clienteNome: sub.clienteNome, responsavelEmail: sub.responsavelEmail, responsavelNome: sub.responsavelNome }).catch(() => {})
   return { tarefaId: sub.id, reaberta: false }

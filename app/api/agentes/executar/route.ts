@@ -1,3 +1,4 @@
+import { fimDoDiaBR } from '@/lib/datas'
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
     if (!String(i.titulo || '').trim()) return NextResponse.json({ error: 'título obrigatório' }, { status: 400 })
     const cli = i.cliente ? await acharCliente(i.cliente) : null
     const agora = new Date().toISOString()
-    const prazo = /^\d{4}-\d{2}-\d{2}$/.test(i.prazo || '') ? new Date(i.prazo + 'T23:59:59').toISOString() : ''
+    const prazo = fimDoDiaBR(String(i.prazo || '')) // fim do dia em Brasília (lib/datas); o servidor roda em UTC
     const prioridade = ['baixa', 'media', 'alta', 'urgente'].includes(i.prioridade) ? i.prioridade : 'media'
     const tarefa: Tarefa = {
       id: uuid(), titulo: String(i.titulo).trim(), descricao: i.descricao || '', tipo: 'tarefa', status: 'a_fazer',
