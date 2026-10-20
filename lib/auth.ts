@@ -7,6 +7,9 @@ import { doisFatoresGlobalAtivo } from './seguranca'
 import { loginBloqueado, registrarFalhaLogin, limparFalhasLogin } from './loginThrottle'
 import bcrypt from 'bcryptjs'
 
+// De quanto em quanto tempo a sessão relê papel e permissões no banco (ver o callback jwt).
+const RELER_USUARIO_MS = 60 * 1000
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -45,13 +48,31 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    jwt({ token, user }) {
+    async jwt({ token, user }) {
       if (user) {
         token.role = (user as any).role
         token.clienteId = (user as any).clienteId
         ;(token as any).lojaId = (user as any).lojaId
         ;(token as any).permissoes = (user as any).permissoes
         ;(token as any).permissoesGranular = (user as any).permissoesGranular
+        ;(token as any).lidoEm = Date.now()
+        return token
+      }
+      // Permissões VIVAS (dono, 20/10/2026: "Já adicionei permissões, mas não atualizou" — Ana).
+      // Papel e permissões eram copiados SÓ no login: o que o admin mudava depois só valia quando
+      // a pessoa saía e entrava. Agora o token relê o usuário no banco a cada minuto.
+      if (token.email && Date.now() - ((token as any).lidoEm || 0) > RELER_USUARIO_MS) {
+        try {
+          const u = await redis.get<Usuario>(`usuario:${token.email}`)
+          if (u) {
+            token.role = u.role
+            token.clienteId = u.clienteId
+            ;(token as any).lojaId = u.lojaId
+            ;(token as any).permissoes = u.permissoes
+            ;(token as any).permissoesGranular = u.permissoesGranular
+          }
+          ;(token as any).lidoEm = Date.now()
+        } catch { /* banco fora do ar: segue com o que o token já tem */ }
       }
       return token
     },
