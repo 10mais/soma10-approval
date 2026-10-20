@@ -327,7 +327,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   async function excluirPautaPermanente(p: any) {
     if (!(await confirmar('Excluir esta pauta PERMANENTEMENTE? Não dá para recuperar.', { titulo: 'Excluir de vez', okLabel: 'Excluir', perigo: true }))) return
     setLixeiraPautas(ls => ls.filter(x => x.id !== p.id))
-    await fetch(`/api/posts?id=${p.id}&permanente=true`, { method: 'DELETE' }).catch(() => {})
+    const r = await fetch(`/api/posts?id=${p.id}&permanente=true`, { method: 'DELETE' }).then(x => x.json()).catch(() => null)
+    if (!r?.ok) { carregarLixeira(); toast(r?.error || tr('est.falha-excluir-pauta'), 'erro'); return }
     toast('Pauta excluída permanentemente.', 'sucesso')
   }
   function diasRestantesLixeira(excluidoEm?: string) {
@@ -357,8 +358,17 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     if (!(await confirmar(tr('est.dlg-excluir-varias', { n: ids.length }), { titulo: tr('est.dlg-titulo-excluir'), okLabel: tr('comum.excluir'), perigo: true }))) return
     setPautas(ps => ps.filter(x => !pautasSel.has(x.id)))
     setPautasSel(new Set())
-    for (const id of ids) await fetch(`/api/posts?id=${id}`, { method: 'DELETE' }).catch(() => {})
-    toast(tr('est.aviso-excluidas', { n: ids.length }), 'sucesso')
+    let falhas = 0, motivo = ''
+    for (const id of ids) {
+      const r = await fetch(`/api/posts?id=${id}`, { method: 'DELETE' }).then(x => x.json()).catch(() => null)
+      if (!r?.ok) { falhas++; motivo = motivo || r?.error || '' }
+    }
+    if (falhas) {
+      if (planoSel) carregarPautas(planoSel)
+      toast(tr('est.falhas-excluir', { n: falhas, total: ids.length, motivo: motivo || tr('est.falha-excluir-pauta') }), 'erro')
+      if (falhas === ids.length) return
+    }
+    toast(tr('est.aviso-excluidas', { n: ids.length - falhas }), 'sucesso')
   }
 
   function carregarPlanos() {
@@ -1022,7 +1032,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   async function excluir(p: Pauta) {
     if (!(await confirmar('Excluir esta pauta? Será removida permanentemente.', { titulo: 'Excluir pauta', okLabel: 'Excluir', perigo: true }))) return
     setPautas(ps => ps.filter(x => x.id !== p.id))
-    await fetch(`/api/posts?id=${p.id}`, { method: 'DELETE' }).catch(() => {})
+    const r = await fetch(`/api/posts?id=${p.id}`, { method: 'DELETE' }).then(x => x.json()).catch(() => null)
+    if (!r?.ok) { if (planoSel) carregarPautas(planoSel); toast(r?.error || tr('est.falha-excluir-pauta'), 'erro'); return }
     registrarDesfazer(tr('est.desfazer-exclusao', { nome: (p.briefing || p.legenda || '—').slice(0, 40) }), async () => {
       const r = await fetch('/api/posts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: p.id, restaurar: true }) }).catch(() => null)
       if (planoSel) carregarPautas(planoSel)

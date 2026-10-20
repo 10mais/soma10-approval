@@ -280,10 +280,10 @@ export async function DELETE(req: NextRequest) {
 
   const role = (session.user as any).role
   if (await bloqueiaPapel(role, 'producao', 'excluir', (session.user as any).permissoes)) {
-    return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
+    return NextResponse.json({ error: 'Sem permissão para excluir: falta o nível "Excluir" no módulo Produção.' }, { status: 403 })
   }
   if (await bloqueiaAcao(role, 'excluir', (session.user as any).permissoesGranular)) {
-    return NextResponse.json({ error: 'sem permissão para excluir' }, { status: 403 })
+    return NextResponse.json({ error: 'Sem permissão para excluir: a ação "Excluir" está desligada nas permissões detalhadas.' }, { status: 403 })
   }
   const id = req.nextUrl.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'id obrigatório' }, { status: 400 })
