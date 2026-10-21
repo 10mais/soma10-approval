@@ -26,6 +26,7 @@ import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
 import ConectarRedesModal from '../components/ConectarRedesModal'
 import BarraProximasTarefas from '../components/BarraProximasTarefas'
+import { registrarAbridorDeTarefa } from '@/lib/abrirTarefa'
 import UploadProgress from '../components/UploadProgress'
 import NotificacoesConfig from '../components/NotificacoesConfig'
 import OperacionalConfig from '../components/OperacionalConfig'
@@ -671,6 +672,8 @@ function Dashboard() {
   const [tarefaNotif, setTarefaNotif] = useState<any | null>(null)
   const [carregandoTarefaNotif, setCarregandoTarefaNotif] = useState(false)
   // Busca a tarefa pelo id e abre o modal por cima da tela atual (mantém o usuário nas notificações)
+  // Telas dentro do painel (Estúdio, barra do topo) abrem a tarefa por aqui, sem trocar de URL.
+  useEffect(() => { registrarAbridorDeTarefa(id => { abrirTarefaPorId(id) }); return () => registrarAbridorDeTarefa(null) }, [])
   async function abrirTarefaPorId(id: string) {
     setNotifAberta(null); setInboxAberto(false)
     setCarregandoTarefaNotif(true)

@@ -8,6 +8,7 @@ import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
 import { clientesAtivosIds } from '@/lib/cache'
 import { tarefaMaeDoPlano } from '@/lib/tarefasDaPauta'
+import { podeSerFilha } from '@/lib/hierarquiaTarefas'
 
 export const runtime = 'nodejs'
 
@@ -84,6 +85,38 @@ export async function PUT(req: NextRequest) {
     const tarefaId = await tarefaMaeDoPlano(id, session.user?.name || '').catch(() => null)
     if (!tarefaId) return NextResponse.json({ error: 'Não foi possível criar a tarefa do plano.' }, { status: 500 })
     return NextResponse.json({ ok: true, tarefaId })
+  }
+  // Fase 4 (dono, 20/10/2026): as tarefas de pauta que nasceram SOLTAS (antes de a pauta virar
+  // subtarefa) entram na tarefa do plano. O Estúdio mostra quantas e só chama depois da confirmação
+  // de quem clicou. Mesma lei das subtarefas (lib/hierarquiaTarefas); responsável, prazo e anexos
+  // não mudam. Uma leitura de todas as tarefas para o plano inteiro.
+  if (updates.trazerTarefas) {
+    if (await bloqueiaPapel((session.user as any).role, 'producao', 'editar', (session.user as any).permissoes)) {
+      return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
+    }
+    const autor = session.user?.name || ''
+    const maeId = await tarefaMaeDoPlano(id, autor).catch(() => null)
+    if (!maeId) return NextResponse.json({ error: 'Não foi possível criar a tarefa do plano.' }, { status: 500 })
+    const pautaIds = await redis.smembers(`plano:${id}:pautas`)
+    const pautas = pautaIds.length ? ((await redis.mget<(Post | null)[]>(...pautaIds.map(x => `post:${x}`))).filter(Boolean) as Post[]) : []
+    const idsTodas = await redis.smembers('tarefas')
+    const todas = idsTodas.length ? ((await redis.mget<(Tarefa | null)[]>(...idsTodas.map(x => `tarefa:${x}`))).filter(Boolean) as Tarefa[]) : []
+    const mae = todas.find(t => t.id === maeId)
+    const daPauta = new Set(pautas.map(p => p.id))
+    const candidatas = todas.filter(t => !(t as any).excluidoEm && !t.tarefaPaiId && t.id !== maeId
+      && ((t.origemPostId && daPauta.has(t.origemPostId)) || pautas.some(p => p.tarefaId === t.id)))
+    const agora = new Date().toISOString()
+    let movidas = 0
+    for (const t of candidatas) {
+      if (t.clienteId && plano.clienteId && t.clienteId !== plano.clienteId) continue
+      if (!podeSerFilha(t.id, maeId, todas as any).ok) continue
+      await redis.set(`tarefa:${t.id}`, {
+        ...t, tarefaPaiId: maeId, atualizadoEm: agora,
+        atividades: [...(t.atividades || []), { id: uuid(), tipo: 'cliente' as const, descricao: `Virou subtarefa de "${mae?.titulo || 'tarefa do plano'}" (Estúdio)`, autor, criadoEm: agora }],
+      })
+      movidas++
+    }
+    return NextResponse.json({ ok: true, tarefaId: maeId, movidas, total: candidatas.length })
   }
   const camposPermitidos = ['titulo', 'mes', 'ano']
   const atualizado: any = { ...plano }

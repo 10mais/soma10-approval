@@ -14,6 +14,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useT } from '@/app/components/Idioma'
 import { fmtDiaDoInstante } from '@/lib/datas'
+import { abrirTarefa } from '@/lib/abrirTarefa'
 import type { ItemProximo, ProximasDaPessoa } from '@/lib/proximasTarefas'
 
 const CHAVE_RECOLHIDA = 'soma10-barra-tarefas-recolhida'
@@ -123,7 +124,7 @@ function Barra({ onAbrir, tema, estilo, compacta }: Props) {
   function abrir(id: string) {
     setAberto(false)
     if (onAbrir) onAbrir(id)
-    else router.push(`/dashboard?tarefa=${encodeURIComponent(id)}`)
+    else abrirTarefa(id, u => router.push(u))
   }
 
   const rotuloQuando = (i: ItemProximo) => i.quando === 'atrasada' ? tr('barra.atrasada')

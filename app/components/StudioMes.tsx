@@ -1,5 +1,6 @@
 'use client'
 import { useRouter } from 'next/navigation'
+import { abrirTarefa } from '@/lib/abrirTarefa'
 import { tarefaDaPauta, tarefaAberta, anexosCriativoPronto, STATUS_TAREFA_LABEL } from '@/lib/producaoVinculo'
 import { revisaoInternaDoCriativo, podeEnviarAoCliente } from '@/lib/esteiraFluxo'
 import { emRodadaDeAjuste } from '@/lib/rodadaAjuste'
@@ -522,6 +523,19 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   // Recarrega ao trocar de plano: a tarefa do plano nasce junto com ele (servidor).
   useEffect(() => { carregarTarefasVinc() }, [planoSel])
   const [criandoTarefaPlano, setCriandoTarefaPlano] = useState(false)
+  const [trazendoTarefas, setTrazendoTarefas] = useState(false)
+  async function trazerTarefasParaOPlano(maeTitulo: string, soltas: any[]) {
+    if (!planoSel || !soltas.length) return
+    const exemplos = soltas.slice(0, 3).map(t => `"${t.titulo}"`).join(', ') + (soltas.length > 3 ? '…' : '')
+    if (!(await confirmar(tr('est.dlg-trazer', { n: soltas.length, mae: maeTitulo, exemplos }), { titulo: tr('est.trazer'), okLabel: tr('est.trazer-ok') }))) return
+    setTrazendoTarefas(true)
+    const r = await fetch('/api/planos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: planoSel, trazerTarefas: true }) }).then(x => x.json()).catch(() => null)
+    setTrazendoTarefas(false)
+    if (!r?.ok) { toast(r?.error || tr('est.falha-trazer'), 'erro'); return }
+    carregarTarefasVinc()
+    if (r.movidas < r.total) toast(tr('est.trazer-parcial', { n: r.movidas, total: r.total }), 'erro')
+    else toast(tr('est.trazer-feito', { n: r.movidas }), 'sucesso')
+  }
   async function criarTarefaDoPlano() {
     if (!planoSel) return
     setCriandoTarefaPlano(true)
@@ -1237,6 +1251,8 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
         const prontas = subs.filter(t => t.status === 'concluido').length
         const semDesigner = !String(papeis.designer || '').trim()
         const semSocial = !String(papeis.social_media || '').trim()
+        // Fase 4: tarefas de pauta deste plano que nasceram soltas (antes de 20/10/2026).
+        const soltas = mae ? Array.from(new Map(pautas.map(p => tarefaDaPauta(p as any, tarefasVinc as any) as any).filter((t: any) => t && !t.tarefaPaiId && t.id !== mae.id).map((t: any) => [t.id, t])).values()) : []
         return (
           <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, padding: '12px 16px', marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -1246,14 +1262,25 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                 <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mae.titulo}</span>
                 <span style={{ fontSize: 12.5, color: mae.responsavelNome ? 'var(--v2-ink2)' : 'var(--v2-hot)', fontWeight: 600 }}>{mae.responsavelNome ? tr('est.com-pessoa', { nome: mae.responsavelNome }) : tr('est.sem-responsavel')}</span>
                 {subs.length > 0 && <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('est.subtarefas-prontas', { n: prontas, total: subs.length })}</span>}
-                <button type="button" onClick={() => router.push(`/dashboard?tarefa=${encodeURIComponent(mae.id)}`)}
+                <button type="button" onClick={() => abrirTarefa(mae.id, u => router.push(u))}
                   style={{ marginLeft: 'auto', padding: '6px 12px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{tr('est.abrir-tarefa')}</button>
-              </>) : (<>
+              </>) : plano.tarefaId ? (
+                <span style={{ fontSize: 12.5, color: 'var(--v2-ink3)' }}>…</span>
+              ) : (<>
                 <span style={{ fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('est.tarefa-plano-nasce')}</span>
                 {podeEditar && <button type="button" onClick={criarTarefaDoPlano} disabled={criandoTarefaPlano}
                   style={{ marginLeft: 'auto', padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--v2-ink)', color: 'var(--v2-surface)', fontSize: 12, fontWeight: 700, cursor: criandoTarefaPlano ? 'progress' : 'pointer', fontFamily: 'inherit', opacity: criandoTarefaPlano ? 0.6 : 1 }}>{tr('est.criar-tarefa-plano')}</button>}
               </>)}
             </div>
+            {soltas.length > 0 && podeEditar && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12, color: 'var(--v2-ink2)' }}>
+                <span>{tr('est.soltas', { n: soltas.length })}</span>
+                <button type="button" onClick={() => trazerTarefasParaOPlano(mae.titulo, soltas)} disabled={trazendoTarefas}
+                  style={{ padding: '5px 11px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 12, fontWeight: 700, cursor: trazendoTarefas ? 'progress' : 'pointer', fontFamily: 'inherit', opacity: trazendoTarefas ? 0.6 : 1 }}>
+                  {trazendoTarefas ? '…' : tr('est.trazer')}
+                </button>
+              </div>
+            )}
             {semDesigner && <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--v2-hot)' }}>{tr('est.sem-designer')}</p>}
             {semSocial && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-amber)' }}>{tr('est.sem-social')}</p>}
           </div>
