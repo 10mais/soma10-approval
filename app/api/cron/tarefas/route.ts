@@ -1,4 +1,4 @@
-import { diaDoInstante, fmtDiaDoInstante, horaBR } from '@/lib/datas'
+import { diaDoInstante, fmtDiaDoInstante, horaBR, ehFimDoDiaBR, somarDias } from '@/lib/datas'
 import { NextRequest, NextResponse } from 'next/server'
 import { redis, Tarefa, Usuario, Veiculo } from '@/lib/redis'
 import { notificar } from '@/lib/notificacoes'
@@ -109,6 +109,29 @@ async function rodarPrazos(): Promise<NextResponse> {
       }
       // Segue para "vencida" abaixo; pula a regra de 1h (já avisada no dia).
       if (diff > 0) continue
+    }
+
+    // PRAZO DE DIA (fim do dia em Brasília — o modal e o Estúdio gravam assim) e pauta do Estúdio:
+    // avisa na VÉSPERA e NO DIA a partir das 8h de Brasília, e a atrasada na manhã seguinte. O "falta
+    // 1h" (às 23h) e o "venceu" (à meia-noite) não servem para prazo de dia (dono, 20/10/2026: "o
+    // designer precisa receber as notificações"). A chave leva o dia: prazo mudou, avisa de novo.
+    if ((t as any).origemPostId || ehFimDoDiaBR(t.prazo)) {
+      if (horaBR(agora) >= 8) {
+        const hojeBR = diaDoInstante(new Date(agora).toISOString())
+        const diaPrazo = diaDoInstante(t.prazo)
+        const cli = t.clienteNome ? ` (${t.clienteNome})` : ''
+        const aviso = diaPrazo === somarDias(hojeBR, 1) ? { chave: `tarefa_notif_vespera:${t.id}:${diaPrazo}`, tipo: 'tarefa_prazo_proximo' as const, titulo: 'Prazo amanhã', texto: `"${t.titulo}"${cli} vence amanhã, ${fmtDiaDoInstante(t.prazo)}.` }
+          : diaPrazo === hojeBR ? { chave: `tarefa_notif_hoje:${t.id}:${diaPrazo}`, tipo: 'tarefa_prazo_proximo' as const, titulo: 'Prazo hoje', texto: `"${t.titulo}"${cli} vence hoje.` }
+            // atrasada só nos 3 primeiros dias (no 1º deploy, as muito antigas não viram enxurrada de aviso)
+            : diaPrazo && diaPrazo < hojeBR && diaPrazo >= somarDias(hojeBR, -3) ? { chave: `tarefa_notif_atrasada:${t.id}:${diaPrazo}`, tipo: 'tarefa_vencida' as const, titulo: 'Tarefa atrasada', texto: `"${t.titulo}"${cli} venceu em ${fmtDiaDoInstante(t.prazo)}.` }
+              : null
+        if (aviso && !(await redis.get(aviso.chave))) {
+          await notificar(t.responsavelEmail, aviso.tipo, aviso.titulo, aviso.texto, undefined, t.id)
+          await redis.set(aviso.chave, '1', { ex: 40 * 24 * 3600 })
+          notificados++
+        }
+      }
+      continue
     }
 
     // Prazo proximo (entre 0 e 1h)

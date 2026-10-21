@@ -16,6 +16,8 @@ export type TarefaPessoa = {
   concluidoEm?: string
   atualizadoEm?: string
   apontamentos?: { usuarioEmail?: string; minutos?: number; data?: string }[]
+  origemPostId?: string   // tarefa de produção de uma pauta do Estúdio
+  ajustePedidoEm?: string // reaberta por ajuste pedido (cliente ou revisão interna)
 }
 
 export type ResumoPessoa = {
@@ -104,4 +106,20 @@ export function resumoDaPessoa(input: {
 
 export function fmtMinutos(min: number): string {
   return `${Math.floor(min / 60)}h${String(Math.round(min % 60)).padStart(2, '0')}`
+}
+
+// PRODUÇÃO DO ESTÚDIO da pessoa (dono, 20/10/2026: "O Designer precisa ... visualizar o que está
+// com ele, em andamento e/ou pendente"). Só tarefas de pauta (origemPostId) abertas e dela:
+// ajuste pedido primeiro (o cliente está esperando), depois o que falta começar e o que já anda.
+export type ProducaoPessoa = { ajuste: TarefaPessoa[]; paraProduzir: TarefaPessoa[]; emProducao: TarefaPessoa[] }
+export function producaoDaPessoa(tarefas: TarefaPessoa[] | undefined, email: string): ProducaoPessoa {
+  const eu = (email || '').trim().toLowerCase()
+  const minhas = (tarefas || [])
+    .filter(t => !!t.origemPostId && ABERTA.includes(t.status) && (t.responsavelEmail || '').trim().toLowerCase() === eu)
+    .sort(ordenarPorUrgencia)
+  return {
+    ajuste: minhas.filter(t => !!t.ajustePedidoEm),
+    paraProduzir: minhas.filter(t => !t.ajustePedidoEm && t.status === 'a_fazer'),
+    emProducao: minhas.filter(t => !t.ajustePedidoEm && t.status !== 'a_fazer'),
+  }
 }

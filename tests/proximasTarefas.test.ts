@@ -74,3 +74,11 @@ describe('proximasDaPessoa', () => {
     expect(proximasDaPessoa([t('1')], '', AGORA)).toEqual({ itens: [], total: 0, atrasadas: 0 })
   })
 })
+
+describe('proximasDaPessoa — ajuste pedido', () => {
+  it('a tarefa reaberta por ajuste vem marcada', () => {
+    const r = proximasDaPessoa([t('aj', { ajustePedidoEm: '2026-10-20T10:00:00Z' }), t('ok')], ANA, AGORA)
+    expect(r.itens.find(i => i.id === 'aj')?.ajuste).toBe(true)
+    expect(r.itens.find(i => i.id === 'ok')?.ajuste).toBeUndefined()
+  })
+})

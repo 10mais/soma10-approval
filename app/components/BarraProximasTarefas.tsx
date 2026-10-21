@@ -150,7 +150,7 @@ function Barra({ onAbrir, tema, estilo, compacta }: Props) {
         {comRotulo && <span style={{ fontSize: 12.5, fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0 }}>{tr('barra.proximas')}</span>}
         {vazia && <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{tr('barra.nada')}</span>}
         {dados.itens.slice(0, nChips).map(i => (
-          <button key={i.id} type="button" onClick={e => { e.stopPropagation(); abrir(i.id) }} title={[i.titulo, contexto(i)].filter(Boolean).join(' — ')}
+          <button key={i.id} type="button" onClick={e => { e.stopPropagation(); abrir(i.id) }} title={[i.ajuste ? tr('barra.ajuste') : '', i.titulo, contexto(i)].filter(Boolean).join(' — ')}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0, maxWidth: 240, padding: '5px 10px 5px 5px', borderRadius: 999, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', cursor: 'pointer', fontFamily: 'inherit', color: 'var(--v2-ink)' }}>
             <span style={{ ...corQuando(i), flexShrink: 0, fontSize: 10.5, fontWeight: 800, borderRadius: 999, padding: '2px 7px', whiteSpace: 'nowrap' }}>{rotuloQuando(i)}</span>
             <span style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{i.titulo}</span>
@@ -190,7 +190,9 @@ function Barra({ onAbrir, tema, estilo, compacta }: Props) {
                   <span style={{ ...corQuando(i), flexShrink: 0, marginTop: 1, fontSize: 10.5, fontWeight: 800, borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap', minWidth: 52, textAlign: 'center' }}>{rotuloQuando(i)}</span>
                   <span style={{ minWidth: 0, flex: 1 }}>
                     <span style={{ display: 'block', fontSize: 13, fontWeight: 700, lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{i.titulo}</span>
-                    {contexto(i) && <span style={{ display: 'block', marginTop: 2, fontSize: 11.5, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{contexto(i)}</span>}
+                    {(i.ajuste || contexto(i)) && <span style={{ display: 'block', marginTop: 2, fontSize: 11.5, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {i.ajuste && <strong style={{ color: 'var(--v2-hot)', fontWeight: 700 }}>{tr('barra.ajuste')}{contexto(i) ? ' · ' : ''}</strong>}{contexto(i)}
+                    </span>}
                   </span>
                 </button>
               ))}

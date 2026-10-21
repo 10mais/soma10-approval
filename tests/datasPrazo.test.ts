@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { diaDoInstante, fimDoDiaBR, inicioDoDiaBR, fmtDiaDoInstante, horaBR, subtrairDiasUteis } from '@/lib/datas'
+import { diaDoInstante, fimDoDiaBR, inicioDoDiaBR, fmtDiaDoInstante, horaBR, subtrairDiasUteis, ehFimDoDiaBR } from '@/lib/datas'
 
 // Dono, 20/10/2026: "Quando criamos tarefa e colocamos DATA, ele automaticamente adiciona mais um
 // dia." O prazo era gravado como 23:59 de Brasília (= dia seguinte em UTC) e a edição lia o dia
@@ -63,5 +63,16 @@ describe('subtrairDiasUteis — segunda a sexta', () => {
   it('zero (ou negativo) não anda', () => {
     expect(subtrairDiasUteis('2026-10-30', 0)).toBe('2026-10-30')
     expect(subtrairDiasUteis('2026-10-30', -2)).toBe('2026-10-30')
+  })
+})
+
+describe('ehFimDoDiaBR — prazo "de dia" (o cron avisa na véspera e no dia, às 8h)', () => {
+  it('fim do dia em Brasília (novo e o legado do navegador) é de dia; hora marcada não é', () => {
+    expect(ehFimDoDiaBR(fimDoDiaBR('2026-10-20'))).toBe(true)
+    expect(ehFimDoDiaBR('2026-10-21T02:59:59.000Z')).toBe(true)
+    expect(ehFimDoDiaBR('2026-10-20T20:00:00.000Z')).toBe(false) // postagem às 17h
+    expect(ehFimDoDiaBR('2026-10-20T15:00:00.000Z')).toBe(false) // "em massa" antigo (meio-dia)
+    expect(ehFimDoDiaBR('2026-10-20')).toBe(true) // dia puro (decisão de reunião antiga)
+    expect(ehFimDoDiaBR('')).toBe(false)
   })
 })

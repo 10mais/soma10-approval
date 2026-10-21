@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resumoDaPessoa, ordenarPorUrgencia, fmtMinutos } from '@/lib/hubPessoa'
+import { resumoDaPessoa, ordenarPorUrgencia, fmtMinutos, producaoDaPessoa } from '@/lib/hubPessoa'
 
 // O card do colaborador é o que cada pessoa abre para saber "o que está
 // assinalado para mim". Errar o grupo (atrasada x hoje) muda a prioridade do
@@ -78,5 +78,25 @@ describe('resumoDaPessoa — squad conta como cliente em que atua', () => {
   it('cliente do squad entra mesmo sem tarefa aberta, sem repetir', () => {
     const r = resumoDaPessoa({ email: 'ana@x.com', tarefas: [], clientesSquad: ['c1', 'c2'], clientesResponsavel: ['c2', 'c3'] })
     expect(r.clientes.sort()).toEqual(['c1', 'c2', 'c3'])
+  })
+})
+
+// 20/10/2026 (dono): "O Designer precisa ... visualizar o que está com ele, em andamento e/ou pendente".
+describe('producaoDaPessoa — pautas do Estúdio da pessoa', () => {
+  const ANA = 'ana@10mais.com.br'
+  const base = { titulo: 'Pauta', responsavelEmail: ANA, origemPostId: 'p1' }
+  it('separa ajuste pedido, para produzir e em produção; ignora o que não é pauta, não é dela ou fechou', () => {
+    const r = producaoDaPessoa([
+      { ...base, id: '1', status: 'a_fazer' },
+      { ...base, id: '2', status: 'em_andamento' },
+      { ...base, id: '3', status: 'a_fazer', ajustePedidoEm: '2026-10-20T12:00:00Z' },
+      { ...base, id: '4', status: 'em_revisao' },
+      { ...base, id: '5', status: 'concluido' },
+      { ...base, id: '6', status: 'a_fazer', origemPostId: undefined },
+      { ...base, id: '7', status: 'a_fazer', responsavelEmail: 'outra@x' },
+    ], 'ANA@10mais.com.br')
+    expect(r.ajuste.map(t => t.id)).toEqual(['3'])
+    expect(r.paraProduzir.map(t => t.id)).toEqual(['1'])
+    expect(r.emProducao.map(t => t.id).sort()).toEqual(['2', '4'])
   })
 })

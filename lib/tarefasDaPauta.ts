@@ -6,9 +6,9 @@
 // comportamentos. As REGRAS puras (quando criar, títulos, descrição, prazo)
 // vivem em lib/esteiraFluxo.ts, com testes.
 
-import { redis, Post, Tarefa, Plano, Cliente } from './redis'
+import { redis, Post, Tarefa, Plano, Cliente, Notificacao } from './redis'
 import { v4 as uuid } from 'uuid'
-import { descricaoTarefaDesigner, tituloSubtarefa, tituloTarefaMae, prazoTarefaMae, tipoTarefaDoFormato, prazoDoCriativo, donoDoPlano } from './esteiraFluxo'
+import { descricaoTarefaDesigner, tituloSubtarefa, tituloTarefaMae, prazoTarefaMae, tipoTarefaDoFormato, prazoDoCriativo, donoDoPlano, avisoPautasNovas } from './esteiraFluxo'
 import { notificar } from './notificacoes'
 import { fmtDiaDoInstante, diaDoInstante, fimDoDiaBR, inicioDoDiaBR } from './datas'
 import { dispararEvento } from './automacoesEngine'
@@ -93,6 +93,7 @@ export async function reabrirTarefaDaPauta(postId: string, feedback: string, aut
     ...t,
     status: estavaConcluida ? 'a_fazer' : t.status,
     ...(estavaConcluida ? { concluidoEm: undefined } : {}),
+    ajustePedidoEm: agora, // "Ajuste pedido" na página da pessoa e na barra do topo; some ao concluir
     atualizadoEm: agora,
     atividades: [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: estavaConcluida ? `${quemPediu} pediu ajuste no criativo — tarefa reaberta` : `${quemPediu} pediu ajuste no criativo`, autor, criadoEm: agora }],
     comentarios: [...(t.comentarios || []), { id: uuid(), autor, autorNome: autor, texto: `Feedback ${origem === 'cliente' ? 'do cliente' : 'da revisão interna'}: ${feedback || 'sem comentário'}`, criadoEm: agora }],
@@ -111,6 +112,30 @@ function anexosDaPauta(post: Post): { nome: string; url: string; tipo: string }[
     ...(post.anexos || []),
     ...((post.laminas || []).map((l, i) => l.anexo ? { ...l.anexo, nome: `Lâmina ${i + 1} — ${l.anexo.nome}` } : null).filter(Boolean) as { nome: string; url: string; tipo: string }[]),
   ]
+}
+
+// AVISO AGRUPADO ao designer (dono, 20/10/2026: "O Designer precisa receber as notificações").
+// Tipo tarefa_atribuida: não dá para silenciar e pinga o celular. Várias pautas do mesmo cliente
+// em 10 minutos (o cliente aprova as copies de uma vez) ATUALIZAM o mesmo aviso em vez de criar um
+// por pauta — dez pushes seguidos fazem o designer silenciar tudo. Agrupado, o clique abre a
+// tarefa do plano (onde estão todas). Nunca lança.
+const JANELA_AVISO_PAUTAS = 10 * 60
+async function avisarPautaNova(email: string, clienteId: string, clienteNome: string | undefined, sub: Tarefa, maeId: string | null): Promise<void> {
+  const chave = `aviso_pautas:${email}:${clienteId || 'sem-cliente'}`
+  const grupo = await redis.get<{ notifId: string; titulos: string[] }>(chave).catch(() => null)
+  if (grupo?.notifId) {
+    const n = await redis.get<Notificacao>(`notificacao:${grupo.notifId}`).catch(() => null)
+    if (n) {
+      const titulos = [...(grupo.titulos || []), sub.titulo]
+      const texto = avisoPautasNovas(clienteNome, titulos)
+      await redis.set(`notificacao:${n.id}`, { ...n, ...texto, lida: false, criadoEm: new Date().toISOString(), tarefaId: maeId || n.tarefaId })
+      await redis.set(chave, { notifId: n.id, titulos }, { ex: JANELA_AVISO_PAUTAS })
+      return
+    }
+  }
+  const texto = avisoPautasNovas(clienteNome, [sub.titulo], sub.prazo ? fmtDiaDoInstante(sub.prazo) : undefined)
+  const nova = await notificar(email, 'tarefa_atribuida', texto.titulo, texto.mensagem, undefined, sub.id)
+  if (nova?.id) await redis.set(chave, { notifId: nova.id, titulos: [sub.titulo] }, { ex: JANELA_AVISO_PAUTAS })
 }
 
 // Copy aprovada -> nasce (ou reabre) a tarefa do DESIGNER com tudo dentro:
@@ -201,9 +226,7 @@ export async function nascerTarefaDesigner(postId: string, autor: string, opts: 
   await redis.set(`tarefa:${sub.id}`, sub)
   await redis.sadd('tarefas', sub.id)
   await redis.set(`post:${post.id}`, { ...post, tarefaId: sub.id })
-  if (designerEmail) {
-    await notificar(designerEmail, 'geral', `Criativo para produzir — ${post.clienteNome || 'Cliente'}`, `Copy aprovada pelo cliente. A tarefa "${sub.titulo}" está com você.${sub.prazo ? ` Prazo: ${fmtDiaDoInstante(sub.prazo)}.` : ''}`, undefined, sub.id).catch(() => {})
-  }
+  if (designerEmail) await avisarPautaNova(designerEmail, post.clienteId || '', post.clienteNome, sub, maeId).catch(() => {})
   await dispararEvento('tarefa_criada', { tarefaId: sub.id, titulo: sub.titulo, tipo: sub.tipo, prioridade: sub.prioridade, clienteId: sub.clienteId, clienteNome: sub.clienteNome, responsavelEmail: sub.responsavelEmail, responsavelNome: sub.responsavelNome }).catch(() => {})
   return { tarefaId: sub.id, reaberta: false }
 }

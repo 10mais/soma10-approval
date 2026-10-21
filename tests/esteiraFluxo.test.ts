@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { aoConcluirTarefa, deveCriarTarefaDesigner, descricaoTarefaDesigner, tituloTarefaMae, tituloSubtarefa, prazoTarefaMae, tipoTarefaDoFormato, revisaoInternaDoCriativo, podeEnviarAoCliente, prazoDoCriativo, donoDoPlano } from '@/lib/esteiraFluxo'
+import { aoConcluirTarefa, deveCriarTarefaDesigner, descricaoTarefaDesigner, tituloTarefaMae, tituloSubtarefa, prazoTarefaMae, tipoTarefaDoFormato, revisaoInternaDoCriativo, podeEnviarAoCliente, prazoDoCriativo, donoDoPlano, avisoPautasNovas } from '@/lib/esteiraFluxo'
 import { apareceNoPlanner } from '@/lib/plannerFiltro'
 
 // Linha de montagem Studio > Tarefa > Planner: as transicoes do fluxo.
@@ -265,5 +265,22 @@ describe('donoDoPlano — quem fica com a tarefa do plano do mês', () => {
     expect(donoDoPlano({ gestor_operacao: 'op@x', designer: 'des@x' })).toBe('op@x')
     expect(donoDoPlano({ designer: 'des@x' })).toBe('')
     expect(donoDoPlano(undefined)).toBe('')
+  })
+})
+
+describe('avisoPautasNovas — várias pautas de uma vez viram um aviso só', () => {
+  it('uma pauta: nome da pauta e prazo', () => {
+    expect(avisoPautasNovas('Santa Cestas', ['Carrossel Dia das Crianças'], '27/10/2026')).toEqual({
+      titulo: 'Pauta para produzir — Santa Cestas',
+      mensagem: 'A pauta "Carrossel Dia das Crianças" está com você. Prazo: 27/10/2026.',
+    })
+  })
+  it('várias: conta e lista as 3 primeiras', () => {
+    const r = avisoPautasNovas('Santa Cestas', ['A', 'B', 'C', 'D', 'E'])
+    expect(r.titulo).toBe('5 pautas para produzir — Santa Cestas')
+    expect(r.mensagem).toBe('Estão com você: "A", "B", "C" e mais 2.')
+  })
+  it('sem cliente e sem título não quebra', () => {
+    expect(avisoPautasNovas(undefined, ['']).titulo).toBe('Pauta para produzir — Cliente')
   })
 })

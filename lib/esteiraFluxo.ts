@@ -147,6 +147,20 @@ export function prazoDoCriativo(dataPostagem: string | undefined, hoje: string):
   return alvo < hoje ? hoje : alvo
 }
 
+// AVISO "pauta para produzir" (dono, 20/10/2026: "O Designer precisa receber as notificações").
+// Várias pautas do mesmo cliente em poucos minutos (o cliente aprova as copies de uma vez) viram
+// UM aviso só, que vai sendo atualizado — dez pushes seguidos no celular fazem o designer silenciar.
+export function avisoPautasNovas(clienteNome: string | undefined, titulos: string[], prazoTexto?: string): { titulo: string; mensagem: string } {
+  const cli = (clienteNome || '').trim() || 'Cliente'
+  const lista = titulos.map(t => (t || '').trim() || 'Pauta')
+  if (lista.length <= 1) {
+    return { titulo: `Pauta para produzir — ${cli}`, mensagem: `A pauta "${lista[0] || 'Pauta'}" está com você.${prazoTexto ? ` Prazo: ${prazoTexto}.` : ''}` }
+  }
+  const primeiras = lista.slice(0, 3).map(t => `"${t}"`).join(', ')
+  const resto = lista.length > 3 ? ` e mais ${lista.length - 3}` : ''
+  return { titulo: `${lista.length} pautas para produzir — ${cli}`, mensagem: `Estão com você: ${primeiras}${resto}.` }
+}
+
 // DONO da tarefa do plano: o Social Media / Copywriter do squad (dono, 20/10/2026). Papel vago
 // cai no gestor de projetos, depois no gestor da operação (mesma cadeia do responsavelPorTipo).
 export function donoDoPlano(papeis?: SquadPapeis | null): string {

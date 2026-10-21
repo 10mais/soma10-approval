@@ -16,13 +16,14 @@ export const STATUS_ABERTOS = ['a_fazer', 'em_andamento', 'em_revisao']
 export type TarefaParaBarra = {
   id: string; titulo?: string; status?: string; prioridade?: string; tipo?: string
   prazo?: string; dataInicio?: string; responsavelEmail?: string; clienteNome?: string
-  tarefaPaiId?: string; excluidoEm?: string
+  tarefaPaiId?: string; excluidoEm?: string; ajustePedidoEm?: string
 }
 
 export type ItemProximo = {
   id: string; titulo: string; status: string; tipo?: string
   prazo?: string; dataInicio?: string; clienteNome?: string
   maeTitulo?: string // subtarefa: de qual tarefa ela é (ex.: o plano do mês do cliente)
+  ajuste?: boolean   // reaberta por ajuste pedido (o cliente está esperando a nova versão)
   quando: QuandoPrazo
 }
 
@@ -69,6 +70,7 @@ export function proximasDaPessoa(tarefas: TarefaParaBarra[], email: string, agor
     ...(t.dataInicio ? { dataInicio: t.dataInicio } : {}),
     ...(t.clienteNome ? { clienteNome: t.clienteNome } : {}),
     ...(t.tarefaPaiId && porId.get(t.tarefaPaiId)?.titulo ? { maeTitulo: porId.get(t.tarefaPaiId)!.titulo } : {}),
+    ...(t.ajustePedidoEm ? { ajuste: true } : {}),
     quando,
   }))
   return { itens, total: ordenadas.length, atrasadas: ordenadas.filter(x => x.quando === 'atrasada').length }

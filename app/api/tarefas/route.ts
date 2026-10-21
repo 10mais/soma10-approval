@@ -275,6 +275,8 @@ export async function PUT(req: NextRequest) {
   }
   Object.assign(atualizado, camposDoCorpo(updates))
   if (atualizado.tarefaPaiId === null) delete atualizado.tarefaPaiId
+  // Entregou o ajuste: a marca "Ajuste pedido" (lib/tarefasDaPauta.reabrirTarefaDaPauta) sai.
+  if (updates.status === 'concluido') delete atualizado.ajustePedidoEm
 
   // PAUTA ↔ TAREFA: o vínculo fecha nos dois lados (post.tarefaId) e os anexos da
   // tarefa ficam espelhados na pauta (post.anexosTarefa) — o Studio/Planner mostram

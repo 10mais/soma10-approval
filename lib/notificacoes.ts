@@ -7,8 +7,10 @@ import { NOTIF_OBRIGATORIOS } from './notificacoesCatalogo'
 // primeira dispara push; as demais entram no Inbox sem novo ping (anti-spam).
 const JANELA_PUSH = 60
 
-// Para onde o clique na notificação push deve levar, por tipo.
-function urlDaNotificacao(tipo: TipoNotificacao): string {
+// Para onde o clique na notificação push deve levar. Com tarefa, abre a TAREFA (o painel lê
+// /dashboard?tarefa=ID — dono, 20/10/2026: o designer tocava no aviso e caía no painel genérico).
+function urlDaNotificacao(tipo: TipoNotificacao, tarefaId?: string): string {
+  if (tarefaId) return `/dashboard?tarefa=${encodeURIComponent(tarefaId)}`
   if (tipo.startsWith('tarefa_')) return '/dashboard'
   if (tipo === 'mensagem_privada') return '/dashboard'
   return '/dashboard'
@@ -52,7 +54,7 @@ export async function notificar(destinatarioEmail: string, tipo: TipoNotificacao
   // Push (best-effort) com "avisar uma vez só":
   // - obrigatória: sempre pinga e (re)abre a janela, segurando os próximos avisos;
   // - demais: só pinga se o push estiver ligado E for a primeira da janela.
-  const push = { title: titulo, body: mensagem, url: urlDaNotificacao(tipo), tag: notificacao.id }
+  const push = { title: titulo, body: mensagem, url: urlDaNotificacao(tipo, tarefaId), tag: notificacao.id }
   const janelaKey = `push_janela:${destinatarioEmail}`
   if (obrigatoria) {
     await redis.set(janelaKey, '1', { ex: JANELA_PUSH }).catch(() => {})

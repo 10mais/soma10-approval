@@ -264,6 +264,7 @@ export const TEXTOS: Record<string, Entrada> = {
   'barra.expandir': { pt: 'Mostrar as próximas tarefas', en: 'Show upcoming tasks', es: 'Mostrar las próximas tareas' },
   'barra.de-total': { pt: '{n} de {total}', en: '{n} of {total}', es: '{n} de {total}' },
   'barra.subtarefa-de': { pt: 'em {mae}', en: 'in {mae}', es: 'en {mae}' },
+  'barra.ajuste': { pt: 'Ajuste pedido', en: 'Change requested', es: 'Ajuste pedido' },
   'tarefa.data-inicio': { pt: 'Data de início', en: 'Start date', es: 'Fecha de inicio' },
   'tarefa.prazo-final': { pt: 'Prazo final', en: 'Final deadline', es: 'Plazo final' },
   'tarefa.inicio-depois-prazo': { pt: 'A data de início está depois do prazo final.', en: 'The start date is after the final deadline.', es: 'La fecha de inicio es posterior al plazo final.' },

@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import { useEffect, useMemo, useState } from 'react'
 import AvatarPessoa from '@/app/components/AvatarPessoa'
 import { TarefaModal } from '@/app/components/GestaoTarefas'
-import { resumoDaPessoa, fmtMinutos, type TarefaPessoa } from '@/lib/hubPessoa'
+import { resumoDaPessoa, fmtMinutos, producaoDaPessoa, type TarefaPessoa } from '@/lib/hubPessoa'
 import { squadsDaPessoa, labelDoPapel } from '@/lib/squadPapeis'
 import { toast, confirmar } from '@/lib/toast'
 
@@ -112,6 +112,9 @@ export default function CardPessoa() {
 
   // Squads da pessoa: o squad mora no cliente (lista + papéis) — lib/squadPapeis.
   const squads = useMemo(() => squadsDaPessoa(pessoa?.email || email, clientes), [pessoa, email, clientes])
+  // Pautas do Estúdio com a pessoa (dono, 20/10/2026: "O Designer precisa ... visualizar o que
+  // está com ele, em andamento e/ou pendente") — lib/hubPessoa.producaoDaPessoa.
+  const producao = useMemo(() => producaoDaPessoa(tarefas, pessoa?.email || email), [tarefas, pessoa, email])
   const r = useMemo(() => {
     const base = resumoDaPessoa({ email, tarefas, clientesResponsavel: pessoa?.clientesResponsavel, clientesSquad: squads.map(x => x.clienteId) })
     // Quem é do squad aparece primeiro na lista de clientes.
@@ -301,6 +304,19 @@ export default function CardPessoa() {
             </div>
           )}
         </Cartao>
+
+        {/* Produção do Estúdio: ajuste pedido primeiro (o cliente espera), depois o que falta começar */}
+        {producao.ajuste.length + producao.paraProduzir.length + producao.emProducao.length > 0 && (
+          <div style={{ gridColumn: '1 / -1' }}>
+            <Cartao titulo="Produção do Estúdio" destaque={producao.ajuste.length > 0}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <Grupo titulo="Ajuste pedido" itens={producao.ajuste} tom="hot" />
+                <Grupo titulo="Para produzir" itens={producao.paraProduzir} tom="amber" />
+                <Grupo titulo="Em produção" itens={producao.emProducao} />
+              </div>
+            </Cartao>
+          </div>
+        )}
 
         {/* Tarefas */}
         <div style={{ gridColumn: '1 / -1' }}>

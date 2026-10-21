@@ -77,6 +77,14 @@ export function diaDoInstante(valor?: string | null): string {
 /** Prazo do dia: 23:59:59 em Brasília. */
 export const fimDoDiaBR = (ymd: string): string => (ehData(ymd) ? new Date(`${ymd}T23:59:59.000${OFFSET_BR}`).toISOString() : '')
 
+/** O prazo gravado é "de dia" (fim do dia em Brasília, como o modal e o Estúdio gravam)? */
+export const ehFimDoDiaBR = (valor?: string | null): boolean => {
+  const dia = diaDoInstante(valor)
+  if (!dia || ehData(valor || '')) return !!dia
+  const d = new Date(valor!)
+  return !isNaN(d.getTime()) && d.toISOString() === fimDoDiaBR(dia)
+}
+
 /** Início do dia: 00:00 em Brasília. */
 export const inicioDoDiaBR = (ymd: string): string => (ehData(ymd) ? new Date(`${ymd}T00:00:00.000${OFFSET_BR}`).toISOString() : '')
 
