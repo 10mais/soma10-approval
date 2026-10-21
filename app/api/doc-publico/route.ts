@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { redis, Documento } from '@/lib/redis'
 import { checarRate } from '@/lib/rateLimit'
+import { tokenAbreODoc } from '@/lib/tokenLink'
 
 export const runtime = 'nodejs'
 
@@ -13,7 +14,7 @@ async function docDoToken(token: string | null): Promise<Documento | null> {
   const id = await redis.get<string>(`doctoken:${token}`)
   if (!id) return null
   const doc = await redis.get<Documento>(`documento:${id}`)
-  if (!doc || doc.token !== token) return null
+  if (!doc || !tokenAbreODoc(doc, token)) return null // o atual ou um antigo já enviado (lib/tokenLink)
   return doc
 }
 

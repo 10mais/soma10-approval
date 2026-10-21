@@ -4,6 +4,7 @@ import { confirmar, toast } from '@/lib/toast'
 import RichText from './RichText'
 import AvatarCliente from './AvatarCliente'
 import { fecharFora } from '@/lib/fecharModal'
+import { tokenNoFormatoAntigo } from '@/lib/tokenLink'
 
 type ClienteLite = { id: string; nome: string; logo?: string }
 type Doc = { id: string; titulo: string; conteudo: string; token?: string; clienteId?: string; clienteNome?: string; acessoCliente?: 'ver' | 'editar'; acessoLink?: 'ver' | 'editar'; fontSize?: number; criadoPorNome?: string; atualizadoPorNome?: string; atualizadoEm: string; criadoEm: string }
@@ -73,7 +74,9 @@ export default function Documentos({ clientes = [] }: { clientes?: ClienteLite[]
   async function compartilhar() {
     if (!aberto) return
     let token = aberto.token
-    if (!token) {
+    // Link antigo (UUID com traços) quebrava no WhatsApp do iPhone: compartilhar troca pelo curto
+    // (o antigo, já enviado, continua abrindo). lib/tokenLink.
+    if (!token || tokenNoFormatoAntigo(token)) {
       const r = await fetch('/api/documentos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: aberto.id, gerarLink: true }) }).then(x => x.json()).catch(() => null)
       if (!r?.ok) { toast('Falha ao gerar o link.', 'erro'); return }
       token = r.token

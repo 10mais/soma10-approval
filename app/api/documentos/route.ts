@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { redis, Documento } from '@/lib/redis'
 import { clienteSuspenso } from '@/lib/suspensao'
 import { v4 as uuid } from 'uuid'
+import { tokenParaCompartilhar } from '@/lib/tokenLink'
 
 export const runtime = 'nodejs'
 
@@ -94,14 +95,19 @@ export async function PUT(req: NextRequest) {
 
   // Gerar / revogar link público de leitura
   if (gerarLink) {
-    const token = doc.token || uuid()
-    await redis.set(`documento:${id}`, { ...doc, token })
-    await redis.set(`doctoken:${token}`, id)
-    return NextResponse.json({ ok: true, token })
+    // Link CURTO, sem traço (o formato do link de aprovação): o UUID com traços quebrava no
+    // WhatsApp do iPhone (dono, 21/10/2026). O link antigo continua abrindo (tokensAntigos).
+    const novo = tokenParaCompartilhar(doc, uuid)
+    if (novo.mudou) {
+      await redis.set(`documento:${id}`, { ...doc, token: novo.token, ...(novo.tokensAntigos ? { tokensAntigos: novo.tokensAntigos } : {}) })
+      await redis.set(`doctoken:${novo.token}`, id)
+    }
+    return NextResponse.json({ ok: true, token: novo.token })
   }
   if (revogarLink) {
-    if (doc.token) await redis.del(`doctoken:${doc.token}`)
-    await redis.set(`documento:${id}`, { ...doc, token: undefined })
+    // Revogar corta TODOS: o link atual e os antigos.
+    for (const t of [doc.token, ...(doc.tokensAntigos || [])]) if (t) await redis.del(`doctoken:${t}`)
+    await redis.set(`documento:${id}`, { ...doc, token: undefined, tokensAntigos: undefined })
     return NextResponse.json({ ok: true, token: null })
   }
 
@@ -138,6 +144,7 @@ export async function DELETE(req: NextRequest) {
   if (role !== 'admin' && doc.criadoPor && doc.criadoPor !== session.user?.email) {
     return NextResponse.json({ error: 'só o autor ou um admin pode excluir' }, { status: 403 })
   }
+  for (const t of [doc.token, ...(doc.tokensAntigos || [])]) if (t) await redis.del(`doctoken:${t}`) // links do documento morrem junto
   await redis.del(`documento:${id}`)
   await redis.srem('documentos', id)
   return NextResponse.json({ ok: true })

@@ -1380,7 +1380,8 @@ export type Documento = {
   id: string
   titulo: string
   conteudo: string // HTML (RichText)
-  token?: string // link público de leitura (compartilhar externamente)
+  token?: string // link público de leitura (compartilhar externamente) — curto, sem traço (lib/tokenLink)
+  tokensAntigos?: string[] // links antigos (UUID com traços) que já foram enviados e continuam abrindo
   clienteId?: string // atribuído a um cliente (fixa a logomarca no editor)
   clienteNome?: string
   // Compartilhamento com o CLIENTE do documento (estilo Google Docs): ausente =
