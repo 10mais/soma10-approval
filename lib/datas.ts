@@ -30,6 +30,18 @@ export function diasEntre(de: string, ate: string): number {
 
 export const hojeYmd = (): string => paraYmd(new Date())
 
+// N dias ÚTEIS antes (segunda a sexta; feriado não entra). Sexta − 1 útil = quinta; segunda − 1 = sexta.
+export function subtrairDiasUteis(ymd: string, n: number): string {
+  let d = ymd
+  let faltam = Math.max(0, Math.floor(n))
+  while (faltam > 0) {
+    d = somarDias(d, -1)
+    const semana = paraDate(d).getDay()
+    if (semana !== 0 && semana !== 6) faltam--
+  }
+  return d
+}
+
 // pt-BR: '2026-07-27' → '27/07/2026'
 export const fmtDataBR = (ymd?: string): string => (ehData(ymd) ? ymd!.split('-').reverse().join('/') : '')
 

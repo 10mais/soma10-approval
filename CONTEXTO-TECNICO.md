@@ -1156,6 +1156,16 @@ Fluxo linear decidido pelo dono para os criativos: **1. produção da copy (Stud
   a solução foi torná-la top-level). Leva copy na descrição, anexos da pauta E das lâminas,
   responsável = **designer do squad** (`cliente.squadPapeis.designer`), prazo = dataAgendada,
   vínculo pela `origemPostId`. `reabrirTarefaDaPauta` (ajuste do cliente reabre).
+- **ATUALIZADO 20-21/10/2026 (dono: "pautas no estúdio viram uma única tarefa. Cada pauta como
+  subtarefa!"):** o plano do mês é UMA tarefa (`tarefaMaeDoPlano`, `Tarefa.origemPlanoId`,
+  `Plano.tarefaId`) do **Social Media / Copywriter** (papel novo do squad, `donoDoPlano`; vago →
+  gestor de projetos → operação), de 1º do mês até a última postagem; nasce com o plano (POST
+  /api/planos) ou pelo botão "Criar a tarefa do plano" no Estúdio (PUT /api/planos `criarTarefa`).
+  A tarefa do designer volta a ser **SUBTAREFA** dela, com `dataInicio` = dia da aprovação e prazo
+  = **3 dias úteis antes da postagem** (`prazoDoCriativo`, nunca nasce atrasada). O motivo do
+  top-level acima deixou de valer: desde 70237e1 subtarefa cuja mãe não está na tela aparece no
+  quadro/lista (com "↳ mãe") e na barra "Próximas tarefas" do topo (`lib/proximasTarefas`). Pauta
+  sem plano e tarefas antigas seguem top-level (migração = fase 4, com relatório antes).
 - **Ganchos:** copy aprovada em `/api/esteira/aprovar` (aprovar_copy + corrigir_legenda) e
   `/api/decision` (link público, ramo de copy) → etapa criativo + `nascerTarefaDesigner`.
   Concluir a tarefa (PUT `/api/tarefas`, `origemPostId`) → pauta ao Planner como rascunho.

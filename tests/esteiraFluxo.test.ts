@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { aoConcluirTarefa, deveCriarTarefaDesigner, descricaoTarefaDesigner, tituloTarefaMae, tituloSubtarefa, prazoTarefaMae, tipoTarefaDoFormato, revisaoInternaDoCriativo, podeEnviarAoCliente } from '@/lib/esteiraFluxo'
+import { aoConcluirTarefa, deveCriarTarefaDesigner, descricaoTarefaDesigner, tituloTarefaMae, tituloSubtarefa, prazoTarefaMae, tipoTarefaDoFormato, revisaoInternaDoCriativo, podeEnviarAoCliente, prazoDoCriativo, donoDoPlano } from '@/lib/esteiraFluxo'
 import { apareceNoPlanner } from '@/lib/plannerFiltro'
 
 // Linha de montagem Studio > Tarefa > Planner: as transicoes do fluxo.
@@ -234,5 +234,36 @@ describe('revisaoInternaDoCriativo — a aprovacao do criativo e primeiro intern
   it('pauta que ja seguiu (aprovacao do cliente / pronto) nao trava mais', () => {
     expect(revisaoInternaDoCriativo({ etapa: 'aprovacao_criativo', criativoEntregueEm: '2026-09-07T10:00:00.000Z' })).toBe('aprovada')
     expect(revisaoInternaDoCriativo({ etapa: 'pronto', criativoEntregueEm: '2026-09-07T10:00:00.000Z' })).toBe('aprovada')
+  })
+})
+
+// 20/10/2026 (dono): plano do mês = UMA tarefa do Social Media / Copywriter; cada pauta vira
+// subtarefa do designer quando a copy é aprovada, com prazo de 3 dias úteis antes da postagem.
+describe('prazoDoCriativo — 3 dias úteis antes da postagem', () => {
+  it('postagem na sexta 30/10 → terça 27/10; na segunda 02/11 → quarta 28/10 (pula o fim de semana)', () => {
+    expect(prazoDoCriativo('2026-10-30T20:00:00.000Z', '2026-10-20')).toBe('2026-10-27')
+    expect(prazoDoCriativo('2026-11-02T13:00:00.000Z', '2026-10-20')).toBe('2026-10-28')
+  })
+  it('copy aprovada em cima da hora não nasce atrasada: o prazo vira hoje', () => {
+    expect(prazoDoCriativo('2026-10-21T20:00:00.000Z', '2026-10-20')).toBe('2026-10-20')
+    expect(prazoDoCriativo('2026-10-01T20:00:00.000Z', '2026-10-20')).toBe('2026-10-20')
+  })
+  it('a data da postagem é lida no dia de Brasília (postagem às 22h não muda de dia)', () => {
+    // 30/10 às 22h de Brasília = 31/10 01h UTC: continua sendo a postagem de sexta
+    expect(prazoDoCriativo('2026-10-31T01:00:00.000Z', '2026-10-20')).toBe('2026-10-27')
+  })
+  it('sem data de postagem, sem prazo', () => {
+    expect(prazoDoCriativo(undefined, '2026-10-20')).toBe('')
+    expect(prazoDoCriativo('', '2026-10-20')).toBe('')
+  })
+})
+
+describe('donoDoPlano — quem fica com a tarefa do plano do mês', () => {
+  it('Social Media / Copywriter primeiro; vago cai no gestor de projetos, depois na operação', () => {
+    expect(donoDoPlano({ social_media: 'social@x', gestor_projetos: 'gp@x' })).toBe('social@x')
+    expect(donoDoPlano({ gestor_projetos: 'gp@x', gestor_operacao: 'op@x' })).toBe('gp@x')
+    expect(donoDoPlano({ gestor_operacao: 'op@x', designer: 'des@x' })).toBe('op@x')
+    expect(donoDoPlano({ designer: 'des@x' })).toBe('')
+    expect(donoDoPlano(undefined)).toBe('')
   })
 })

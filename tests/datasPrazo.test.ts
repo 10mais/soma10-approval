@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { diaDoInstante, fimDoDiaBR, inicioDoDiaBR, fmtDiaDoInstante, horaBR } from '@/lib/datas'
+import { diaDoInstante, fimDoDiaBR, inicioDoDiaBR, fmtDiaDoInstante, horaBR, subtrairDiasUteis } from '@/lib/datas'
 
 // Dono, 20/10/2026: "Quando criamos tarefa e colocamos DATA, ele automaticamente adiciona mais um
 // dia." O prazo era gravado como 23:59 de Brasília (= dia seguinte em UTC) e a edição lia o dia
@@ -50,5 +50,18 @@ describe('horaBR — o servidor roda em UTC', () => {
     expect(horaBR(Date.parse('2026-10-20T11:00:00Z'))).toBe(8)
     expect(horaBR(Date.parse('2026-10-21T03:00:00Z'))).toBe(0)
     expect(horaBR(Date.parse('2026-10-21T02:59:00Z'))).toBe(23)
+  })
+})
+
+describe('subtrairDiasUteis — segunda a sexta', () => {
+  it('pula sábado e domingo', () => {
+    expect(subtrairDiasUteis('2026-10-30', 1)).toBe('2026-10-29') // sexta − 1 = quinta
+    expect(subtrairDiasUteis('2026-11-02', 1)).toBe('2026-10-30') // segunda − 1 = sexta
+    expect(subtrairDiasUteis('2026-11-02', 3)).toBe('2026-10-28')
+    expect(subtrairDiasUteis('2026-10-31', 1)).toBe('2026-10-30') // sábado − 1 = sexta
+  })
+  it('zero (ou negativo) não anda', () => {
+    expect(subtrairDiasUteis('2026-10-30', 0)).toBe('2026-10-30')
+    expect(subtrairDiasUteis('2026-10-30', -2)).toBe('2026-10-30')
   })
 })

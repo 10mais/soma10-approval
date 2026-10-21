@@ -7,6 +7,7 @@ import { desindexarPost } from '@/lib/postsIndex'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
 import { clientesAtivosIds } from '@/lib/cache'
+import { tarefaMaeDoPlano } from '@/lib/tarefasDaPauta'
 
 export const runtime = 'nodejs'
 
@@ -64,6 +65,9 @@ export async function POST(req: NextRequest) {
   }
   await redis.set(`plano:${plano.id}`, plano)
   await redis.sadd('planos', plano.id)
+  // A tarefa do plano nasce junto (Social Media / Copywriter; dono, 20/10/2026). Falha aqui não
+  // impede o plano: ela nasce na primeira copy aprovada (lib/tarefasDaPauta).
+  await tarefaMaeDoPlano(plano.id, session.user?.name || '').catch(() => null)
   return NextResponse.json({ ok: true, plano })
 }
 
@@ -75,6 +79,12 @@ export async function PUT(req: NextRequest) {
   const { id, ...updates } = await req.json()
   const plano = await redis.get<Plano>(`plano:${id}`)
   if (!plano) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+  // Plano criado antes de 20/10/2026 não tem a tarefa do mês: o Estúdio cria pelo botão.
+  if (updates.criarTarefa) {
+    const tarefaId = await tarefaMaeDoPlano(id, session.user?.name || '').catch(() => null)
+    if (!tarefaId) return NextResponse.json({ error: 'Não foi possível criar a tarefa do plano.' }, { status: 500 })
+    return NextResponse.json({ ok: true, tarefaId })
+  }
   const camposPermitidos = ['titulo', 'mes', 'ano']
   const atualizado: any = { ...plano }
   for (const c of camposPermitidos) if (c in updates) atualizado[c] = updates[c]
@@ -102,6 +112,13 @@ export async function DELETE(req: NextRequest) {
   const plano = await redis.get<Plano>(`plano:${id}`)
   if (!plano) return NextResponse.json({ error: 'plano não encontrado' }, { status: 404 })
 
+  // A tarefa do plano fica para consulta (as subtarefas do designer seguem existindo), com o registro.
+  if (plano.tarefaId) {
+    try {
+      const mae = await redis.get<Tarefa>(`tarefa:${plano.tarefaId}`)
+      if (mae) await redis.set(`tarefa:${mae.id}`, { ...mae, atualizadoEm: new Date().toISOString(), atividades: [...(mae.atividades || []), { id: uuid(), tipo: 'status' as const, descricao: 'Plano do mês excluído no Estúdio', autor: session.user?.name || '', criadoEm: new Date().toISOString() }] })
+    } catch { /* registro é bônus */ }
+  }
   const PRESERVAR = ['publicado', 'publicando', 'falha_publicacao', 'agendado']
   const agora = new Date().toISOString()
   const autor = session.user?.name || ''

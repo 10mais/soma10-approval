@@ -8,9 +8,9 @@
 
 import { redis, Post, Tarefa, Plano, Cliente } from './redis'
 import { v4 as uuid } from 'uuid'
-import { descricaoTarefaDesigner, tituloSubtarefa, tituloTarefaMae, prazoTarefaMae, tipoTarefaDoFormato } from './esteiraFluxo'
+import { descricaoTarefaDesigner, tituloSubtarefa, tituloTarefaMae, prazoTarefaMae, tipoTarefaDoFormato, prazoDoCriativo, donoDoPlano } from './esteiraFluxo'
 import { notificar } from './notificacoes'
-import { fmtDiaDoInstante } from './datas'
+import { fmtDiaDoInstante, diaDoInstante, fimDoDiaBR, inicioDoDiaBR } from './datas'
 import { dispararEvento } from './automacoesEngine'
 
 // Etapa da Esteira -> tipo de tarefa (regra herdada do /api/esteira/relacionar).
@@ -26,38 +26,48 @@ export function tipoPorEtapa(etapa?: string): Tarefa['tipo'] | null {
   }
 }
 
-// Tarefa-mãe LAZY do plano: reutiliza a existente (Plano.tarefaId) ou cria na
-// hora. Devolve o id, ou null se o plano não existir.
+// TAREFA DO PLANO do mês (a "mãe" das pautas): reutiliza a existente (Plano.tarefaId) ou cria.
+// Dono, 20/10/2026: "pautas no estúdio viram uma única tarefa. Cada pauta como subtarefa!" — a
+// tarefa do plano fica com o Social Media / Copywriter do squad (donoDoPlano) e vai do dia 1 do
+// mês até a última postagem; cada pauta entra como subtarefa do designer quando a copy é
+// aprovada (nascerTarefaDesigner). Nasce junto com o plano (POST /api/planos) e, para plano
+// antigo, na primeira copy aprovada. Devolve o id, ou null se o plano não existir.
 export async function tarefaMaeDoPlano(planoId: string, autor: string): Promise<string | null> {
   const plano = await redis.get<Plano>(`plano:${planoId}`)
   if (!plano) return null
   if (plano.tarefaId) {
     const t = await redis.get<Tarefa>(`tarefa:${plano.tarefaId}`)
-    if (t) return plano.tarefaId
-    // tarefa-mãe apagada: cria outra e regrava o vínculo
+    if (t && !(t as any).excluidoEm) return plano.tarefaId
+    // tarefa do plano apagada (ou na lixeira): cria outra e regrava o vínculo
   }
   const pautaIds = await redis.smembers(`plano:${planoId}:pautas`)
   const pautas = pautaIds.length > 0
     ? ((await redis.mget<(Post | null)[]>(...pautaIds.map(pid => `post:${pid}`))).filter(Boolean) as Post[])
     : []
   const agora = new Date().toISOString()
+  const cliente = plano.clienteId ? await redis.get<Cliente>(`cliente:${plano.clienteId}`).catch(() => null) : null
+  const donoEmail = donoDoPlano(cliente?.squadPapeis)
+  const donoNome = donoEmail ? ((await redis.get<{ nome?: string }>(`usuario:${donoEmail}`).catch(() => null))?.nome || '') : ''
+  const fimDoPlano = prazoTarefaMae(pautas, plano)
   const mae: Tarefa = {
     id: uuid(),
     titulo: tituloTarefaMae(plano),
-    descricao: '<p>Tarefa do plano de conteúdo. Cada pauta entra como subtarefa quando a copy é aprovada pelo cliente.</p>',
+    descricao: '<p>Plano de conteúdo do mês, com o Social Media / Copywriter. Cada pauta entra aqui como subtarefa do designer quando a copy é aprovada, com prazo de 3 dias úteis antes da postagem.</p>',
     tipo: 'planejamento',
     status: 'a_fazer',
     prioridade: 'media',
-    responsavelEmail: '',
-    responsavelNome: '',
+    responsavelEmail: donoEmail,
+    responsavelNome: donoNome,
     clienteId: plano.clienteId || '',
     clienteNome: plano.clienteNome || '',
     marcoId: '',
-    prazo: prazoTarefaMae(pautas, plano),
+    dataInicio: inicioDoDiaBR(`${plano.ano}-${String(plano.mes).padStart(2, '0')}-01`),
+    prazo: fimDoDiaBR(diaDoInstante(fimDoPlano)) || fimDoPlano,
+    origemPlanoId: plano.id,
     criadoPor: autor,
     criadoEm: agora,
     atualizadoEm: agora,
-    atividades: [{ id: uuid(), tipo: 'criacao', descricao: 'Tarefa do plano criada automaticamente (primeira copy aprovada)', autor, criadoEm: agora }],
+    atividades: [{ id: uuid(), tipo: 'criacao', descricao: 'Tarefa do plano do mês criada automaticamente', autor, criadoEm: agora }],
     comentarios: [],
   }
   await redis.set(`tarefa:${mae.id}`, mae)
@@ -154,10 +164,14 @@ export async function nascerTarefaDesigner(postId: string, autor: string, opts: 
   }
   const anexosSub = anexosDaPauta(post)
 
-  // TOP-LEVEL de propósito: a tarefa do designer PRECISA aparecer no kanban de
-  // produção — e o kanban esconde subtarefas (filtro !tarefaPaiId). Antes ela
-  // nascia como subtarefa da "tarefa-mãe do plano" e ficava invisível: parecia
-  // que "não chegava à produção". O vínculo com a pauta é o origemPostId.
+  // SUBTAREFA da tarefa do plano (dono, 20/10/2026: "Cada pauta como subtarefa!"). Em julho ela
+  // nasceu assim e ficou INVISÍVEL — o kanban escondia subtarefas e "a copy aprovada não chegava
+  // na produção"; por isso ficou top-level. Desde 70237e1 a subtarefa da pessoa aparece no quadro,
+  // na lista e na barra do topo mesmo quando a mãe é de outra pessoa. Pauta fora de plano segue
+  // top-level. Prazo: 3 dias úteis antes da postagem (prazoDoCriativo); início: hoje.
+  const maeId = post.planoId ? await tarefaMaeDoPlano(post.planoId, autor).catch(() => null) : null
+  const hoje = diaDoInstante(agora)
+  const prazoCriativo = prazoDoCriativo(post.dataAgendada, hoje)
   const sub: Tarefa = {
     id: uuid(),
     titulo: tituloSubtarefa(post),
@@ -173,7 +187,9 @@ export async function nascerTarefaDesigner(postId: string, autor: string, opts: 
     clienteId: post.clienteId || '',
     clienteNome: post.clienteNome || '',
     marcoId: post.marcoId || '',
-    prazo: post.dataAgendada || '',
+    ...(maeId ? { tarefaPaiId: maeId } : {}),
+    dataInicio: inicioDoDiaBR(hoje),
+    prazo: prazoCriativo ? fimDoDiaBR(prazoCriativo) : '',
     ...(anexosSub.length ? { anexos: anexosSub } : {}),
     origemPostId: post.id,
     criadoPor: autor,

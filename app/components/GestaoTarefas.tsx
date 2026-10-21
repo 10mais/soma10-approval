@@ -1341,7 +1341,8 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
     }
     // Vinculo obrigatorio: tarefa de um cliente precisa de uma etapa do Playbook
     // Pauta vinculada dispensa a etapa do Playbook: a tarefa de produção nasce da esteira.
-    if (!PERFIL_CLINICA_TAREFAS && form.clienteId && !form.marcoId && !form.origemPostId) { toast(tr('tarefa.vincule-marco'), 'erro'); return }
+    // A tarefa do PLANO do mês (nasce do Estúdio, origemPlanoId) também dispensa: quem a edita não pode ser travado.
+    if (!PERFIL_CLINICA_TAREFAS && form.clienteId && !form.marcoId && !form.origemPostId && !(tarefa as any)?.origemPlanoId) { toast(tr('tarefa.vincule-marco'), 'erro'); return }
     if (form.dataInicio && form.prazo && form.dataInicio > form.prazo) { toast(tr('tarefa.inicio-depois-prazo'), 'erro'); return }
     setSalvando(true)
     const resp = (usuarios || []).find(u => u.email === form.responsavelEmail)

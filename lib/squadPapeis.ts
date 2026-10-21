@@ -10,11 +10,13 @@
 // automaticamente ao salvar — estar no papel É estar no squad. Quem não ocupa
 // papel nenhum pode continuar na lista à mão.
 
-export type PapelSquad = 'designer' | 'gestor_projetos' | 'gestor_operacao' | 'gestor_trafego'
+export type PapelSquad = 'designer' | 'gestor_projetos' | 'gestor_operacao' | 'social_media' | 'gestor_trafego'
 
 export const PAPEIS_SQUAD: { chave: PapelSquad; label: string; descricao: string }[] = [
   { chave: 'gestor_projetos', label: 'Gestor de projetos', descricao: 'Conduz o projeto e responde pelos prazos.' },
   { chave: 'gestor_operacao', label: 'Gestor da operação', descricao: 'Toca a operação do dia a dia do cliente.' },
+  // Dono, 20/10/2026: a tarefa do plano do mês (Estúdio) fica com quem escreve as copies.
+  { chave: 'social_media', label: 'Social Media / Copywriter', descricao: 'Escreve as copies e conduz o plano de conteúdo do mês.' },
   { chave: 'designer', label: 'Designer', descricao: 'Produz criativos e peças da marca.' },
   { chave: 'gestor_trafego', label: 'Gestor de tráfego', descricao: 'Cuida das campanhas pagas.' },
 ]
@@ -37,7 +39,7 @@ export function squadCompleto(papeis?: SquadPapeis, manuais?: string[]): string[
   return Array.from(new Set(emails))
 }
 
-// Sanitiza o que veio do cliente HTTP: só as 4 chaves conhecidas, só string.
+// Sanitiza o que veio do cliente HTTP: só as chaves conhecidas, só string.
 export function limparSquadPapeis(bruto: any): SquadPapeis {
   const limpo: SquadPapeis = {}
   for (const p of PAPEIS_SQUAD) {

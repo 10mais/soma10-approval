@@ -1,4 +1,5 @@
 'use client'
+import { useRouter } from 'next/navigation'
 import { tarefaDaPauta, tarefaAberta, anexosCriativoPronto, STATUS_TAREFA_LABEL } from '@/lib/producaoVinculo'
 import { revisaoInternaDoCriativo, podeEnviarAoCliente } from '@/lib/esteiraFluxo'
 import { emRodadaDeAjuste } from '@/lib/rodadaAjuste'
@@ -200,6 +201,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   meuEmail?: string
 }) {
   const tr = useT()
+  const router = useRouter()
   const area = useArea()
   const [planos, setPlanos] = useState<Plano[]>([])
   // Seleção persistida (ao atualizar a página, permanece no mesmo lugar).
@@ -516,7 +518,20 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const [acaoPauta, setAcaoPauta] = useState<string | null>(null)
   // Tarefas de produção: para mostrar, em cada pauta, o estado da tarefa vinculada.
   const [tarefasVinc, setTarefasVinc] = useState<any[]>([])
-  useEffect(() => { fetch('/api/tarefas').then(r => r.ok ? r.json() : []).then(d => setTarefasVinc(Array.isArray(d) ? d : [])).catch(() => {}) }, [])
+  const carregarTarefasVinc = () => fetch('/api/tarefas').then(r => r.ok ? r.json() : []).then(d => setTarefasVinc(Array.isArray(d) ? d : [])).catch(() => {})
+  // Recarrega ao trocar de plano: a tarefa do plano nasce junto com ele (servidor).
+  useEffect(() => { carregarTarefasVinc() }, [planoSel])
+  const [criandoTarefaPlano, setCriandoTarefaPlano] = useState(false)
+  async function criarTarefaDoPlano() {
+    if (!planoSel) return
+    setCriandoTarefaPlano(true)
+    const r = await fetch('/api/planos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: planoSel, criarTarefa: true }) }).then(x => x.json()).catch(() => null)
+    setCriandoTarefaPlano(false)
+    if (!r?.ok) { toast(r?.error || tr('est.falha-tarefa-plano'), 'erro'); return }
+    setPlanos(ps => ps.map(p => p.id === planoSel ? { ...p, tarefaId: r.tarefaId } as any : p))
+    carregarTarefasVinc()
+    toast(tr('est.tarefa-plano-criada'), 'sucesso')
+  }
   async function aprovarCopyInterno(p: Pauta) {
     const ok = await confirmar('Aprovar a copy internamente, sem esperar o cliente? A pauta avança para Criativo e a tarefa do designer é criada.', { titulo: 'Aprovar internamente', okLabel: 'Aprovar copy' })
     if (!ok) return
@@ -1207,6 +1222,43 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           {iaMsg}
         </div>
       )}
+
+      {/* TAREFA DO PLANO (dono, 20/10/2026: "pautas no estúdio viram uma única tarefa. Cada pauta
+          como subtarefa!"). O mês é UMA tarefa do Social Media / Copywriter; cada pauta vira subtarefa
+          do designer quando a copy é aprovada (lib/tarefasDaPauta). Squad sem designer = pauta sem
+          responsável e ninguém avisado: o aviso fica em vermelho aqui. */}
+      {planoSel && !carregando && !mostrarLixeira && (() => {
+        const plano: any = planos.find(p => p.id === planoSel)
+        if (!plano) return null
+        const cli: any = (clientes || []).find((c: any) => c.id === (plano.clienteId || clienteSel || clienteFixo))
+        const papeis = cli?.squadPapeis || {}
+        const mae = plano.tarefaId ? tarefasVinc.find(t => t.id === plano.tarefaId) : null
+        const subs = mae ? tarefasVinc.filter(t => t.tarefaPaiId === mae.id && t.status !== 'descartado') : []
+        const prontas = subs.filter(t => t.status === 'concluido').length
+        const semDesigner = !String(papeis.designer || '').trim()
+        const semSocial = !String(papeis.social_media || '').trim()
+        return (
+          <div style={{ background: 'var(--v2-surface)', border: '1px solid var(--v2-rule)', borderRadius: 14, padding: '12px 16px', marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}><path d="M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
+              <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{tr('est.tarefa-plano')}</span>
+              {mae ? (<>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mae.titulo}</span>
+                <span style={{ fontSize: 12.5, color: mae.responsavelNome ? 'var(--v2-ink2)' : 'var(--v2-hot)', fontWeight: 600 }}>{mae.responsavelNome ? tr('est.com-pessoa', { nome: mae.responsavelNome }) : tr('est.sem-responsavel')}</span>
+                {subs.length > 0 && <span style={{ fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('est.subtarefas-prontas', { n: prontas, total: subs.length })}</span>}
+                <button type="button" onClick={() => router.push(`/dashboard?tarefa=${encodeURIComponent(mae.id)}`)}
+                  style={{ marginLeft: 'auto', padding: '6px 12px', borderRadius: 8, border: '1.5px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{tr('est.abrir-tarefa')}</button>
+              </>) : (<>
+                <span style={{ fontSize: 12.5, color: 'var(--v2-ink3)' }}>{tr('est.tarefa-plano-nasce')}</span>
+                {podeEditar && <button type="button" onClick={criarTarefaDoPlano} disabled={criandoTarefaPlano}
+                  style={{ marginLeft: 'auto', padding: '6px 12px', borderRadius: 8, border: 'none', background: 'var(--v2-ink)', color: 'var(--v2-surface)', fontSize: 12, fontWeight: 700, cursor: criandoTarefaPlano ? 'progress' : 'pointer', fontFamily: 'inherit', opacity: criandoTarefaPlano ? 0.6 : 1 }}>{tr('est.criar-tarefa-plano')}</button>}
+              </>)}
+            </div>
+            {semDesigner && <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--v2-hot)' }}>{tr('est.sem-designer')}</p>}
+            {semSocial && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-amber)' }}>{tr('est.sem-social')}</p>}
+          </div>
+        )
+      })()}
 
       {/* Barra de métricas — taxa de edição (payoff da Fase 0) */}
       {planoSel && pautas.length > 0 && (

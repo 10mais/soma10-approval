@@ -18,6 +18,12 @@ describe('responsavelPorTipo — squad do cliente decide quem recebe a tarefa', 
     expect(responsavelPorTipo({}, 'criativo')).toBe('')
     expect(responsavelPorTipo(undefined, 'criativo')).toBe('')
   })
+  it('copy e briefing vão para o Social Media / Copywriter (papel novo, 20/10/2026)', () => {
+    const comSocial = { ...squad, social_media: 'social@x' }
+    expect(responsavelPorTipo(comSocial, 'copy')).toBe('social@x')
+    expect(responsavelPorTipo(comSocial, 'briefing')).toBe('social@x')
+    expect(responsavelPorTipo(comSocial, 'carrossel')).toBe('des@x') // arte continua com o designer
+  })
   it('tipo desconhecido (custom) vai para o gestor de projetos', () => {
     expect(papelDoTipo('meu_tipo_custom')).toBe('gestor_projetos')
     expect(responsavelPorTipo(squad, 'meu_tipo_custom')).toBe('gp@x')

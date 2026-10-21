@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { PAPEIS_SQUAD, squadCompleto, limparSquadPapeis, labelDoPapel, squadsDaPessoa } from '@/lib/squadPapeis'
 
 describe('PAPEIS_SQUAD', () => {
-  it('tem os quatro papéis, com chave única', () => {
+  it('tem os cinco papéis (Social Media / Copywriter entrou em 20/10/2026), com chave única', () => {
     const chaves = PAPEIS_SQUAD.map(p => p.chave)
-    expect(chaves.sort()).toEqual(['designer', 'gestor_operacao', 'gestor_projetos', 'gestor_trafego'])
-    expect(new Set(chaves).size).toBe(4)
+    expect(chaves.sort()).toEqual(['designer', 'gestor_operacao', 'gestor_projetos', 'gestor_trafego', 'social_media'])
+    expect(new Set(chaves).size).toBe(5)
   })
 
   it('todo papel tem label e descrição', () => {

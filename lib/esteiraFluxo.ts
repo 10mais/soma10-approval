@@ -10,6 +10,13 @@
 //   3. tarefa concluida -> pauta vai pro PLANNER COMO RASCUNHO (aoConcluirTarefa)
 //   4. aprovacao do criativo segue o fluxo normal do Planner
 //
+// 20/10/2026 (dono): o plano do mês vira UMA tarefa (a "mãe", do Social Media / Copywriter) e
+// cada pauta vira SUBTAREFA do designer quando a copy é aprovada, com prazo de 3 dias úteis
+// antes da postagem. A subtarefa aparece no quadro e na barra do topo (70237e1) — em julho ela
+// ficava invisível. Memória: proj-estudio-tarefa-unica.
+import { diaDoInstante, subtrairDiasUteis } from './datas'
+import type { SquadPapeis } from './squadPapeis'
+
 // A automacao nunca tira o controle do humano: concluir/reabrir tarefa fora da
 // etapa certa nao mexe na pauta, e nada aqui regride etapa.
 
@@ -127,6 +134,27 @@ export function prazoTarefaMae(pautas: { dataAgendada?: string }[], plano: { mes
   if (max) return max
   // Date.UTC(ano, mes, 0): dia zero do mes SEGUINTE = ultimo dia do mes do plano (mes e 1-12).
   return new Date(Date.UTC(plano.ano, plano.mes, 0, 23, 59, 0)).toISOString()
+}
+
+// PRAZO FINAL do criativo (subtarefa do designer): 3 dias ÚTEIS antes da postagem — sobra tempo
+// para a revisão interna e a aprovação do cliente (dono, 20/10/2026). Copy aprovada em cima da
+// hora não nasce atrasada: o prazo vira HOJE. Sem data de postagem, sem prazo. Devolve AAAA-MM-DD.
+export const DIAS_UTEIS_ANTES_DA_POSTAGEM = 3
+export function prazoDoCriativo(dataPostagem: string | undefined, hoje: string): string {
+  const dia = diaDoInstante(dataPostagem)
+  if (!dia) return ''
+  const alvo = subtrairDiasUteis(dia, DIAS_UTEIS_ANTES_DA_POSTAGEM)
+  return alvo < hoje ? hoje : alvo
+}
+
+// DONO da tarefa do plano: o Social Media / Copywriter do squad (dono, 20/10/2026). Papel vago
+// cai no gestor de projetos, depois no gestor da operação (mesma cadeia do responsavelPorTipo).
+export function donoDoPlano(papeis?: SquadPapeis | null): string {
+  for (const p of ['social_media', 'gestor_projetos', 'gestor_operacao'] as const) {
+    const e = (papeis?.[p] || '').trim()
+    if (e) return e
+  }
+  return ''
 }
 
 // REVISÃO INTERNA do criativo (dono, 07/09: "a aprovação do criativo é primeiro

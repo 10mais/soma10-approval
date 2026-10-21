@@ -953,6 +953,7 @@ export type Tarefa = {
   apontamentos?: Apontamento[] // horas trabalhadas (apontamento de tempo)
   checklist?: { id: string; texto: string; feito: boolean }[] // Definition of Done por tipo
   origemPostId?: string // pauta da Esteira que originou esta tarefa (vinculo)
+  origemPlanoId?: string // tarefa DO PLANO do mês (mãe das pautas do Estúdio; Plano.tarefaId aponta de volta)
   origemBriefingId?: string // briefing de campanha que originou esta tarefa (vinculo)
   documentoId?: string // documento interno vinculado à tarefa
   mapaId?: string // mapa mental vinculado à tarefa

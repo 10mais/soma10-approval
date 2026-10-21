@@ -14,8 +14,10 @@ export const PAPEL_POR_TIPO: Record<string, PapelSquad> = {
   criativo: 'designer', carrossel: 'designer', reel: 'designer', story: 'designer', post: 'designer', video: 'designer', landing_page: 'designer',
   // mídia paga
   campanha: 'gestor_trafego', ecommerce: 'gestor_trafego',
-  // texto, planejamento e o resto
-  copy: 'gestor_projetos', briefing: 'gestor_projetos', planejamento: 'gestor_projetos', estrategia: 'gestor_projetos', tarefa: 'gestor_projetos',
+  // texto: quem escreve as copies (papel novo, 20/10/2026); vago cai no gestor de projetos
+  copy: 'social_media', briefing: 'social_media',
+  // planejamento e o resto
+  planejamento: 'gestor_projetos', estrategia: 'gestor_projetos', tarefa: 'gestor_projetos',
 }
 
 export function papelDoTipo(tipo?: string): PapelSquad {
