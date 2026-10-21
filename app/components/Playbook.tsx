@@ -389,7 +389,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   function abrirModelos() {
     setEscolhendoModelo(true)
     if (templates === null) fetch('/api/templates').then(r => r.json()).then(d => setTemplates(Array.isArray(d) ? d : [])).catch(() => setTemplates([]))
-    if (!equipe.length) fetch('/api/usuarios').then(r => r.json()).then(d => setEquipe(Array.isArray(d) ? d : [])).catch(() => {})
+    if (!equipe.length) fetch('/api/equipe').then(r => r.json()).then(d => setEquipe(Array.isArray(d) ? d : [])).catch(() => {}) // roster seguro: todo papel da equipe lê
   }
   const [refDate, setRefDate] = useState(new Date())
   // DUAS VISÕES sobre os MESMOS dados (dono, 14/09: "lista e Gantt, 100% integrados"): as duas
@@ -448,7 +448,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   useEffect(() => {
     if (somenteLeitura) return
     carregarTarefas()
-    if (!usuarios.length) fetch('/api/usuarios').then(r => r.ok ? r.json() : []).then(d => setUsuarios(Array.isArray(d) ? d : [])).catch(() => {})
+    if (!usuarios.length) fetch('/api/equipe').then(r => r.ok ? r.json() : []).then(d => setUsuarios(Array.isArray(d) ? d : [])).catch(() => {}) // roster seguro: todo papel da equipe lê
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clienteAtivo, somenteLeitura])
   useEffect(() => {

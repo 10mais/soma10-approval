@@ -8,6 +8,7 @@ import AvatarCliente from '@/app/components/AvatarCliente'
 import { fecharFora } from '@/lib/fecharModal'
 import { nomeDaArea } from '@/lib/i18n'
 import { useIdioma } from '@/app/components/Idioma'
+import { usePermissoes } from '@/app/components/usePermissoes'
 
 // HUB DO CLIENTE (decisão do dono, 06/09/2026): "clico em um cliente, abre um
 // menu e mostra tudo o que está atribuído a ele". Esta é a casa do cliente
@@ -102,7 +103,10 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
   const { idioma } = useIdioma()
   const clienteId = params.clienteId as string
   const role = (session?.user as any)?.role
-  const ehEquipe = role === 'admin' || role === 'gerente'
+  // Equipe = admin, gerente E colaborador (usuario). Antes o colaborador recebia o hub do CLIENTE
+  // e voltava ao início ao abrir Studio/Tarefas (dono, 21/10/2026: "o Perfil da Ana ainda tem
+  // erros de permissões"). Telas da equipe seguem a matriz do painel (lib/permissoesHub).
+  const { ehEquipe, podeTela, pronto: permPronta } = usePermissoes()
   const [cliente, setCliente] = useState<any>(null)
   const [clientes, setClientes] = useState<{ id: string; nome: string }[]>([])
 
@@ -135,6 +139,12 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
     const permitido = GRUPOS_CLIENTE[0].itens.some(i => i.key === subpath && clientePode(i.perm) && moduloOk(i.modulo))
     if (subpath && !permitido) router.replace(basePath)
   }, [cliente, subpath, ehEquipe, role]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Guard da equipe: tela que a matriz (ou as permissões detalhadas) esconde volta ao Início, como no painel.
+  useEffect(() => {
+    if (!ehEquipe || !permPronta || !subpath) return
+    if (!podeTela(subpath)) router.replace(basePath)
+  }, [ehEquipe, permPronta, subpath]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pendências de aprovação (selo no menu)
   const [pendentes, setPendentes] = useState(0)
@@ -170,7 +180,9 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
     )
   }
 
-  const grupos = (ehEquipe ? GRUPOS_EQUIPE : GRUPOS_CLIENTE).map(g => ({ ...g, itens: g.itens.filter(i => clientePode(i.perm) && moduloOk(i.modulo)) }))
+  const grupos = (ehEquipe ? GRUPOS_EQUIPE : GRUPOS_CLIENTE)
+    .map(g => ({ ...g, itens: g.itens.filter(i => clientePode(i.perm) && moduloOk(i.modulo) && (!ehEquipe || podeTela(i.key))) }))
+    .filter(g => g.itens.length > 0)
   const ativo = (key: string) => key === '' ? subpath === '' : subpath === key || subpath.startsWith(key + '/')
   const primeiroNome = (session?.user?.name || '').split(' ')[0]
 

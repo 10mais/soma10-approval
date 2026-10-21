@@ -6,6 +6,7 @@ import { confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
 import OnboardingConfig from '@/app/components/OnboardingConfig'
 import type { ItemOnboarding, FaseCliente, FaseChecklist } from '@/lib/faseCliente'
+import { ehEquipeDoHub } from '@/lib/permissoesHub'
 
 // ONBOARDING — o momento exclusivo por que TODO cliente passa antes de "Em
 // produção" (pedido do dono, 07/09/2026). A tela só mostra e pede: o checklist
@@ -27,7 +28,7 @@ export default function OnboardingCliente() {
   const router = useRouter()
   const { data: session } = useSession()
   const role = (session?.user as any)?.role
-  const ehEquipe = role === 'admin' || role === 'gerente'
+  const ehEquipe = ehEquipeDoHub(role) // admin, gerente e colaborador (lib/permissoesHub)
   const base = `/cliente/${clienteId}`
 
   const [e, setE] = useState<Estado | null>(null)

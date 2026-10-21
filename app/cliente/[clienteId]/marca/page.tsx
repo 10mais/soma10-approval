@@ -9,6 +9,7 @@ import FontesMarca from '../../../components/FontesMarca'
 import ProdutosServicos from '../../../components/ProdutosServicos'
 import BenchmarksMarca from '../../../components/BenchmarksMarca'
 import { useArea } from '@/app/components/Idioma'
+import { ehEquipeDoHub } from '@/lib/permissoesHub'
 
 const CAMPOS: { key: string; label: string; placeholder: string; area?: boolean }[] = [
   { key: 'segmento', label: 'Segmento / Nicho', placeholder: 'Ex.: Clínica de fisioterapia' },
@@ -26,7 +27,7 @@ export default function MarcaPage() {
   const role = (session?.user as any)?.role
   const [viewAs, setViewAs] = useState(false)
   useEffect(() => { setViewAs(isViewAsClient()) }, [])
-  const ehEquipe = (role === 'admin' || role === 'gerente') && !viewAs
+  const ehEquipe = ehEquipeDoHub(role) && !viewAs // admin, gerente e colaborador (lib/permissoesHub)
 
   const [cliente, setCliente] = useState<any>(null)
   const [form, setForm] = useState<any>({})

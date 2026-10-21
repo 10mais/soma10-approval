@@ -8,6 +8,7 @@ import { fraseDaBola, type BolaDaVez } from '@/lib/bolaDaVez'
 import ComunicacaoDiaria from '@/app/components/ComunicacaoDiaria'
 import MetricasAds from '@/app/components/MetricasAds'
 import { candidatosDoDia, diasUteisSemComunicar, type Comunicado } from '@/lib/comunicacao'
+import { ehEquipeDoHub } from '@/lib/permissoesHub'
 
 // INÍCIO DO HUB: tudo o que está atribuído ao cliente, numa tela — bola da vez,
 // aprovações paradas, próximas publicações, tarefas abertas, pautas do mês,
@@ -85,7 +86,7 @@ export default function HubCliente() {
   const router = useRouter()
   const { data: session } = useSession()
   const role = (session?.user as any)?.role
-  const ehEquipe = role === 'admin' || role === 'gerente'
+  const ehEquipe = ehEquipeDoHub(role) // admin, gerente e colaborador (lib/permissoesHub)
   const base = `/cliente/${clienteId}`
 
   const [cliente, setCliente] = useState<any>(null)
