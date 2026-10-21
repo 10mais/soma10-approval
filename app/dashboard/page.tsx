@@ -1,6 +1,6 @@
 'use client'
 import { useSession, signOut } from 'next-auth/react'
-import { useEffect, useRef, useState, Suspense } from 'react'
+import { useCallback, useEffect, useRef, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { ABAS_PERM, ACOES_PERM, podeAbaGranular, podeAcaoGranular } from '@/lib/permissoesGranular'
@@ -25,6 +25,7 @@ import { PAPEIS_SQUAD } from '@/lib/squadPapeis'
 import Calendar from '../components/Calendar'
 import PostComposer from '../components/PostComposer'
 import ConectarRedesModal from '../components/ConectarRedesModal'
+import BarraProximasTarefas from '../components/BarraProximasTarefas'
 import UploadProgress from '../components/UploadProgress'
 import NotificacoesConfig from '../components/NotificacoesConfig'
 import OperacionalConfig from '../components/OperacionalConfig'
@@ -626,6 +627,21 @@ function Dashboard() {
   }, [aba, status])
   // Sidebar recolhida (rail só com ícones) — preferência lembrada entre sessões
   const [recolhida, setRecolhida] = useState(false)
+  // Largura do cluster flutuante do topo-direito: a barra "Próximas tarefas" ocupa a faixa do
+  // topo ENTRE o menu e o cluster, sem passar por baixo dele (admin tem o "ver como", é mais largo).
+  // Ref de CALLBACK: o cluster só aparece depois da sessão carregar (o painel devolve o splash antes).
+  const [clusterTopoLarg, setClusterTopoLarg] = useState(420)
+  const roClusterTopo = useRef<ResizeObserver | null>(null)
+  const clusterTopoRef = useCallback((el: HTMLDivElement | null) => {
+    roClusterTopo.current?.disconnect()
+    roClusterTopo.current = null
+    if (!el) return
+    setClusterTopoLarg(el.offsetWidth)
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => setClusterTopoLarg(el.offsetWidth))
+    ro.observe(el)
+    roClusterTopo.current = ro
+  }, [])
   useEffect(() => { try { setRecolhida(localStorage.getItem('sidebarRecolhida') === '1') } catch {} }, [])
   function alternarRecolhida() { setRecolhida(v => { const n = !v; try { localStorage.setItem('sidebarRecolhida', n ? '1' : '0') } catch {}; return n }) }
   // Responsivo: no celular a sidebar vira drawer (menu hamburguer)
@@ -779,6 +795,9 @@ function Dashboard() {
   useEffect(() => {
     const pagesId = searchParams.get('meta_pages')
     const erro = searchParams.get('meta_error')
+    // /dashboard?tarefa=ID — a barra "Próximas tarefas" fora do painel (Equipe, hub do cliente) abre por aqui.
+    const tarefaLink = searchParams.get('tarefa')
+    if (tarefaLink) abrirTarefaPorId(tarefaLink)
     if (pagesId) {
       setAba('clientes')
       setMetaClienteAlvo(searchParams.get('meta_cliente') || '')
@@ -821,7 +840,7 @@ function Dashboard() {
     }
     // Consome os params UMA vez. Sem isto a URL segue com ?meta_pages/?meta_error
     // e todo refresh re-dispara este efeito, jogando de volta em Clientes.
-    if ((pagesId || erro || ytOk || ytErro) && typeof window !== 'undefined') {
+    if ((pagesId || erro || ytOk || ytErro || tarefaLink) && typeof window !== 'undefined') {
       window.history.replaceState({}, '', '/dashboard')
     }
   }, [searchParams])
@@ -1897,7 +1916,7 @@ function Dashboard() {
       `}</style>
       {splash && <SplashRegra pronto={true} onFim={() => setSplash(false)} tema={tema} />}
       {/* Controles flutuantes (topo-direito) — substitui a antiga barra preta */}
-      <div className="soma10-v2 soma10-no-invert" data-theme={tema === 'escuro' ? 'dark' : 'light'} style={{ position: 'fixed', top: mobile ? 'calc(12px + env(safe-area-inset-top))' : 14, right: mobile ? 12 : 18, zIndex: 120, display: 'flex', alignItems: 'center', background: 'var(--v2-surface)', color: 'var(--v2-ink)', borderRadius: 999, padding: '6px 12px', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', border: '1px solid var(--v2-rule)' }}>
+      <div ref={clusterTopoRef} className="soma10-v2 soma10-no-invert" data-theme={tema === 'escuro' ? 'dark' : 'light'} style={{ position: 'fixed', top: mobile ? 'calc(12px + env(safe-area-inset-top))' : 14, right: mobile ? 12 : 18, zIndex: 120, display: 'flex', alignItems: 'center', background: 'var(--v2-surface)', color: 'var(--v2-ink)', borderRadius: 999, padding: '6px 12px', boxShadow: '0 6px 20px rgba(0,0,0,0.12)', border: '1px solid var(--v2-rule)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {/* Alternar modo claro/escuro */}
           <button onClick={alternarTema} title={tema === 'escuro' ? tr('dash.mudar-claro') : tr('dash.mudar-escuro')} style={{
@@ -1985,6 +2004,19 @@ function Dashboard() {
           <button onClick={() => signOut()} style={{ background: 'none', border: '1.5px solid var(--v2-rule)', borderRadius: 8, padding: '4px 12px', cursor: 'pointer', fontSize: 12, fontWeight: 600, color: 'var(--v2-ink2)' }}>{tr('topo.sair')}</button>
         </div>
       </div>
+
+      {/* PRÓXIMAS TAREFAS (dono, 20/10) — na faixa do topo que o conteúdo já reserva (70px),
+          entre o menu e o cluster do topo-direito. Clicar abre a tarefa aqui mesmo. */}
+      {(() => {
+        const esquerda = mobile ? 62 : (recolhida ? 66 : 232) + 28
+        const direita = clusterTopoLarg + (mobile ? 12 : 18) + 12
+        return (
+          <BarraProximasTarefas onAbrir={abrirTarefaPorId} tema={tema === 'escuro' ? 'escuro' : 'claro'} estilo={{
+            position: 'fixed', top: mobile ? 'calc(12px + env(safe-area-inset-top))' : 14, left: esquerda,
+            width: `calc(100vw - ${esquerda + direita}px)`, zIndex: 119,
+          }} />
+        )
+      })()}
 
       {/* Menu hamburguer (mobile) — abre o drawer da sidebar */}
       {mobile && !menuMobile && (

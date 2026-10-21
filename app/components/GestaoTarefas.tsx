@@ -16,6 +16,7 @@ import UploadProgress from './UploadProgress'
 import { fecharFora } from '@/lib/fecharModal'
 import { ehTarefaDeProducao, anexosCriativoPronto, avisoAoConcluir } from '@/lib/producaoVinculo'
 import { useT } from '@/app/components/Idioma'
+import { avisarTarefasMudaram } from './BarraProximasTarefas'
 import { TEXTOS } from '@/lib/i18n'
 import { diaDoInstante, fimDoDiaBR, inicioDoDiaBR, fmtDiaDoInstante, fmtDataBR } from '@/lib/datas'
 
@@ -439,6 +440,7 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
 
   function carregar() {
     fetch('/api/tarefas').then(r => r.json()).then(d => setTarefas(Array.isArray(d) ? d : [])).catch(() => {})
+    avisarTarefasMudaram() // a barra "Próximas tarefas" do topo acompanha o que mudou aqui
   }
   function carregarLixeira() {
     fetch('/api/tarefas?lixeira=true').then(r => r.json()).then(d => setExcluidas(Array.isArray(d) ? d : [])).catch(() => {})
@@ -490,6 +492,9 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
     if (!mostrarConcluidas && (t.status === 'concluido' || t.status === 'descartado')) return false
     return true
   })
+  const idsNaTela = new Set(filtradas.map(t => t.id))
+  const maeNaTela = (t: Tarefa) => !!t.tarefaPaiId && idsNaTela.has(t.tarefaPaiId)
+  const tituloDaMae = (t: Tarefa) => (t.tarefaPaiId ? tarefas.find(m => m.id === t.tarefaPaiId)?.titulo : '') || ''
   const qtdConcluidas = tarefas.filter(t => t.status === 'concluido'
     && (!filtroCliente || t.clienteId === filtroCliente)
     && (!filtroResponsavel || t.responsavelEmail === filtroResponsavel)).length
@@ -695,7 +700,7 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
       {view === 'kanban' && (
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, height: 'calc(100vh - 200px)', alignItems: 'stretch' }}>
           {COLUNAS.filter(col => mostrarConcluidas || col.key !== 'descartado').map(col => {
-            const cards = filtradas.filter(t => t.status === col.key && !t.tarefaPaiId)
+            const cards = filtradas.filter(t => t.status === col.key && !maeNaTela(t))
             return (
               <div key={col.key}
                 onDragOver={e => { if (dragId) { e.preventDefault(); setOverCol(col.key) } }}
@@ -721,6 +726,7 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
                           {rotuloTipo(tp.key, tp.label)}
                         </span>
                       )})()}
+                      {t.tarefaPaiId && tituloDaMae(t) && <p title={tituloDaMae(t)} style={{ margin: '0 0 3px', fontSize: 10, color: 'var(--v2-ink3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>↳ {tituloDaMae(t)}</p>}
                       <p style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{t.titulo}</p>
                       {(() => { const pg = progressoDaMae(t.id, tarefas as any); const ns = pg.total; const nsTxt = `${pg.concluidas}/${ns}`; return ns > 0 ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '1px 7px', marginBottom: 4 }}>{ns} subtarefa(s)</span> : null })()}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -845,7 +851,7 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
             <span>{tr('comum.tipo')}</span><span>{tr('tarefa.tarefa')}</span><span>{tr('comum.responsavel')}</span><span>{tr('comum.cliente')}</span><span>{tr('comum.prazo')}</span><span>{tr('comum.prioridade')}</span><span>{tr('comum.status')}</span><span></span>
           </div>
           {filtradas.length === 0 && <p style={{ margin: 0, padding: 30, textAlign: 'center', color: 'var(--v2-ink3)', fontSize: 13 }}>{tr('tarefa.nenhuma')}</p>}
-          {filtradas.filter(t => !t.tarefaPaiId || !tarefas.some((p: any) => p.id === t.tarefaPaiId)).map(t => {
+          {filtradas.filter(t => !maeNaTela(t)).map(t => {
             const tp = tipoInfo(t.tipo)
             const subs = tarefas.filter((s: any) => s.tarefaPaiId === t.id && (mostrarConcluidas || (s.status !== 'concluido' && s.status !== 'descartado')))
             const linha = (x: any, ehSub: boolean) => {
@@ -875,6 +881,7 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
                       </button>
                     )}
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.titulo}</span>
+                    {!ehSub && x.tarefaPaiId && tituloDaMae(x) && <span title={tituloDaMae(x)} style={{ flexShrink: 1, minWidth: 0, fontSize: 10.5, fontWeight: 500, color: 'var(--v2-ink3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>↳ {tituloDaMae(x)}</span>}
                     {!ehSub && subs.length > 0 && (() => { const pg = progressoDaMae(x.id, tarefas as any); return (
                       <span title={tr('tarefa.subtarefas-concluidas', { feitas: pg.concluidas, total: pg.total })} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 700, color: pg.concluidas === pg.total ? 'var(--v2-ok)' : 'var(--v2-info)', background: pg.concluidas === pg.total ? 'var(--v2-ok-bg)' : 'var(--v2-info-bg)', borderRadius: 999, padding: '1px 8px' }}>
                         {pg.concluidas}/{pg.total}
@@ -1361,6 +1368,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
       await fetch('/api/tarefas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     }
     setSalvando(false)
+    avisarTarefasMudaram()
     onSalvo()
   }
 

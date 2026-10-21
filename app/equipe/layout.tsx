@@ -3,6 +3,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import AvatarPessoa from '@/app/components/AvatarPessoa'
+import BarraProximasTarefas from '@/app/components/BarraProximasTarefas'
 
 // EQUIPE — a casa de cada colaborador (decisão do dono, 07/09/2026): substitui o
 // "Meu dia". Cada pessoa tem um card com atribuições, responsabilidades e o que
@@ -89,6 +90,8 @@ export default function EquipeLayout({ children }: { children: React.ReactNode }
           <button className="eq-topo-btn" onClick={() => router.push('/dashboard')}><Ico d={IC.voltar} size={14} />{!mobile && 'Painel'}</button>
           {ehAdmin && <button className="eq-topo-btn" onClick={() => router.push('/equipe')} style={pathname === '/equipe' ? { color: 'var(--v2-ink)', borderColor: 'var(--v2-amber-on)' } : undefined}><Ico d={IC.equipe} size={14} />{!mobile && 'Equipe'}</button>}
         </div>
+        {/* Próximas tarefas de quem está logado (dono, 20/10) — abre a tarefa no painel */}
+        <BarraProximasTarefas compacta estilo={{ flex: '1 1 auto', justifyContent: 'center' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button className="eq-topo-btn" onClick={alternarTema} title={tema === 'escuro' ? 'Tema claro' : 'Tema escuro'} style={{ padding: 8 }}><Ico d={tema === 'escuro' ? IC.sol : IC.lua} /></button>
           {!mobile && <span style={{ fontSize: 13, color: 'var(--v2-ink2)' }}>{primeiroNome}</span>}

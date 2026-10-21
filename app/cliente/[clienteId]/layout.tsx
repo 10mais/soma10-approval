@@ -1,4 +1,5 @@
 'use client'
+import BarraProximasTarefas from '@/app/components/BarraProximasTarefas'
 import { useParams, usePathname, useRouter } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { useEffect, useState } from 'react'
@@ -202,6 +203,8 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
             </select>
           )}
         </div>
+        {/* Próximas tarefas de quem está logado (dono, 20/10) — só equipe; abre a tarefa no painel */}
+        {ehEquipe && <BarraProximasTarefas compacta estilo={{ flex: '1 1 auto', justifyContent: 'center' }} />}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button className="hub-topo-btn" onClick={alternarTema} title={tema === 'escuro' ? 'Tema claro' : 'Tema escuro'} style={{ padding: 8 }}><Ico d={tema === 'escuro' ? IC.sol : IC.lua} size={15} /></button>
           {!mobile && <span style={{ fontSize: 13, color: 'var(--v2-ink2)' }}>{primeiroNome}</span>}
