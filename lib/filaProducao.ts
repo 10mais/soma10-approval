@@ -81,7 +81,7 @@ const ms = (iso?: string) => { const n = iso ? new Date(iso).getTime() : NaN; re
 export type PostFila = {
   id: string; status?: string; etapa?: string; excluidoEm?: string
   criativoEntregueEm?: string; criativoRevisaoInternaEm?: string; ajusteInterno?: string
-  versaoNova?: unknown; criativoAprovadoEm?: string; etapaDesde?: string; aguardandoDesde?: string
+  versaoNova?: unknown; criativoAprovadoEm?: string; etapaDesde?: string; aguardandoDesde?: string; atualizadoEm?: string
 }
 export type TarefaFila = {
   id: string; status: string; ajustePedidoEm?: string; criadoEm?: string; atualizadoEm?: string; filaDesde?: string
@@ -93,10 +93,11 @@ export function colunaDoCriativo(p: PostFila, t: TarefaFila | undefined, agora: 
   if (p.excluidoEm) return null
   // Só entra criativo de pauta do Estúdio com a copy aprovada.
   if (!p.etapa || p.etapa === 'briefing' || p.etapa === 'copy' || p.etapa === 'aprovacao_copy') return null
-  // Aprovado/agendado/publicado: fica 7 dias à vista e sai.
+  // Aprovado/agendado/publicado: fica 7 dias à vista e sai. Sem data nenhuma = peça antiga, de antes
+  // destes campos: fica fora (senão o histórico inteiro lotaria a coluna).
   if (p.etapa === 'pronto' || ['aprovado', 'agendado', 'publicado', 'publicando'].includes(p.status || '')) {
-    const desde = ms(p.criativoAprovadoEm || p.etapaDesde)
-    return desde !== undefined && agora - desde > APROVADO_SAI_EM_DIAS * DIA ? null : 'aprovado'
+    const desde = ms(p.criativoAprovadoEm || p.etapaDesde || p.atualizadoEm)
+    return desde === undefined || agora - desde > APROVADO_SAI_EM_DIAS * DIA ? null : 'aprovado'
   }
   // Designer com a tarefa aberta (inclusive refazendo um ajuste).
   if (t && ABERTA.includes(t.status)) {
@@ -123,7 +124,7 @@ export function desdeQuandoNaColuna(coluna: ColunaFila, p: PostFila, t: TarefaFi
     case 'em_producao': return t?.filaDesde || t?.atualizadoEm
     case 'revisao_interna': return p.criativoEntregueEm || t?.atualizadoEm
     case 'com_cliente': return p.aguardandoDesde || p.etapaDesde
-    case 'aprovado': return p.criativoAprovadoEm || p.etapaDesde
+    case 'aprovado': return p.criativoAprovadoEm || p.etapaDesde || p.atualizadoEm
   }
 }
 

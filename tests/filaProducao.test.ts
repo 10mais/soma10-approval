@@ -38,6 +38,9 @@ describe('colunaDoCriativo — o designer move, o resto anda sozinho', () => {
     expect(colunaDoCriativo(pauta({ etapa: 'aprovacao_criativo', status: 'aguardando_aprovacao' }), tarefa({ status: 'concluido' }), AGORA)).toBe('com_cliente')
     expect(colunaDoCriativo(pauta({ etapa: 'pronto', status: 'agendado', criativoAprovadoEm: '2026-10-24T12:00:00Z' }), tarefa({ status: 'concluido' }), AGORA)).toBe('aprovado')
     expect(colunaDoCriativo(pauta({ etapa: 'pronto', status: 'publicado', criativoAprovadoEm: '2026-10-10T12:00:00Z' }), tarefa({ status: 'concluido' }), AGORA)).toBeNull()
+    // Peça antiga sem data nenhuma não lota a coluna; com só a última atualização, conta por ela.
+    expect(colunaDoCriativo(pauta({ etapa: 'pronto', status: 'publicado' }), tarefa({ status: 'concluido' }), AGORA)).toBeNull()
+    expect(colunaDoCriativo(pauta({ etapa: 'pronto', status: 'agendado', atualizadoEm: '2026-10-24T12:00:00Z' }), undefined, AGORA)).toBe('aprovado')
   })
 
   it('a ordem da tela começa pelo ajuste pedido', () => {

@@ -418,7 +418,7 @@ function Cartao({ it, idioma, celular, ocupado, arrastandoEste, onAbrir, onMover
             <span aria-hidden style={{ width: 18, height: 18, borderRadius: '50%', background: 'var(--v2-surface2)', color: 'var(--v2-ink2)', fontSize: 8.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{iniciais}</span>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, fontWeight: 600, color: 'var(--v2-ink2)' }}>{nomeDesigner}</span>
           </>
-        ) : <span style={{ fontWeight: 700, color: 'var(--v2-hot)' }} title="Defina o designer no squad do cliente">Sem designer no squad</span>}
+        ) : <span style={{ fontWeight: 700, color: 'var(--v2-hot)' }} title="Nenhum designer com esta peça: defina no squad do cliente ou na tarefa">Sem designer</span>}
         <span style={{ flex: 1 }} />
         {dias !== undefined && <span style={{ flexShrink: 0 }} title="Tempo nesta coluna">{dias === 0 ? 'hoje' : dias === 1 ? 'há 1 dia' : `há ${dias} dias`}</span>}
       </div>
