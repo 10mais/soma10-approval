@@ -44,6 +44,7 @@ export const TEXTOS: Record<string, Entrada> = {
   // ---- produção
   'nav.tarefas': { pt: 'Tarefas', en: 'Tasks', es: 'Tareas' },
   'nav.studio': { pt: 'Estúdio', en: 'Content studio', es: 'Estudio' },
+  'nav.fila': { pt: 'Fila de produção', en: 'Production queue', es: 'Cola de producción' },
   'nav.esteira': { pt: 'Esteira de produção', en: 'Production line', es: 'Línea de producción' },
   'nav.agenda': { pt: 'Agenda', en: 'Calendar', es: 'Agenda' },
   'nav.planner': { pt: 'Programador de postagens', en: 'Post scheduler', es: 'Programador de publicaciones' },

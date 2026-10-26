@@ -19,6 +19,7 @@ const ABAS: { key: string; categoria: string; perfil?: 'clinica' | 'turismo' | '
   { key: 'meu-card', categoria: 'Pessoal' },
   { key: 'lista-pessoal', categoria: 'Pessoal' },
   { key: 'studio', categoria: 'Produção' },
+  { key: 'fila', categoria: 'Produção' },
   { key: 'tarefas', categoria: 'Produção' },
   { key: 'planner', categoria: 'Produção' },
   { key: 'aprovacoes', categoria: 'Produção' },

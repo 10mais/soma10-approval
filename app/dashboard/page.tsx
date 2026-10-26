@@ -38,6 +38,7 @@ import { fecharFora } from '@/lib/fecharModal'
 
 const ChatInterno = dynamic(() => import('../components/ChatInterno'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const StudioMes = dynamic(() => import('../components/StudioMes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const FilaProducao = dynamic(() => import('../components/FilaProducao'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const DashboardHome = dynamic(() => import('../components/DashboardHome'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const DashboardHomeV2 = dynamic(() => import('../components/DashboardHomeV2'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const RegrasDoMes = dynamic(() => import('../components/RegrasDoMes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
@@ -205,6 +206,7 @@ const ICONE_ABA: Record<string, string> = {
   tarefas: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
   esteira: 'M3 4h7v7H3zM14 13h7v7h-7zM10 7.5h4a3 3 0 0 1 3 3V13M14 16.5H7a3 3 0 0 1-3-3V11',
   studio: 'M3 3h18v18H3zM3 9h18M9 9v12M3 15h6',
+  fila: 'M4 4h4v16H4zM10 4h4v10h-4zM16 4h4v13h-4z',
   agenda: 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM9 16l2 2 4-4',
   procedimentos: 'M9 2h6a1 1 0 0 1 1 1v2H8V3a1 1 0 0 1 1-1zM8 5H6a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 12h6M9 16h4',
   carga: 'M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
@@ -367,7 +369,7 @@ function Dashboard() {
   const { idioma } = useIdioma()
   // Título de grupo do menu pelo dicionário (lib/i18n) quando a chave existe; senão, o que veio.
   const tituloGrupo = (grupo: string, titulo: string) => (TEXTOS[`grupo.${grupo}`] ? traduz(`grupo.${grupo}`, idioma) : titulo)
-  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'clientes-todos' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'viagens' | 'calendario-viagens' | 'reservas' | 'recebiveis' | 'procedimentos' | 'processos' | 'produtos' | 'vendas' | 'metas'>(() => {
+  const [aba, setAbaRaw] = useState<'home' | 'posts' | 'planner' | 'calendario' | 'biblioteca' | 'clientes' | 'clientes-todos' | 'usuarios' | 'novo-post' | 'config' | 'analytics' | 'mensagens' | 'marca' | 'listening' | 'esteira' | 'studio' | 'fila' | 'agenda' | 'aprovacoes' | 'tarefas' | 'playbook' | 'minha-conta' | 'inbox' | 'campanhas' | 'candidaturas' | 'recrutamento' | 'rentabilidade' | 'modelos' | 'automacoes' | 'lista-pessoal' | 'carga' | 'crm' | 'agentes' | 'documentos' | 'conversao' | 'mapas' | 'solicitacoes' | 'reunioes' | 'frota' | 'viagens' | 'calendario-viagens' | 'reservas' | 'recebiveis' | 'procedimentos' | 'processos' | 'produtos' | 'vendas' | 'metas'>(() => {
     if (typeof window !== 'undefined') {
       const salva = sessionStorage.getItem('soma10_aba')
       if (salva === 'esteira') return 'studio' // Esteira removida — abre o Studio
@@ -984,7 +986,7 @@ function Dashboard() {
   }
 
   // Mapa aba -> grupo (esconde e protege o acesso direto via sessionStorage)
-  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', agenda: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', metas: 'crm', conversao: 'crm', frota: 'crm', viagens: 'crm', 'calendario-viagens': 'crm', reservas: 'crm', procedimentos: 'crm', processos: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
+  const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', fila: 'producao', agenda: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', metas: 'crm', conversao: 'crm', frota: 'crm', viagens: 'crm', 'calendario-viagens': 'crm', reservas: 'crm', procedimentos: 'crm', processos: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
   useEffect(() => {
     // Modo clínica bloqueia o acesso direto às telas ocultas para qualquer papel
     if (ocultas.includes(aba)) { setAba('home'); return }
@@ -2214,7 +2216,7 @@ function Dashboard() {
               )}
               {([
                 { titulo: '', grupo: '', itens: (perfilTelefonia ? [] : [['home', 'Painel'], ['meu-card', tr('dash.meu-perfil')], ...(role === 'admin' ? [['equipe', 'Equipe']] : []), ['lista-pessoal', 'Personal list']]) as [string, string][] },
-                { titulo: 'Produção', grupo: 'producao', itens: (perfilTelefonia ? [['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', tr('nav.mapas')]] : [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['agenda', 'Agenda'], ['planner', 'Planner'], ['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', tr('nav.mapas')]]) as [string, string][] },
+                { titulo: 'Produção', grupo: 'producao', itens: (perfilTelefonia ? [['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', tr('nav.mapas')]] : [['tarefas', 'Tarefas'], ['studio', 'Studio'], ['fila', 'Fila de produção'], ['agenda', 'Agenda'], ['planner', 'Planner'], ['agentes', 'Agentes de IA'], ['documentos', 'Documentos'], ['mapas', tr('nav.mapas')]]) as [string, string][] },
               ] as { titulo: string; grupo: string; itens: [string, string][] }[]).filter(g => (!g.grupo || podeGrupo(g.grupo)) && g.itens.length > 0 && !g.itens.every(([a]) => ocultas.includes(a))).map((grupo, gi) => (
                 <nav key={gi} style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: gi === 0 ? 0 : 18 }}>
                   {grupo.titulo && !recolhida && <span style={{ display: 'block', fontSize: 10.5, fontWeight: 500, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 6px', padding: '0 10px' }}>{tituloGrupo(grupo.grupo, grupo.titulo)}</span>}
@@ -3564,6 +3566,11 @@ function Dashboard() {
             setEditandoPostId(pauta.id)
             setAba('novo-post')
           }} />
+        )}
+
+        {/* FILA DE PRODUÇÃO de criativos (dono, 26/10/2026) — grupo Produção, toda a equipe vê */}
+        {aba === 'fila' && role !== 'cliente' && !ehVendas && (
+          <FilaProducao clienteFixo={verComoClienteId || undefined} onAbrirTarefa={abrirTarefaPorId} onAbrirPauta={abrirPautaNoStudio} />
         )}
 
         {/* Agenda (clínicas/serviços) — grupo Produção */}

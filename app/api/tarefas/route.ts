@@ -277,6 +277,9 @@ export async function PUT(req: NextRequest) {
   if (atualizado.tarefaPaiId === null) delete atualizado.tarefaPaiId
   // Entregou o ajuste: a marca "Ajuste pedido" (lib/tarefasDaPauta.reabrirTarefaDaPauta) sai.
   if (updates.status === 'concluido') delete atualizado.ajustePedidoEm
+  // FILA DE PRODUÇÃO (lib/filaProducao): mudar o status pelo quadro de Tarefas também move o
+  // cartão — "Aguardando material" acaba e o "há X dias" recomeça.
+  if (updates.status && updates.status !== tarefa.status) { delete atualizado.aguardandoMaterial; atualizado.filaDesde = agora }
 
   // PAUTA ↔ TAREFA: o vínculo fecha nos dois lados (post.tarefaId) e os anexos da
   // tarefa ficam espelhados na pauta (post.anexosTarefa) — o Studio/Planner mostram

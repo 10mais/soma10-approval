@@ -28,13 +28,13 @@ export type DefPerfil = {
 }
 
 // Telas de social media/marketing que um cliente de gestão não contratou.
-const ABAS_SOCIAL_OFF = { studio: false, planner: false, agentes: false, mapas: false }
+const ABAS_SOCIAL_OFF = { studio: false, fila: false, planner: false, agentes: false, mapas: false }
 
 // Abas que o modo clínica esconde de TODOS os papéis, admin incluso (decisão do
 // dono 2026-07-13: "isso para clínicas não precisa"). Diferente das permissões
 // (que o admin sempre atravessa), esta lista é aplicada direto na navegação.
 export const ABAS_OCULTAS_CLINICA: string[] = [
-  'studio', 'planner', 'mapas',
+  'studio', 'fila', 'planner', 'mapas',
   'playbook', 'campanhas', 'modelos', 'automacoes', // módulo Estratégia inteiro
   'conversao', // Conversão & Retenção
   'candidaturas', 'recrutamento', // Pessoas e Cultura (Trabalhe Conosco)
@@ -47,7 +47,7 @@ export const ABAS_OCULTAS_CLINICA: string[] = [
 // Reservas/Recebíveis, adicionados na navegação por perfilTurismo). Não usa
 // produção de conteúdo, Estratégia de agência, nem a Agenda clínica.
 export const ABAS_OCULTAS_TURISMO: string[] = [
-  'studio', 'planner', 'mapas', 'agentes', // produção de conteúdo/social
+  'studio', 'fila', 'planner', 'mapas', 'agentes', // produção de conteúdo/social
   'playbook', 'campanhas', 'modelos', 'automacoes', // Estratégia de agência
   'conversao', // Conversão & Retenção (agência)
   'candidaturas', 'recrutamento', // Trabalhe Conosco
@@ -63,7 +63,7 @@ export const ABAS_OCULTAS_TURISMO: string[] = [
 // Não usa produção de conteúdo/social, Estratégia de agência, Agenda clínica nem
 // "Trabalhe Conosco".
 export const ABAS_OCULTAS_CIDADANIA: string[] = [
-  'studio', 'planner', 'mapas', 'agentes', 'documentos', 'carga', 'aprovacoes', // produção de conteúdo/social
+  'studio', 'fila', 'planner', 'mapas', 'agentes', 'documentos', 'carga', 'aprovacoes', // produção de conteúdo/social
   // Estratégia INTEIRA sai: Playbook e Modelos foram removidos a pedido do dono,
   // e Marca/Listening/Analytics são instrumentos de marketing. Sem nada atrás
   // dele, o grupo 'estrategia' também some da matriz de permissões
@@ -82,7 +82,7 @@ export const ABAS_OCULTAS_CIDADANIA: string[] = [
 // de Varejo (Produtos/Estoque/Vendas, adicionados na nav por perfilTelefonia).
 // Não usa produção de conteúdo/social, Estratégia de agência nem Agenda clínica.
 export const ABAS_OCULTAS_TELEFONIA: string[] = [
-  'studio', 'planner', 'mapas', 'agentes', 'documentos', 'carga', 'aprovacoes', // produção/social
+  'studio', 'fila', 'planner', 'mapas', 'agentes', 'documentos', 'carga', 'aprovacoes', // produção/social
   'playbook', 'modelos', 'campanhas', 'automacoes', 'marca', 'listening', 'analytics', // Estratégia de agência
   'conversao', // Conversão & Retenção (agência)
   'candidaturas', 'recrutamento', // Trabalhe Conosco
