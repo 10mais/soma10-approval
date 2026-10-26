@@ -3,7 +3,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { apareceNoPlanner } from '@/lib/plannerFiltro'
 import { pedidoDaEntrada, emRodadaDeAjuste, type VersaoNova } from '@/lib/rodadaAjuste'
 import { aprovarEReenviar } from '@/lib/reenvioCliente'
-import { toast } from '@/lib/toast'
+import { toast, confirmar } from '@/lib/toast'
+import { registrarDesfazer } from '@/lib/desfazer'
+import { situacaoDaSolicitacao, resolvidaPeloSistema, contarPorSituacao, type FiltroSituacao } from '@/lib/situacaoSolicitacao'
 
 type Cliente = { id: string; nome: string }
 type Log = {
@@ -12,6 +14,7 @@ type Log = {
   postStatus?: string; postEtapa?: string; postExiste?: boolean // status ATUAL do criativo
   postVersaoNova?: boolean // o designer entregou e a versão espera a revisão da equipe (lib/rodadaAjuste)
   mudancas?: { campo: string; antes: string; depois: string }[] // antes -> depois do pedido
+  situacao?: 'concluida' | 'descartada'; situacaoEm?: number; situacaoPor?: string // marcada pela equipe (lib/situacaoSolicitacao)
 }
 type Anot = { x: number; y: number; text: string; id?: number; img?: number }
 type PostDet = {
@@ -72,6 +75,39 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
   const [acaoEm, setAcaoEm] = useState<string | null>(null)
   const [mensagens, setMensagens] = useState<Record<string, string>>({}) // postId -> mensagem pronta do reenvio
   const [devolvendo, setDevolvendo] = useState<{ postId: string; texto: string } | null>(null)
+  // Concluir / descartar (dono, 26/10/2026). A tela abre no que está EM ABERTO; "Todas" é o
+  // histórico completo de antes. A escolha fica lembrada neste navegador.
+  const [situacaoFiltro, setSituacaoFiltro] = useState<FiltroSituacao>('aberta')
+  useEffect(() => { try { const v = localStorage.getItem('soma10-solicitacoes-situacao'); if (v === 'aberta' || v === 'concluida' || v === 'descartada' || v === 'todas') setSituacaoFiltro(v) } catch { /* sem storage */ } }, [])
+  function escolherSituacao(v: FiltroSituacao) { setSituacaoFiltro(v); try { localStorage.setItem('soma10-solicitacoes-situacao', v) } catch { /* só nesta visita */ } }
+  const [marcando, setMarcando] = useState<string | null>(null)
+
+  async function gravarSituacao(id: string, situacao: 'concluida' | 'descartada' | null): Promise<Log | null> {
+    const r = await fetch('/api/logs-cliente', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, situacao }) }).then(x => x.json()).catch(() => null)
+    if (!r?.ok) { toast(r?.error || 'Não foi possível atualizar a solicitação.', 'erro'); return null }
+    setLogs(ls => ls.map(x => x.id === id ? { ...x, situacao: r.log?.situacao, situacaoEm: r.log?.situacaoEm, situacaoPor: r.log?.situacaoPor } : x))
+    return r.log
+  }
+  // "Sempre confirme se tem certeza" (dono): concluir e descartar perguntam antes; Ctrl+Z reabre.
+  async function marcar(l: Log, situacao: 'concluida' | 'descartada') {
+    const quem = `${l.clienteNome} — ${l.acao}`
+    const ok = situacao === 'concluida'
+      ? await confirmar(`Tem certeza que quer marcar como concluída a solicitação "${quem}"? Ela sai da lista em aberto.`, { titulo: 'Concluir solicitação', okLabel: 'Concluir' })
+      : await confirmar(`Tem certeza que quer descartar a solicitação "${quem}"? Ela sai da lista em aberto e fica registrada como descartada.`, { titulo: 'Descartar solicitação', okLabel: 'Descartar', perigo: true })
+    if (!ok) return
+    setMarcando(l.id)
+    const feito = await gravarSituacao(l.id, situacao)
+    setMarcando(null)
+    if (!feito) return
+    toast(situacao === 'concluida' ? 'Solicitação concluída.' : 'Solicitação descartada.', 'sucesso')
+    registrarDesfazer(`${situacao === 'concluida' ? 'Conclusão' : 'Descarte'} da solicitação de ${l.clienteNome}`, async () => !!(await gravarSituacao(l.id, null)))
+  }
+  async function reabrir(l: Log) {
+    setMarcando(l.id)
+    const feito = await gravarSituacao(l.id, null)
+    setMarcando(null)
+    if (feito) toast('Solicitação reaberta.', 'sucesso')
+  }
 
   async function reenviar(post: PostDet) {
     setAcaoEm(post.id)
@@ -117,10 +153,12 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
   }
   useEffect(() => { carregar() }, [cliente])
 
-  const filtrados = useMemo(() => {
+  const base = useMemo(() => {
     const q = busca.trim().toLowerCase()
     return logs.filter(l => (!tipo || l.tipo === tipo) && (!q || `${l.clienteNome} ${l.acao} ${l.resumo || ''} ${l.motivo || ''}`.toLowerCase().includes(q)))
   }, [logs, tipo, busca])
+  const contagem = useMemo(() => contarPorSituacao(base), [base])
+  const filtrados = useMemo(() => situacaoFiltro === 'todas' ? base : base.filter(l => situacaoDaSolicitacao(l) === situacaoFiltro), [base, situacaoFiltro])
 
   const inputS: React.CSSProperties = { padding: '9px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }
   const rotuloExp: React.CSSProperties = { margin: '0 0 4px', fontSize: 11, fontWeight: 800, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.04em' }
@@ -129,7 +167,7 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
     <div style={{ maxWidth: 860 }}>
       <div style={{ marginBottom: 4 }}>
         <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Solicitações do cliente</h2>
-        <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Histórico de tudo que o cliente aprovou, pediu ajuste, reprovou ou solicitou. Fica registrado por 30 dias — não some quando você edita.</p>
+        <p style={{ margin: '2px 0 0', fontSize: 13, color: 'var(--v2-ink3)' }}>Histórico de tudo que o cliente aprovou, pediu ajuste, reprovou ou solicitou. Fica registrado por 30 dias — não some quando você edita. Marque como concluída ou descartada o que já foi tratado.</p>
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', margin: '16px 0 18px' }}>
@@ -147,9 +185,22 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
         <button onClick={carregar} disabled={carregando} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>{carregando ? 'Atualizando...' : 'Atualizar'}</button>
       </div>
 
+      <div role="tablist" aria-label="Situação" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '-6px 0 16px' }}>
+        {([['aberta', 'Em aberto'], ['concluida', 'Concluídas'], ['descartada', 'Descartadas'], ['todas', 'Todas']] as [FiltroSituacao, string][]).map(([k, rotulo]) => {
+          const on = situacaoFiltro === k
+          return (
+            <button key={k} role="tab" aria-selected={on} onClick={() => escolherSituacao(k)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 13px', borderRadius: 999, border: on ? '1.5px solid var(--v2-ink)' : '1.5px solid var(--v2-rule)', background: on ? 'var(--v2-ink)' : 'var(--v2-surface)', color: on ? 'var(--v2-surface)' : 'var(--v2-ink2)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              {rotulo}
+              <span style={{ fontSize: 11, fontWeight: 800, opacity: on ? 0.85 : 0.7 }}>{contagem[k]}</span>
+            </button>
+          )
+        })}
+      </div>
+
       {carregando && logs.length === 0 && <p style={{ textAlign: 'center', padding: 40, color: 'var(--v2-ink3)' }}>Carregando...</p>}
       {!carregando && filtrados.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--v2-ink3)', fontSize: 14, background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>Nenhuma solicitação registrada{(busca || tipo || cliente) ? ' com esse filtro.' : ' nos últimos 30 dias.'}</div>
+        <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--v2-ink3)', fontSize: 14, background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>{situacaoFiltro === 'aberta' && !(busca || tipo) ? 'Nenhuma solicitação em aberto. Tudo tratado.' : `Nenhuma solicitação ${situacaoFiltro === 'concluida' ? 'concluída ' : situacaoFiltro === 'descartada' ? 'descartada ' : 'registrada '}${(busca || tipo || cliente) ? 'com esse filtro.' : 'nos últimos 30 dias.'}`}</div>
       )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -197,9 +248,11 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
           const semHistorico = !mudancas.length && (l.tipo === 'ajuste_layout' || l.tipo === 'ajuste_copy' || l.tipo === 'corrigir_legenda')
           const jaReprogramado = l.tipo === 'ajuste_aplicado'
           const imgsComPins = Array.from(new Set(anot.map(a => a.img ?? 0)))
+          const situacao = situacaoDaSolicitacao(l)
+          const fechada = situacao !== 'aberta'
           return (
             <div key={l.id} onClick={() => expansivel && toggleExpand(l)} title={aberto ? undefined : 'Clique para ler o pedido do cliente'}
-              style={{ background: 'var(--v2-surface)', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', border: aberto ? '1px solid var(--v2-info-bg)' : '1px solid var(--v2-surface2)', padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'flex-start', cursor: expansivel ? 'pointer' : 'default' }}>
+              style={{ background: 'var(--v2-surface)', borderRadius: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.05)', border: aberto ? '1px solid var(--v2-info-bg)' : '1px solid var(--v2-surface2)', padding: '12px 16px', display: 'flex', gap: 12, alignItems: 'flex-start', cursor: expansivel ? 'pointer' : 'default', opacity: fechada && !aberto ? 0.72 : 1, transition: 'opacity 200ms ease' }}>
               <span style={{ flexShrink: 0, marginTop: 2, fontSize: 10.5, fontWeight: 800, color: e.cor, background: e.bg, borderRadius: 999, padding: '3px 10px', whiteSpace: 'nowrap' }}>{e.label}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: 0, fontSize: 13.5, color: 'var(--v2-ink)' }}><strong>{l.clienteNome}</strong> · {l.acao}</p>
@@ -364,6 +417,32 @@ export default function LogsCliente({ clientes = [], onAbrirPost, onVerNoPlanner
               <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
                 {(() => { const chip = chipStatusPost(l); return chip ? <span title="Onde o criativo está agora" style={{ fontSize: 10.5, fontWeight: 800, color: chip.cor, background: chip.bg, borderRadius: 999, padding: '3px 9px', whiteSpace: 'nowrap' }}>{chip.label}</span> : null })()}
                 <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }} title={new Date(l.ts).toLocaleString('pt-BR')}>{haQuanto(l.ts)}</span>
+                {/* Concluir / descartar (dono, 26/10/2026) — sempre com "tem certeza?" antes */}
+                {situacao === 'aberta' ? (
+                  <span onClick={ev => ev.stopPropagation()} style={{ display: 'inline-flex', gap: 6, cursor: 'default' }}>
+                    <button onClick={() => marcar(l, 'concluida')} disabled={marcando === l.id} title="Marcar como concluída"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--v2-ok)', background: 'var(--v2-surface)', color: 'var(--v2-ok)', fontSize: 11.5, fontWeight: 700, cursor: marcando === l.id ? 'progress' : 'pointer', fontFamily: 'inherit' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M20 6L9 17l-5-5" /></svg>
+                      Concluir
+                    </button>
+                    <button onClick={() => marcar(l, 'descartada')} disabled={marcando === l.id} title="Descartar esta solicitação"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink3)', fontSize: 11.5, fontWeight: 700, cursor: marcando === l.id ? 'progress' : 'pointer', fontFamily: 'inherit' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M18 6L6 18M6 6l12 12" /></svg>
+                      Descartar
+                    </button>
+                  </span>
+                ) : (
+                  <span onClick={ev => ev.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'default' }}>
+                    <span title={l.situacaoEm ? `${l.situacaoPor ? `${l.situacaoPor} · ` : ''}${new Date(l.situacaoEm).toLocaleString('pt-BR')}` : undefined}
+                      style={{ fontSize: 10.5, fontWeight: 800, borderRadius: 999, padding: '3px 9px', whiteSpace: 'nowrap', color: situacao === 'concluida' ? 'var(--v2-ok)' : 'var(--v2-ink3)', background: situacao === 'concluida' ? 'var(--v2-ok-bg)' : 'var(--v2-surface2)' }}>
+                      {situacao === 'concluida' ? (resolvidaPeloSistema(l) ? 'Concluída pelo sistema' : 'Concluída') : 'Descartada'}{l.situacaoPor ? ` · ${l.situacaoPor.split(' ')[0]}` : ''}
+                    </span>
+                    {!resolvidaPeloSistema(l) && (
+                      <button onClick={() => reabrir(l)} disabled={marcando === l.id} title="Voltar para em aberto"
+                        style={{ background: 'none', border: 'none', padding: 0, color: 'var(--v2-info)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'underline' }}>Reabrir</button>
+                    )}
+                  </span>
+                )}
                 {abrivel && (
                   <span onClick={ev => { ev.stopPropagation(); acaoPost!(l.postId!) }} title={titulo}
                     style={{ fontSize: 11.5, fontWeight: 700, color: resolvido ? e.cor : 'var(--v2-info)', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>

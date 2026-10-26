@@ -32,6 +32,11 @@ export type LogCliente = {
   // tela mostrava dois textos parecidos sem dizer qual era qual. Só vem
   // preenchido quando o cliente de fato alterou algo; logs antigos não têm.
   mudancas?: MudancaLog[]
+  // Situação marcada pela equipe na tela Solicitações (dono, 26/10/2026). Sem marca, a tela
+  // deriva (lib/situacaoSolicitacao): aprovação e ajuste aplicado = concluída; o resto = aberta.
+  situacao?: 'concluida' | 'descartada'
+  situacaoEm?: number
+  situacaoPor?: string
 }
 
 export type MudancaLog = {
@@ -86,4 +91,15 @@ export async function listarLogsCliente(opts: { clienteId?: string; postId?: str
   const entradas = (await Promise.all(ids.map(id => redis.get<LogCliente>(`log:${id}`)))).filter(Boolean) as LogCliente[]
   const filtradas = opts.postId ? entradas.filter(l => l.postId === opts.postId) : entradas
   return filtradas.sort((a, b) => b.ts - a.ts)
+}
+
+// Concluir/descartar (ou reabrir, com null) uma solicitação. Mantém a validade de 30 dias da
+// entrada (keepTtl): marcar não estica o histórico. Devolve null se ela já expirou.
+export async function marcarSituacaoLog(id: string, situacao: 'concluida' | 'descartada' | null, por: string): Promise<LogCliente | null> {
+  const log = await redis.get<LogCliente>(`log:${id}`)
+  if (!log) return null
+  const { situacao: _s, situacaoEm: _e, situacaoPor: _p, ...semMarca } = log
+  const atualizado: LogCliente = situacao ? { ...semMarca, situacao, situacaoEm: Date.now(), situacaoPor: por } : semMarca
+  await redis.set(`log:${id}`, atualizado, { keepTtl: true })
+  return atualizado
 }

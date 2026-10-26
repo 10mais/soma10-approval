@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { listarLogsCliente } from '@/lib/logCliente'
+import { listarLogsCliente, marcarSituacaoLog } from '@/lib/logCliente'
+import { situacaoValida } from '@/lib/situacaoSolicitacao'
 import { redis, Post } from '@/lib/redis'
 
 export const runtime = 'nodejs'
@@ -28,4 +29,18 @@ export async function GET(req: NextRequest) {
     ? { ...l, postStatus: porPost.get(l.postId)?.status, postEtapa: porPost.get(l.postId)?.etapa, postExiste: porPost.has(l.postId), postVersaoNova: porPost.get(l.postId)?.versaoNova }
     : l)
   return NextResponse.json(enriquecidos)
+}
+
+// Concluir / descartar uma solicitação (ou reabrir com situacao: null). Só equipe — dono,
+// 26/10/2026: "habilitar uma função de marcar como concluído ou descartado". A tela confirma antes.
+export async function PUT(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  const role = (session?.user as any)?.role
+  if (!session || role === 'cliente') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  const corpo = await req.json().catch(() => ({} as any))
+  const id = String(corpo?.id || '')
+  if (!id || !situacaoValida(corpo?.situacao)) return NextResponse.json({ error: 'Situação inválida.' }, { status: 400 })
+  const log = await marcarSituacaoLog(id, corpo.situacao, session.user?.name || session.user?.email || '')
+  if (!log) return NextResponse.json({ error: 'Solicitação não encontrada — o histórico guarda 30 dias.' }, { status: 404 })
+  return NextResponse.json({ ok: true, log })
 }
