@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Calendar from '@/app/components/Calendar'
 import PostComposer from '@/app/components/PostComposer'
+import dynamic from 'next/dynamic'
 import { apareceNoPlanner } from '@/lib/plannerFiltro'
 import { toast, confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
@@ -52,6 +53,9 @@ function paraDatetimeLocal(iso?: string): string {
   return new Date(d.getTime() - tz).toISOString().slice(0, 16)
 }
 
+// SUBIR EM MASSA (dono, 29/10/2026): vários posts de uma vez, já neste cliente.
+const SubirEmMassa = dynamic(() => import('@/app/components/SubirEmMassa'), { ssr: false })
+
 export default function PlannerPage() {
   const area = useArea()
   const { clienteId } = useParams()
@@ -67,6 +71,7 @@ export default function PlannerPage() {
   const [legendaExpandida, setLegendaExpandida] = useState(false)
   useEffect(() => { setPreviewSlide(0); setLegendaExpandida(false) }, [preview])
   const [novoPost, setNovoPost] = useState(false)
+  const [loteAberto, setLoteAberto] = useState(false)
   const [editPost, setEditPost] = useState<any>(null)
   const [enviando, setEnviando] = useState(false)
   const [salvandoRascunho, setSalvandoRascunho] = useState(false)
@@ -214,6 +219,11 @@ export default function PlannerPage() {
               }}>{v === 'lista' ? 'Lista' : 'Calendario'}</button>
             ))}
           </div>
+          {ehEquipe && (
+            <button onClick={() => setLoteAberto(true)} title="Vários posts de uma vez: cada um com a sua legenda, dia, horário e colab" style={{ padding: '8px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg> Subir em massa
+            </button>
+          )}
           <button onClick={() => setNovoPost(true)} style={{ padding: '9px 16px', background: corCliente, color: corClienteTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Nova postagem
           </button>
@@ -250,6 +260,8 @@ export default function PlannerPage() {
           </div>
         </>
       )}
+
+      {loteAberto && <SubirEmMassa clientes={clientes} clienteFixo={String(clienteId)} onFechar={() => setLoteAberto(false)} onConcluido={() => carregar()} />}
 
       {/* Modal novo post / editar */}
       {(novoPost || editPost) && (

@@ -3,6 +3,7 @@ import { redis, Post } from '@/lib/redis'
 import { contasAlvo, redesDaConta, jaPublicou, chavePublicacao, ID_CONTA_PRINCIPAL } from '@/lib/contasSociais'
 import { subirVideoYouTube } from '@/lib/youtube'
 import { formatoDaMidia, linkDoVideo } from '@/lib/youtubePost'
+import { MAX_COLAB, limparColaboradores, gruposParaTentar } from '@/lib/colab'
 
 // v21+ é necessário para Reels e para a tag de colaboradores (collaborators)
 const VERSION = process.env.META_API_VERSION_PUBLISH || 'v21.0'
@@ -79,13 +80,31 @@ function ehErroColab(e: any): boolean {
   return e.code === 110 || e.error_subcode === 2207018 || /cannot be accessed/i.test(e.message || '')
 }
 
-// Cria o container de mídia; se o colaborador for inválido, tenta de novo SEM a tag de colab
-async function criarMidiaIG(igId: string, token: string, params: Record<string, string>, colabParam: Record<string, string>): Promise<any> {
-  const c = await postFormRetry(`${IG_BASE}/${igId}/media`, { ...params, ...colabParam }, 3, ehTransitorioIG)
-  if (c?.error && Object.keys(colabParam).length && ehErroColab(c.error)) {
-    return await postFormRetry(`${IG_BASE}/${igId}/media`, params, 3, ehTransitorioIG)
+// Cria o container de mídia. Se o Instagram recusar algum colab, tenta de novo tirando os
+// convidados um de cada vez (lib/colab.gruposParaTentar): um @ errado não derruba os outros, e
+// quem ficou de fora volta em `recusados` para o post sair "com ressalvas" — até 26/10 saía sem
+// NENHUM colab e calado (dono: "está havendo algum erro na hora de marcar em colab?").
+async function criarMidiaIG(igId: string, token: string, params: Record<string, string>, colab: string[]): Promise<{ c: any; recusados: string[] }> {
+  const comColab = (lista: string[]): Record<string, string> => (lista.length ? { collaborators: JSON.stringify(lista) } : {})
+  const c = await postFormRetry(`${IG_BASE}/${igId}/media`, { ...params, ...comColab(colab) }, 3, ehTransitorioIG)
+  if (!(c?.error && colab.length && ehErroColab(c.error))) return { c, recusados: [] }
+  let ultimo = c
+  for (const grupo of gruposParaTentar(colab)) {
+    const t = await postFormRetry(`${IG_BASE}/${igId}/media`, { ...params, ...comColab(grupo) }, 3, ehTransitorioIG)
+    if (!t?.error) return { c: t, recusados: colab.filter(u => !grupo.includes(u)) }
+    if (!ehErroColab(t.error)) return { c: t, recusados: [] }
+    ultimo = t
   }
-  return c
+  return { c: ultimo, recusados: [] }
+}
+
+// Aviso do que aconteceu com os colabs (vai para "Publicado, com ressalvas" e para o aviso da equipe).
+function avisoColab(recusados: string[], acimaDoLimite: string[]): string | undefined {
+  const partes: string[] = []
+  const lista = (l: string[]) => l.map(u => `@${u}`).join(', ')
+  if (recusados.length) partes.push(`saiu sem o colab ${lista(recusados)}: o Instagram recusou o convite (perfil inexistente, privado ou que não aceita colab)`)
+  if (acimaDoLimite.length) partes.push(`saiu sem o colab ${lista(acimaDoLimite)}: a Meta aceita até ${MAX_COLAB} por post`)
+  return partes.length ? `${partes.join('; ')}.` : undefined
 }
 
 // Espera o container ficar pronto e publica, com novas tentativas caso a mídia ainda não esteja pronta (9007/2207027).
@@ -107,7 +126,7 @@ async function publicarMidiaIG(igId: string, token: string, creationId: string, 
     : 'A mídia não ficou pronta a tempo no Instagram. Tente publicar novamente.' }
 }
 
-export async function publishToInstagram(post: Post, cliente?: any): Promise<{ ok: boolean; error?: string }> {
+export async function publishToInstagram(post: Post, cliente?: any): Promise<{ ok: boolean; error?: string; aviso?: string }> {
   const TOKEN = cliente?.instagramToken
   const IG_ID = cliente?.instagramUserId
   if (!TOKEN || !IG_ID) return { ok: false, error: 'Instagram não conectado (faça a conexão com login do Instagram).' }
@@ -115,8 +134,14 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
   const midias = post.imagens || []
   if (midias.length === 0) return { ok: false, error: 'O post não possui mídia para publicar.' }
 
-  const colab = (post.colaboradores || []).slice(0, 3)
-  const colabParam: Record<string, string> = colab.length ? { collaborators: JSON.stringify(colab) } : {}
+  // Colab: até 3 (limite da Meta). Post antigo com 4 avisa quem ficou de fora em vez de sumir calado.
+  const pedidos = limparColaboradores(post.colaboradores, 99)
+  const colab = pedidos.slice(0, MAX_COLAB)
+  const acimaDoLimite = pedidos.slice(MAX_COLAB)
+  const comAviso = (r: { ok: boolean; error?: string }, recusados: string[]) => {
+    const aviso = r.ok ? avisoColab(recusados, acimaDoLimite) : undefined
+    return aviso ? { ...r, aviso } : r
+  }
   const formato = post.formato || 'feed'
   const capas = post.capasVideo || {}
 
@@ -133,9 +158,9 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
       const params = isVideo(m)
         ? { access_token: TOKEN, media_type: 'REELS', video_url: m, caption: post.legenda, ...(capas[m] ? { cover_url: capas[m] } : {}) }
         : { access_token: TOKEN, image_url: m, caption: post.legenda }
-      const c = await criarMidiaIG(IG_ID, TOKEN, params, colabParam)
+      const { c, recusados } = await criarMidiaIG(IG_ID, TOKEN, params, colab)
       if (c?.error) return { ok: false, error: fmtErro(c.error) }
-      return await publicarMidiaIG(IG_ID, TOKEN, c.id, isVideo(m))
+      return comAviso(await publicarMidiaIG(IG_ID, TOKEN, c.id, isVideo(m)), recusados)
     }
 
     const itensIds: string[] = []
@@ -147,9 +172,9 @@ export async function publishToInstagram(post: Post, cliente?: any): Promise<{ o
       if (isVideo(m) && !(await aguardarContainerIG(TOKEN, item.id, 70))) return { ok: false, error: 'O Instagram ainda está processando um vídeo do carrossel. Aguarde alguns minutos e tente novamente.' }
       itensIds.push(item.id)
     }
-    const carousel = await criarMidiaIG(IG_ID, TOKEN, { access_token: TOKEN, media_type: 'CAROUSEL', children: itensIds.join(','), caption: post.legenda }, colabParam)
+    const { c: carousel, recusados } = await criarMidiaIG(IG_ID, TOKEN, { access_token: TOKEN, media_type: 'CAROUSEL', children: itensIds.join(','), caption: post.legenda }, colab)
     if (carousel?.error) return { ok: false, error: fmtErro(carousel.error) }
-    return await publicarMidiaIG(IG_ID, TOKEN, carousel.id)
+    return comAviso(await publicarMidiaIG(IG_ID, TOKEN, carousel.id), recusados)
   } catch (e: any) {
     return { ok: false, error: e?.message || 'Erro de comunicação com o Instagram.' }
   }

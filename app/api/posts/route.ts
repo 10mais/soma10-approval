@@ -10,6 +10,7 @@ import { clienteSuspenso } from '@/lib/suspensao'
 import { clientesAtivosIds } from '@/lib/cache'
 import { configYouTubeDoCorpo } from '@/lib/youtubePost'
 import { patchDoReenvio } from '@/lib/rodadaAjuste'
+import { limparColaboradores } from '@/lib/colab'
 
 function gerarCodigo() {
   return Math.floor(100000 + Math.random() * 900000).toString()
@@ -133,9 +134,8 @@ export async function POST(req: NextRequest) {
   const contaIdsLimpos: string[] = Array.isArray(contaIds)
     ? Array.from(new Set(contaIds.filter((c: any): c is string => typeof c === 'string' && !!c.trim()).map((c: string) => c.trim())))
     : []
-  const colaboradoresLimpos = Array.isArray(colaboradores)
-    ? colaboradores.map((c: string) => String(c).trim().replace(/^@/, '')).filter(Boolean).slice(0, 4)
-    : []
+  // Colab: @ limpo, sem repetido, até 3 (limite da Meta — lib/colab).
+  const colaboradoresLimpos = limparColaboradores(colaboradores)
   const post: Post = {
     id: uuid(),
     clienteId,
@@ -207,6 +207,8 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true, post: restaurado })
   }
 
+  // Colab na edição passa pela mesma limpeza da criação (lib/colab): @ válido, até 3.
+  if ('colaboradores' in updates) updates.colaboradores = limparColaboradores(updates.colaboradores)
   // Campos do YouTube passam pelo saneador (valor inválido/vazio = volta ao padrão).
   const atualizado: any = { ...post, ...updates, ...configYouTubeDoCorpo(updates), atualizadoEm: new Date().toISOString() }
   // Suspensão (lib/suspenderPost) só é mexida pela rota própria. Mas agendar ou mandar para

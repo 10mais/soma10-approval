@@ -82,7 +82,9 @@ async function publicarAgendados(): Promise<NextResponse> {
     const nome = post.clienteNome || 'Cliente'
     if (resultado.ok) {
       publicados++
-      await notificarEquipe('post_publicado', `Post agendado publicado — ${nome}`, `O post agendado de ${nome} foi publicado em ${resultado.redesOk}.`, id)
+      // Publicado com ressalva (ex.: colab recusado pelo Instagram) vai junto no aviso — só no post ninguém via.
+      const ressalva = typeof resultado.campos?.erroPublicacao === 'string' ? ` ${resultado.campos.erroPublicacao}` : ''
+      await notificarEquipe('post_publicado', `Post agendado publicado — ${nome}`, `O post agendado de ${nome} foi publicado em ${resultado.redesOk}.${ressalva}`, id)
     } else {
       falhas++
       await notificarEquipe('post_falha_publicacao', `Falha no agendamento — ${nome}`, `Não foi possível publicar o post agendado de ${nome}. Motivo: ${resultado.motivo}`, id)

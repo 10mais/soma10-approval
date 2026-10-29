@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Cliente } from '@/lib/redis'
+import { capturarErro } from '@/lib/erros'
 
 export const runtime = 'nodejs'
 
@@ -46,8 +47,18 @@ export async function GET(req: NextRequest) {
     const res = await fetch(url)
     const data = await res.json()
     if (data?.error) {
-      // Erro típico quando o perfil não existe ou não é business/creator
-      return NextResponse.json({ encontrado: false, error: 'Perfil não encontrado ou não é uma conta comercial/criador.' })
+      const e = data.error
+      // Conexão da busca vencida ou sem permissão (190 = token; 102 = sessão; 10/200 = permissão):
+      // a BUSCA está fora, o perfil pode muito bem existir. Antes, isto aparecia como "Perfil não
+      // encontrado" para todo @ digitado (dono, 26/10/2026: "erro na hora de marcar em colab").
+      if ([190, 102, 10, 200].includes(Number(e.code))) {
+        // Saúde do sistema avisa o admin (no máximo 1x por hora — cada letra digitada faz uma busca).
+        const primeira = await redis.set('aviso:colab-busca-fora', '1', { nx: true, ex: 3600 }).catch(() => null)
+        if (primeira) await capturarErro('colab/busca', new Error(`Busca de perfis do colab fora do ar: a conexão com a Meta usada na busca venceu ou perdeu permissão (${e.code}${e.error_subcode ? `/${e.error_subcode}` : ''}). Renove o token da busca.`), { origem: cliente.metaConectado && cliente.facebookPageToken ? 'cliente' : 'agencia' })
+        return NextResponse.json({ encontrado: false, indisponivel: true, error: 'A busca de perfis está indisponível agora. Confira o @ e adicione mesmo assim.' })
+      }
+      // Perfil pessoal não aparece na busca da Meta (ela só enxerga contas comerciais e de criador).
+      return NextResponse.json({ encontrado: false, error: 'Não apareceu na busca (ela só mostra contas comerciais e de criador). Se o @ estiver certo, adicione mesmo assim.' })
     }
     const bd = data?.business_discovery
     if (!bd?.username) {

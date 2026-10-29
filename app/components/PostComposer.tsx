@@ -12,6 +12,8 @@ import DriveButton from './DriveButton'
 import AvatarCliente from './AvatarCliente'
 import { useIsMobile } from '@/lib/useIsMobile'
 import { type ContaPublica } from '@/lib/contasSociais'
+import { MAX_COLAB } from '@/lib/colab'
+import { comprimirImagem } from '@/lib/midiaPost'
 
 type Cliente = { id: string; nome: string; instagram: string; logo?: string; contas?: ContaPublica[]; [k: string]: any }
 type Midia = { url: string; tipo: 'imagem' | 'video'; capa?: string }
@@ -45,7 +47,6 @@ export type ComposerValue = {
 }
 
 type PerfilColab = { username: string; nome: string; foto: string; seguidores: number | null }
-const MAX_COLAB = 4
 
 const FORMATOS: { key: ComposerValue['formato']; label: string }[] = [
   { key: 'feed', label: 'Feed' },
@@ -200,45 +201,7 @@ export default function PostComposer({
 
   const cliente = clientes.find(c => c.id === clienteId)
 
-  // Comprime imagens grandes (reduz para máx. 1440px, JPEG) — evita limite do Facebook e economiza armazenamento
-  async function comprimirImagem(file: File): Promise<File> {
-    if (!file.type.startsWith('image/') || /gif/i.test(file.type)) return file
-    // Imagens pequenas ja estao seguras para as redes
-    if (file.size < 1.2 * 1024 * 1024) return file
-    try {
-      const dataUrl = await new Promise<string>((res, rej) => {
-        const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(file)
-      })
-      const img = await new Promise<HTMLImageElement>((res, rej) => {
-        const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = dataUrl
-      })
-      // Alvo bem abaixo do limite de 10MB das redes (Instagram/Facebook)
-      const LIMITE = 8 * 1024 * 1024
-      let maxLado = 1920
-      let qualidade = 0.9
-      let melhor: Blob | null = null
-      for (let tentativa = 0; tentativa < 6; tentativa++) {
-        let { width, height } = img
-        if (Math.max(width, height) > maxLado) {
-          const esc = maxLado / Math.max(width, height)
-          width = Math.round(width * esc); height = Math.round(height * esc)
-        }
-        const canvas = document.createElement('canvas')
-        canvas.width = width; canvas.height = height
-        const ctx = canvas.getContext('2d'); if (!ctx) return file
-        ctx.drawImage(img, 0, 0, width, height)
-        const blob = await new Promise<Blob | null>(r => canvas.toBlob(b => r(b), 'image/jpeg', qualidade))
-        if (!blob) break
-        melhor = blob
-        if (blob.size <= LIMITE) break
-        // Ainda grande: reduz qualidade e dimensao e tenta de novo
-        qualidade = Math.max(0.5, qualidade - 0.15)
-        maxLado = Math.round(maxLado * 0.85)
-      }
-      if (!melhor || melhor.size >= file.size) return file
-      return new File([melhor], file.name.replace(/\.\w+$/, '.jpg'), { type: 'image/jpeg' })
-    } catch { return file }
-  }
+  // Compressão: lib/midiaPost.comprimirImagem (a mesma da subida em massa).
 
   async function enviarArquivos(arquivos: FileList | File[]) {
     setErroUpload('')
@@ -895,6 +858,12 @@ export default function PostComposer({
                 </span>
               ))}
             </div>
+          )}
+
+          {colaboradores.length > MAX_COLAB && (
+            <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: 'var(--v2-hot)' }}>
+              A Meta aceita até {MAX_COLAB} colabs por post: @{colaboradores.slice(MAX_COLAB).join(', @')} não {colaboradores.length - MAX_COLAB === 1 ? 'será convidado' : 'serão convidados'}. Tire {colaboradores.length - MAX_COLAB === 1 ? 'um' : 'alguns'} para escolher quem fica.
+            </p>
           )}
 
           {colaboradores.length < MAX_COLAB && (

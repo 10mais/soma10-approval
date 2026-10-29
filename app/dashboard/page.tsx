@@ -39,6 +39,7 @@ import { fecharFora } from '@/lib/fecharModal'
 const ChatInterno = dynamic(() => import('../components/ChatInterno'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const StudioMes = dynamic(() => import('../components/StudioMes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const FilaProducao = dynamic(() => import('../components/FilaProducao'), { ssr: false, loading: () => <LoadingPlaceholder /> })
+const SubirEmMassa = dynamic(() => import('../components/SubirEmMassa'), { ssr: false })
 const DashboardHome = dynamic(() => import('../components/DashboardHome'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const DashboardHomeV2 = dynamic(() => import('../components/DashboardHomeV2'), { ssr: false, loading: () => <LoadingPlaceholder /> })
 const RegrasDoMes = dynamic(() => import('../components/RegrasDoMes'), { ssr: false, loading: () => <LoadingPlaceholder /> })
@@ -400,6 +401,8 @@ function Dashboard() {
   }, [aba])
   const [listeningData, setListeningData] = useState<any>(null)
   const [listeningLoading, setListeningLoading] = useState(false)
+  // SUBIR EM MASSA (dono, 29/10/2026): vários posts de uma vez no Programador (components/SubirEmMassa).
+  const [loteAberto, setLoteAberto] = useState(false)
   const [plannerView, setPlannerView] = useState<'lista' | 'calendario'>(() => (typeof window !== 'undefined' && sessionStorage.getItem('soma10_plannerView') === 'calendario') ? 'calendario' : 'lista')
   // Tema (claro/escuro) — persistido no navegador, inicializa direto do localStorage
   const [tema, setTema] = useState<'claro' | 'escuro'>(() => {
@@ -2556,11 +2559,19 @@ function Dashboard() {
                   }}>{tr(v === 'lista' ? 'dash.lista' : 'dash.calendario')}</button>
                 ))}
               </div>
+              <button onClick={() => setLoteAberto(true)} title="Vários posts de uma vez: cada um com a sua legenda, dia, horário e colab" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, padding: '8px 14px', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg> Subir em massa
+              </button>
               <button onClick={() => setAba('novo-post')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>
                 <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Novo Post
               </button>
             </div>
           </div>
+        )}
+
+        {loteAberto && (
+          <SubirEmMassa clientes={clientes as any} clienteFixo={verComoClienteId || undefined} onFechar={() => setLoteAberto(false)}
+            onConcluido={novos => setPosts(ps => [...novos, ...ps.filter(p => !novos.some((n: any) => n.id === p.id))])} />
         )}
 
         {/* Status/barra de progresso ao publicar/agendar/salvar */}
