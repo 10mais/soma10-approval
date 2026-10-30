@@ -99,19 +99,15 @@ export async function POST(req: NextRequest) {
       if (!pageData.access_token) {
         return NextResponse.json({ error: 'Não foi possível obter o token da página.' }, { status: 400 })
       }
-      if (!pageData.instagram_business_account) {
-        return NextResponse.json({
-          error: 'Esta Página não possui Instagram vinculado.',
-          dica: 'O cliente precisa vincular o Instagram à Página nas configurações da Página.'
-        }, { status: 400 })
-      }
-
+      // Página sem Instagram conecta só o Facebook: as redes são independentes (dono, 27/09 e
+      // 30/10: "não estou tentando integrar o instagram agora, é o FACEBOOK QUE EU QUERO!!").
       pageToken = pageData.access_token
-      igId = pageData.instagram_business_account.id
-
-      const igRes = await fetch(`${BASE}/${igId}?fields=username&access_token=${pageToken}`)
-      const igData = await igRes.json()
-      igUsername = igData.username
+      igId = pageData.instagram_business_account?.id
+      if (igId) {
+        const igRes = await fetch(`${BASE}/${igId}?fields=username&access_token=${pageToken}`)
+        const igData = await igRes.json()
+        igUsername = igData.username
+      }
     }
 
     const cliente = await redis.get<Cliente>(`cliente:${clienteId}`)
@@ -124,6 +120,10 @@ export async function POST(req: NextRequest) {
         const fotoRes = await fetch(`${BASE}/${igId}?fields=profile_picture_url&access_token=${pageToken}`)
         const fotoData = await fotoRes.json()
         if (fotoData?.profile_picture_url) fotoPerfil = (await copiarFotoParaBlob(fotoData.profile_picture_url, clienteId)) || fotoData.profile_picture_url
+      } else if (pageToken && !cliente.logo) {
+        const fotoRes = await fetch(`${BASE}/${facebookPageId}/picture?type=large&redirect=false&access_token=${pageToken}`)
+        const fotoData = await fotoRes.json()
+        if (fotoData?.data?.url && !fotoData?.data?.is_silhouette) fotoPerfil = (await copiarFotoParaBlob(fotoData.data.url, clienteId)) || fotoData.data.url
       }
     } catch {}
 
@@ -138,19 +138,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, instagram: igUsername, instagramId: igId, conta: 'adicional', contas: contasDoCliente({ ...cliente, contas }) })
     }
 
+    // Página SEM Instagram: grava só o Facebook e não apaga o Instagram que o cliente já tenha
+    // (o login do Instagram é outra conexão — instagramToken/instagramUserId ficam como estão).
     const clienteAtualizado: Cliente = {
       ...cliente,
       facebookPageId,
       facebookPageToken: pageToken,
-      instagramBusinessId: igId,
-      instagramUsername: igUsername,
+      ...(igId ? { instagramBusinessId: igId } : {}),
+      ...(igUsername ? { instagramUsername: igUsername } : {}),
       metaConectado: true,
       ...(fotoPerfil ? { logo: fotoPerfil } : {}),
     }
 
     await redis.set(`cliente:${clienteId}`, clienteAtualizado)
     revalidateTag('clientes')
-    return NextResponse.json({ ok: true, instagram: igUsername, instagramId: igId })
+    return NextResponse.json({ ok: true, instagram: igUsername, instagramId: igId, ...(igId ? {} : { soFacebook: true }) })
 
   } catch (err: any) {
     return NextResponse.json({ error: 'Erro interno: ' + err.message }, { status: 500 })

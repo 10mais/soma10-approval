@@ -1512,20 +1512,22 @@ function Dashboard() {
     for (const [pageId, clienteId] of Object.entries(vinculos)) {
       if (!clienteId) continue
       const page = metaPages.find(p => p.pageId === pageId)
-      if (!page || !page.instagram) continue
-      await fetch('/api/clientes/conectar', {
+      if (!page) continue
+      // Página sem Instagram vincula só o Facebook (dono, 30/10: "é o FACEBOOK QUE EU QUERO!!").
+      const r = await fetch('/api/clientes/conectar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clienteId,
           facebookPageId: pageId,
           facebookPageToken: page.pageToken,
-          instagramBusinessId: page.instagram.id,
-          instagramUsername: page.instagram.username,
+          instagramBusinessId: page.instagram?.id,
+          instagramUsername: page.instagram?.username,
           igToken: page.igToken,
           igUserId: page.igUserId,
         }),
-      })
+      }).catch(() => null)
+      if (!r?.ok) { const d = await r?.json().catch(() => null); toast(`${page.pageName}: ${d?.error || 'não foi possível vincular.'}`, 'erro') }
     }
     setVinculando(false)
     setMetaPages([])
@@ -1536,24 +1538,31 @@ function Dashboard() {
 
   // Vincula UMA página (Facebook + Instagram) diretamente ao cliente-alvo da conexão
   async function vincularPaginaACliente(page: MetaPage, clienteId: string) {
-    if (!page.instagram) return
+    // Página sem Instagram vincula só o Facebook (dono, 30/10: "é o FACEBOOK QUE EU QUERO!!").
     setVinculandoPagina(page.pageId)
-    await fetch('/api/clientes/conectar', {
+    const r = await fetch('/api/clientes/conectar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         clienteId,
         facebookPageId: page.pageId,
         facebookPageToken: page.pageToken,
-        instagramBusinessId: page.instagram.id,
-        instagramUsername: page.instagram.username,
+        instagramBusinessId: page.instagram?.id,
+        instagramUsername: page.instagram?.username,
         igToken: page.igToken,
         igUserId: page.igUserId,
         // Adicionar como perfil extra (contas[]) quando a conexão partiu do
         // botão "Adicionar perfil"; senão, sobrescreve a conta principal.
-        ...(metaComoNova ? { comoNovaConta: true, contaNome: page.instagram.username ? `@${page.instagram.username}` : page.pageName } : {}),
+        ...(metaComoNova ? { comoNovaConta: true, contaNome: page.instagram?.username ? `@${page.instagram.username}` : page.pageName } : {}),
       }),
-    })
+    }).catch(() => null)
+    if (!r?.ok) {
+      const d = await r?.json().catch(() => null)
+      toast(d?.error || 'Não foi possível vincular a página.', 'erro')
+      setVinculandoPagina('')
+      return
+    }
+    toast(page.instagram ? 'Facebook e Instagram vinculados.' : 'Facebook vinculado. Esta página não tem Instagram; o Instagram do cliente continua como estava.', 'sucesso')
     setVinculandoPagina('')
     setMetaPages([])
     setVinculos({})
@@ -3865,14 +3874,14 @@ function Dashboard() {
                         {page.instagram ? (
                           <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>@{page.instagram.username}</p>
                         ) : (
-                          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-amber-on)' }}>{tr('dash.sem-instagram-vinculado')}</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('dash.sem-instagram-vinculado')}</p>
                         )}
                       </div>
-                      {page.instagram && (
+                      {(
                         metaClienteAlvo ? (
                           <button onClick={() => vincularPaginaACliente(page, metaClienteAlvo)} disabled={!!vinculandoPagina}
                             style={{ padding: '8px 16px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: vinculandoPagina ? 0.6 : 1, flexShrink: 0 }}>
-                            {vinculandoPagina === page.pageId ? tr('dash.vinculando') : tr('dash.vincular')}
+                            {vinculandoPagina === page.pageId ? tr('dash.vinculando') : page.instagram ? tr('dash.vincular') : tr('dash.vincular-facebook')}
                           </button>
                         ) : (
                           <select
