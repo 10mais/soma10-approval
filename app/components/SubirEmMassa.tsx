@@ -16,7 +16,8 @@ import { upload } from '@vercel/blob/client'
 import { v4 as uuid } from 'uuid'
 import LimiteDeErro from '@/app/components/LimiteDeErro'
 import AvatarCliente from '@/app/components/AvatarCliente'
-import { toast, toastErro } from '@/lib/toast'
+import PreviaInstagram from '@/app/components/PreviaInstagram'
+import { toast, toastErro, confirmar } from '@/lib/toast'
 import { registrarDesfazer } from '@/lib/desfazer'
 import { fecharFora } from '@/lib/fecharModal'
 import { comprimirImagem, capaDoVideoLocal } from '@/lib/midiaPost'
@@ -26,7 +27,7 @@ import { type ContaPublica } from '@/lib/contasSociais'
 import {
   ordenarPorNome, tipoDoArquivo, novoItem, motivoParaNaoJuntar, juntarEmCarrossel, separarCarrossel, moverMidia,
   moverItem, distribuirDatas, dividirLegendas, aplicarLegendas, contarHashtags, faltasDoItem, corpoDoPost,
-  paraRascunho, deRascunho, TEXTO_FALTA, MAX_LEGENDA,
+  paraRascunho, deRascunho, instanteDoItem, TEXTO_FALTA, MAX_LEGENDA,
   type ItemLote, type MidiaLote, type Lote, type AcaoLote, type FormatoLote, type Distribuicao,
 } from '@/lib/subirEmMassa'
 
@@ -68,6 +69,7 @@ const I = {
   check: 'M20 6 9 17l-5-5',
   play: 'M8 5v14l11-7z',
   separar: 'M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5',
+  olho: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
 }
 
 export default function SubirEmMassa(props: Props) {
@@ -113,13 +115,23 @@ function Tela({ clientes, clienteFixo, onFechar, onConcluido }: Props) {
   const ativos = useRef(0)
   const inputArquivos = useRef<HTMLInputElement>(null)
   const montado = useRef(true)
+  const [previa, setPrevia] = useState<{ itemId: string; inicio: number } | null>(null)
+  const loteRef = useRef(lote)
+  loteRef.current = lote
+  const descartado = useRef(false) // "Cancelar" confirmado: nada é guardado ao sair
 
   const cliente = clientes.find(c => c.id === clienteId)
   const contas = cliente?.contas || []
   const multiPerfil = contas.length > 1
   const temMeta = lote.redes.length > 0
   useEffect(() => { const t = setInterval(() => setAgora(Date.now()), 30000); return () => clearInterval(t) }, [])
-  useEffect(() => () => { montado.current = false; previas.current.forEach(u => URL.revokeObjectURL(u)) }, [])
+  useEffect(() => () => {
+    montado.current = false
+    // Saiu no meio da digitação: grava já (o salvamento normal espera 400 ms).
+    const l = loteRef.current
+    if (!descartado.current && l.clienteId && l.itens.length) { try { localStorage.setItem(CHAVE_RASCUNHO(l.clienteId), paraRascunho(l)) } catch { /* sem storage */ } }
+    previas.current.forEach(u => URL.revokeObjectURL(u))
+  }, [])
 
   // Cliente escolhido: carrega as etapas do Playbook e o lote que estava sendo montado para ele.
   useEffect(() => {
@@ -323,12 +335,30 @@ function Tela({ clientes, clienteFixo, onFechar, onConcluido }: Props) {
     }
   }
 
+  // VOLTAR (dono, 29/10: "Não tem tecla de voltar e nem CANCELAR"): volta ao Programador e o
+  // lote fica guardado neste navegador. CANCELAR descarta o lote, sempre com "tem certeza?"
+  // (e o Ctrl+Z devolve).
   const fechar = () => { if (!criando) onFechar() }
+  async function cancelarLote() {
+    if (criando) return
+    const n = pendentes.length
+    if (!n) { onFechar(); return }
+    const ok = await confirmar(`${n === 1 ? 'O post montado aqui sai' : `Os ${n} posts montados aqui saem`} da tela e não ${n === 1 ? 'é criado' : 'são criados'}.`, { titulo: 'Cancelar este lote?', okLabel: 'Cancelar o lote', cancelLabel: 'Continuar montando', perigo: true })
+    if (!ok) return
+    const antes = lote
+    const chave = CHAVE_RASCUNHO(lote.clienteId)
+    descartado.current = true
+    try { localStorage.removeItem(chave) } catch { /* sem storage */ }
+    registrarDesfazer('lote cancelado (abra "Subir em massa" de novo para retomar)', () => {
+      try { localStorage.setItem(chave, paraRascunho(antes)); return true } catch { return false }
+    })
+    onFechar()
+  }
   useEffect(() => {
-    const k = (e: KeyboardEvent) => { if (e.key === 'Escape' && !modal && !criando) onFechar() }
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape' && !modal && !previa && !criando) onFechar() }
     window.addEventListener('keydown', k)
     return () => window.removeEventListener('keydown', k)
-  }, [modal, criando, onFechar])
+  }, [modal, previa, criando, onFechar])
 
   const todosMarcados = !!pendentes.length && pendentes.every(i => selecionados.includes(i.id))
   const acaoAtual = ACOES.find(a => a.chave === acao)!
@@ -340,9 +370,9 @@ function Tela({ clientes, clienteFixo, onFechar, onConcluido }: Props) {
     <div className="anim-overlay" style={{ position: 'fixed', inset: 0, zIndex: 1500, background: 'var(--v2-ground)', color: 'var(--v2-ink)', fontFamily: 'var(--v2-font)', display: 'flex', flexDirection: 'column' }}>
       {/* Cabeçalho */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', paddingTop: 'max(14px, env(safe-area-inset-top))', borderBottom: '1px solid var(--v2-rule)', background: 'var(--v2-surface)' }}>
-        <h2 style={{ margin: 0, fontSize: 17, flex: 1, minWidth: 0 }}>Subir postagens em massa</h2>
-        <button onClick={fechar} disabled={criando} aria-label="Fechar" title="Fechar (o lote fica guardado neste navegador)"
-          style={{ ...botaoLeve, padding: 8, opacity: criando ? 0.5 : 1 }}><Svg d={I.fechar} /></button>
+        <button onClick={fechar} disabled={criando} title="Volta ao Programador. O lote fica guardado neste navegador."
+          style={{ ...botaoLeve, opacity: criando ? 0.5 : 1, flexShrink: 0 }}><Svg d={I.esq} size={14} />Voltar</button>
+        <h2 style={{ margin: 0, fontSize: 17, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Subir postagens em massa</h2>
       </div>
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '16px 18px 120px' }}>
@@ -485,7 +515,8 @@ function Tela({ clientes, clienteFixo, onFechar, onConcluido }: Props) {
                     onTirarMidia={mid => tirarMidia(it.id, mid)}
                     onSeparar={() => setLote(l => ({ ...l, itens: separarCarrossel(l.itens, it.id, uuid) }))}
                     onTrocarCapa={trocarCapa}
-                    onRemover={() => removerItem(it.id)} />
+                    onRemover={() => removerItem(it.id)}
+                    onPrevia={inicio => setPrevia({ itemId: it.id, inicio })} />
                 ))}
               </div>
             </>
@@ -508,6 +539,8 @@ function Tela({ clientes, clienteFixo, onFechar, onConcluido }: Props) {
             <span style={{ flex: 1, minWidth: 160, fontSize: 12.5, color: bloqueio ? 'var(--v2-hot)' : 'var(--v2-ink3)', fontWeight: bloqueio ? 700 : 500 }}>
               {criando ? `Criando os posts… ${Object.values(criacao).filter(c => c.estado === 'criado').length} de ${pendentes.length + Object.values(criacao).filter(c => c.estado === 'criado').length}` : bloqueio || acaoAtual.dica}
             </span>
+            <button onClick={cancelarLote} disabled={criando} title="Descarta este lote (pede confirmação)"
+              style={{ ...botaoLeve, padding: '11px 16px', fontSize: 13.5, opacity: criando ? 0.5 : 1 }}>Cancelar</button>
             <button onClick={criarTodos} disabled={!!bloqueio || criando}
               style={{ padding: '11px 20px', borderRadius: 11, border: 0, background: bloqueio ? 'var(--v2-surface2)' : 'var(--v2-amber-on)', color: bloqueio ? 'var(--v2-ink3)' : '#17150E', fontSize: 14, fontWeight: 800, cursor: bloqueio || criando ? 'not-allowed' : 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>
               {criando ? 'Criando…' : acaoAtual.botao(pendentes.length)}
@@ -515,6 +548,25 @@ function Tela({ clientes, clienteFixo, onFechar, onConcluido }: Props) {
           </div>
         </div>
       )}
+
+      {previa && (() => {
+        const lista = lote.itens
+        const idx = lista.findIndex(i => i.id === previa.itemId)
+        if (idx < 0) return null
+        const it = lista[idx]
+        const iso = instanteDoItem(it)
+        const midias = it.midias.map(m => ({ src: m.url || previas.current.get(m.id) || '', tipo: m.tipo, capa: m.capa })).filter(m => m.src)
+        return (
+          <PreviaInstagram key={`${it.id}:${previa.inicio}`}
+            handle={(cliente?.instagram || '').replace(/^@/, '') || cliente?.nome || 'perfil'} nome={cliente?.nome} logo={cliente?.logo} clienteId={clienteId}
+            midias={midias} formato={it.midias.length > 1 ? 'feed' : it.formato} legenda={it.legenda} colaboradores={it.colaboradores}
+            quando={iso ? new Date(iso).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
+            inicio={previa.inicio} titulo={`Post ${idx + 1} de ${lista.length}`}
+            onAnterior={idx > 0 ? () => setPrevia({ itemId: lista[idx - 1].id, inicio: 0 }) : undefined}
+            onProximo={idx < lista.length - 1 ? () => setPrevia({ itemId: lista[idx + 1].id, inicio: 0 }) : undefined}
+            onFechar={() => setPrevia(null)} />
+        )
+      })()}
 
       {modal === 'datas' && <ModalDatas alvos={selecionados.length || pendentes.length} marcados={selecionados.length > 0} onFechar={() => setModal(null)}
         onAplicar={d => { setLote(l => ({ ...l, itens: distribuirDatas(l.itens, selecionados.length ? selecionados : pendentes.map(i => i.id), d) })); setModal(null) }} />}
@@ -530,12 +582,13 @@ function Tela({ clientes, clienteFixo, onFechar, onConcluido }: Props) {
   )
 }
 
-function CartaoPost({ it, indice, total, faltas, criacao, acao, marcado, travado, previa, onMarcar, onAlterar, onMover, onMoverMidia, onTirarMidia, onSeparar, onTrocarCapa, onRemover }: {
+function CartaoPost({ it, indice, total, faltas, criacao, acao, marcado, travado, previa, onMarcar, onAlterar, onMover, onMoverMidia, onTirarMidia, onSeparar, onTrocarCapa, onRemover, onPrevia }: {
   it: ItemLote; indice: number; total: number; faltas: ReturnType<typeof faltasDoItem>; criacao?: Criacao; acao: AcaoLote
   marcado: boolean; travado: boolean; previa: (midiaId: string) => string | undefined
   onMarcar: () => void; onAlterar: (p: Partial<ItemLote>) => void; onMover: (d: number) => void
   onMoverMidia: (de: number, para: number) => void; onTirarMidia: (midiaId: string) => void; onSeparar: () => void
   onTrocarCapa: (midiaId: string, f: File) => void; onRemover: () => void
+  onPrevia: (inicio: number) => void
 }) {
   const carrossel = it.midias.length > 1
   const story = it.formato === 'story'
@@ -559,7 +612,7 @@ function CartaoPost({ it, indice, total, faltas, criacao, acao, marcado, travado
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: 168, flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <input type="checkbox" checked={marcado} onChange={onMarcar} disabled={travado} aria-label="Marcar este post" style={{ margin: 0 }} />
-            <span style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--v2-ink3)' }}>Post {indice + 1}</span>
+            <span style={{ fontSize: 11.5, fontWeight: 800, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>Post {indice + 1}</span>
             <span style={{ flex: 1 }} />
             <button type="button" onClick={() => onMover(-1)} disabled={travado || indice === 0} aria-label="Subir na lista" style={{ ...mini, opacity: indice === 0 ? 0.35 : 1 }}><Svg d={I.cima} size={13} /></button>
             <button type="button" onClick={() => onMover(1)} disabled={travado || indice === total - 1} aria-label="Descer na lista" style={{ ...mini, opacity: indice === total - 1 ? 0.35 : 1 }}><Svg d={I.baixo} size={13} /></button>
@@ -568,7 +621,9 @@ function CartaoPost({ it, indice, total, faltas, criacao, acao, marcado, travado
             {it.midias.map((m, k) => {
               const src = m.tipo === 'video' ? (m.capa || '') : (m.url || previa(m.id) || '')
               return (
-                <div key={m.id} style={{ position: 'relative', aspectRatio: carrossel ? '1' : story || video ? '9/16' : '4/5', maxHeight: carrossel ? undefined : 210, borderRadius: 8, overflow: 'hidden', background: 'var(--v2-surface2)' }}>
+                <div key={m.id} role="button" tabIndex={0} aria-label={`Ver prévia${carrossel ? ` (lâmina ${k + 1})` : ''}`} title="Ver prévia"
+                  onClick={() => onPrevia(k)} onKeyDown={e => { if (e.key === 'Enter') onPrevia(k) }}
+                  style={{ position: 'relative', aspectRatio: carrossel ? '1' : story || video ? '9/16' : '4/5', maxHeight: carrossel ? undefined : 210, borderRadius: 8, overflow: 'hidden', background: 'var(--v2-surface2)', cursor: 'zoom-in' }}>
                   {src ? <img src={src} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     : m.tipo === 'video' && previa(m.id) ? <video src={previa(m.id)} muted playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink3)' }}><Svg d={m.tipo === 'video' ? I.play : I.subir} /></div>}
@@ -580,7 +635,7 @@ function CartaoPost({ it, indice, total, faltas, criacao, acao, marcado, travado
                   )}
                   {m.erro && <div title={m.erro} style={{ position: 'absolute', inset: 0, background: 'rgba(163,44,34,0.78)', color: '#fff', fontSize: 10, fontWeight: 700, padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>{m.erro}</div>}
                   {carrossel && !travado && (
-                    <div style={{ position: 'absolute', right: 2, top: 2, display: 'flex', gap: 2 }}>
+                    <div onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()} style={{ position: 'absolute', right: 2, top: 2, display: 'flex', gap: 2 }}>
                       {k > 0 && <button type="button" onClick={() => onMoverMidia(k, k - 1)} aria-label="Mover para a esquerda" style={{ ...mini, width: 18, height: 18 }}><Svg d={I.esq} size={11} /></button>}
                       {k < it.midias.length - 1 && <button type="button" onClick={() => onMoverMidia(k, k + 1)} aria-label="Mover para a direita" style={{ ...mini, width: 18, height: 18 }}><Svg d={I.dir} size={11} /></button>}
                       <button type="button" onClick={() => onTirarMidia(m.id)} aria-label="Tirar do carrossel" style={{ ...mini, width: 18, height: 18, color: 'var(--v2-hot)' }}><Svg d={I.fechar} size={11} /></button>
@@ -590,6 +645,10 @@ function CartaoPost({ it, indice, total, faltas, criacao, acao, marcado, travado
               )
             })}
           </div>
+          <button type="button" onClick={() => onPrevia(0)} title="Ver como fica no Instagram"
+            style={{ ...campo, padding: '5px 8px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', color: 'var(--v2-info)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+            <Svg d={I.olho} size={13} />Ver prévia
+          </button>
           {it.midias.some(m => m.tipo === 'video') && !story && !travado && (
             <>
               <input ref={capaInput} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e => { const f = e.target.files?.[0]; if (f && capaDe) onTrocarCapa(capaDe, f); e.target.value = '' }} />
