@@ -5,6 +5,7 @@ import { redis, CrmContato, CrmNegocio, Agendamento, EsperaItem } from '@/lib/re
 import { WaConversa } from '@/lib/whatsapp'
 import { IgConversa } from '@/lib/instagramDM'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
+import { fundirFichas, fundirAnotacoes } from '@/lib/fichaPaciente'
 
 export const runtime = 'nodejs'
 
@@ -36,6 +37,11 @@ function fundir(p: CrmContato, s: CrmContato): CrmContato {
     areaAtuacao: gap(p.areaAtuacao, s.areaAtuacao),
     cargo: gap(p.cargo, s.cargo),
     nascimento: gap(p.nascimento, s.nascimento),
+    cpfCnpj: gap(p.cpfCnpj, s.cpfCnpj),
+    ultimoProcedimento: gap(p.ultimoProcedimento, s.ultimoProcedimento),
+    // Clínica: a ficha e o "o que sabemos" do duplicado não podem sumir na mesclagem.
+    fichaClinica: fundirFichas(p.fichaClinica, s.fichaClinica),
+    anotacoes: fundirAnotacoes(p.anotacoes, s.anotacoes),
     // paciente > lead/outros; ativo se qualquer um estiver ativo
     tipo: p.tipo === 'paciente' || s.tipo === 'paciente' ? 'paciente' : (p.tipo || s.tipo),
     ativo: (p.ativo !== false) || (s.ativo !== false) ? undefined : false,

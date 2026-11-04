@@ -24,16 +24,18 @@ function perfilAtual(p: { perfilClinica?: boolean; perfilTurismo?: boolean; perf
   return p.perfilClinica ? 'clinica' : p.perfilTurismo ? 'turismo' : p.perfilCidadania ? 'cidadania' : p.perfilTelefonia ? 'telefonia' : null
 }
 import BibliotecaVendasTela from './BibliotecaVendas'
+import LimiteDeErro from './LimiteDeErro'
 import EditorLinhagem from './EditorLinhagem'
 import { useT, useArea, useIdioma } from '@/app/components/Idioma'
 import { localeDe } from '@/lib/i18n'
 import { procedimentosPorContato, casaProcedimento, opcoesFiltroProcedimento, type ProcedimentoFeito } from '@/lib/procedimentosPaciente'
+import { CAMPOS_FICHA, CATEGORIAS_ANOTACAO, categoriaAnotacao, camposPreenchidos, alertaAlergia, type FichaClinica, type AnotacaoPaciente, type CategoriaAnotacao } from '@/lib/fichaPaciente'
 
 type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean; pipelineId?: string }
 type Empresa = { id: string; nome: string; segmento?: string; site?: string; instagram?: string; telefone?: string; observacoes?: string }
 type Interacao = { id: string; tipo: string; texto: string; autor: string; data: string; criadoEm: string }
 type ProximoPasso = { id: string; titulo: string; quando: string; nota?: string; feito?: boolean; tarefaId?: string }
-type Contato = { id: string; nome: string; telefone?: string; email?: string; empresa?: string; empresaId?: string; cargo?: string; areaAtuacao?: string; cpfCnpj?: string; profissionalAutonomo?: boolean; observacoes?: string; tipo?: string; nascimento?: string; preferenciasViagem?: string; etiquetas?: string[]; ativo?: boolean; historico?: Interacao[]; proximosPassos?: ProximoPasso[]; ultimoContato?: string; criadoEm?: string }
+type Contato = { id: string; nome: string; telefone?: string; email?: string; empresa?: string; empresaId?: string; cargo?: string; areaAtuacao?: string; cpfCnpj?: string; profissionalAutonomo?: boolean; observacoes?: string; tipo?: string; nascimento?: string; preferenciasViagem?: string; etiquetas?: string[]; ativo?: boolean; historico?: Interacao[]; proximosPassos?: ProximoPasso[]; ultimoContato?: string; criadoEm?: string; ultimoProcedimento?: string; nuncaVeio?: boolean; fichaClinica?: FichaClinica; anotacoes?: AnotacaoPaciente[] }
 type Atividade = { id: string; tipo: string; texto: string; autor: string; criadoEm: string }
 type Negocio = {
   id: string; titulo: string; valor?: number; estagioId: string; pipelineId?: string; status: string
@@ -1655,10 +1657,44 @@ function AbordagemModal({ contato, podeEditar, onClose, onAbrirConversa, onAbrir
   )
 }
 
-function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false, lojaAtiva = '', tipoPadrao = 'paciente', onAgendar, onAbrirWhatsApp, onAbrirOportunidade }: { contato: Contato | null; prefill?: { nome?: string; telefone?: string }; onClose: () => void; onSalvo: (criado?: Contato) => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean; lojaAtiva?: string; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp?: (telefone: string, contatoId?: string) => void; onAbrirOportunidade?: (contatoId: string) => void }) {
+// A ficha ganhou conteúdo dinâmico (ficha clínica, "o que sabemos"): um erro de
+// render nela não pode deixar a tela escurecida e sem saída. Ver LimiteDeErro.
+function ContatoModal(props: React.ComponentProps<typeof ContatoModalTela>) {
   const tr = useT()
-  const [f, setF] = useState<any>({ nome: contato?.nome || prefill?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', cpfCnpj: (contato as any)?.cpfCnpj || '', telefone: contato?.telefone || prefill?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? tipoPadrao : perfilTurismo ? (contato?.tipo || 'lead') : ''), nascimento: contato?.nascimento || '', ultimoProcedimento: (contato as any)?.ultimoProcedimento || '', nuncaVeio: !!(contato as any)?.nuncaVeio, preferenciasViagem: contato?.preferenciasViagem || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false, sobrenomeLinhagem: (contato as any)?.sobrenomeLinhagem || '' })
+  return <LimiteDeErro onFechar={props.onClose} titulo={tr('ficha.nao-abriu')}><ContatoModalTela {...props} /></LimiteDeErro>
+}
+
+function ContatoModalTela({ contato, prefill, onClose, onSalvo, podeExcluir = false, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false, lojaAtiva = '', tipoPadrao = 'paciente', onAgendar, onAbrirWhatsApp, onAbrirOportunidade }: { contato: Contato | null; prefill?: { nome?: string; telefone?: string }; onClose: () => void; onSalvo: (criado?: Contato) => void; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean; lojaAtiva?: string; tipoPadrao?: string; onAgendar?: (p: { pacienteNome: string; pacienteTelefone?: string; contatoId?: string }) => void; onAbrirWhatsApp?: (telefone: string, contatoId?: string) => void; onAbrirOportunidade?: (contatoId: string) => void }) {
+  const tr = useT()
+  const { idioma } = useIdioma()
+  const [f, setF] = useState<any>({ nome: contato?.nome || prefill?.nome || '', empresa: (contato as any)?.empresa || '', profissionalAutonomo: !!(contato as any)?.profissionalAutonomo, areaAtuacao: (contato as any)?.areaAtuacao || '', cpfCnpj: (contato as any)?.cpfCnpj || '', telefone: contato?.telefone || prefill?.telefone || '', email: contato?.email || '', cargo: (contato as any)?.cargo || '', observacoes: (contato as any)?.observacoes || '', tipo: contato?.tipo || (perfilClinica ? tipoPadrao : perfilTurismo ? (contato?.tipo || 'lead') : ''), nascimento: contato?.nascimento || '', ultimoProcedimento: (contato as any)?.ultimoProcedimento || '', nuncaVeio: !!(contato as any)?.nuncaVeio, preferenciasViagem: contato?.preferenciasViagem || '', etiquetasTxt: (contato?.etiquetas || []).join(', '), ativo: contato?.ativo !== false, sobrenomeLinhagem: (contato as any)?.sobrenomeLinhagem || '', fichaClinica: { ...(contato?.fichaClinica || {}) } as FichaClinica })
   const [salvando, setSalvando] = useState(false)
+  // FICHA CLÍNICA (dono, 04/11): anamnese da pessoa. Abre sozinha quando já tem
+  // algo preenchido; vazia, fica fechada para a ficha não virar um formulário longo.
+  const setFicha = (campo: keyof FichaClinica, valor: string) => setF((x: any) => ({ ...x, fichaClinica: { ...(x.fichaClinica || {}), [campo]: valor } }))
+  const nFicha = camposPreenchidos(f.fichaClinica) + (String(f.cpfCnpj || '').trim() ? 1 : 0)
+  const [fichaAberta, setFichaAberta] = useState(() => camposPreenchidos(contato?.fichaClinica) > 0 || !!String(contato?.cpfCnpj || '').trim())
+  const alergia = perfilClinica ? alertaAlergia(f.fichaClinica) : null
+  // O QUE SABEMOS: notas da equipe sobre a pessoa (da ficha ou "Salvar na ficha"
+  // do WhatsApp). Grava na hora, fora do Salvar do formulário — igual aos passos.
+  const [anotacoes, setAnotacoes] = useState<AnotacaoPaciente[]>(contato?.anotacoes || [])
+  const [novaNota, setNovaNota] = useState<{ texto: string; categoria: CategoriaAnotacao }>({ texto: '', categoria: 'outro' })
+  const [notaBusy, setNotaBusy] = useState(false)
+  async function addNota(): Promise<boolean> {
+    if (!contato?.id || !novaNota.texto.trim() || notaBusy) return false
+    setNotaBusy(true)
+    const r = await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, novaAnotacao: { texto: novaNota.texto, categoria: novaNota.categoria, origem: 'ficha' } }) }).then(x => x.json()).catch(() => null)
+    setNotaBusy(false)
+    if (r?.ok) { setAnotacoes(r.contato.anotacoes || []); setNovaNota(n => ({ ...n, texto: '' })); return true }
+    toast(r?.error || tr('ficha.falha-salvar'), 'erro')
+    return false
+  }
+  async function removerNota(notaId: string) {
+    if (!contato?.id) return
+    const r = await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: contato.id, removerAnotacao: notaId }) }).then(x => x.json()).catch(() => null)
+    if (r?.ok) setAnotacoes(r.contato.anotacoes || [])
+    else toast(r?.error || tr('ficha.falha-salvar'), 'erro')
+  }
   // Histórico de atendimentos do paciente (da Agenda — perfil clínica, só ao editar)
   const [historico, setHistorico] = useState<{ id: string; dataInicio: string; servico?: string; status: string; profissionalNome: string; registroAtendimento?: string; procedimentosRealizados?: string[]; valorInvestido?: number }[] | null>(null)
   // Catálogo de Procedimentos (mesma fonte da Agenda) para sugerir no campo.
@@ -1717,7 +1753,7 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
   // ler (ver o aviso em lib/fecharModal). Nenhum efeito escreve em `f`, então o
   // que difere do retrato inicial foi o usuário quem digitou.
   const retratoInicial = useRef(JSON.stringify(f))
-  const fichaAlterada = () => JSON.stringify(f) !== retratoInicial.current || !!novoPasso.titulo.trim()
+  const fichaAlterada = () => JSON.stringify(f) !== retratoInicial.current || !!novoPasso.titulo.trim() || !!novaNota.texto.trim()
   const diasAte = (d: string) => Math.round((new Date(d + 'T00:00').getTime() - new Date(new Date().toDateString()).getTime()) / 86400000)
   // Atalhos: o caso comum é "retorno em X" — evita abrir o calendário à toa.
   const emDias = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return ymd(d) }
@@ -1754,12 +1790,16 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
   const freq = frequenciaPaciente((historico || []).filter(h => h.status === 'atendido').map(h => h.dataInicio))
 
   function corpoDoForm() {
-    const { etiquetasTxt, ...resto } = f
-    return { ...resto, etiquetas: String(etiquetasTxt || '').split(',').map((s: string) => s.trim()).filter(Boolean), tipo: f.tipo || undefined }
+    const { etiquetasTxt, fichaClinica, ...resto } = f
+    // A ficha clínica só viaja no perfil clínica: nos outros ela nem aparece.
+    return { ...resto, ...(perfilClinica ? { fichaClinica } : {}), etiquetas: String(etiquetasTxt || '').split(',').map((s: string) => s.trim()).filter(Boolean), tipo: f.tipo || undefined }
   }
 
   async function salvar() {
     if (!f.nome.trim()) return
+    // Nota digitada e não anotada: salvar a ficha leva ela junto (fechar o
+    // modal salva sozinho — perder o que foi escrito seria o pior caso).
+    if (contato?.id && novaNota.texto.trim()) await addNota()
     setSalvando(true)
     const corpo = corpoDoForm()
     let criado: Contato | undefined
@@ -1786,7 +1826,7 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
   }
   return (
     <div onClick={fecharFora(onClose, { temAlteracoes: fichaAlterada, salvar: () => { if (!f.nome.trim()) { toast(tr('crm.av.informe-nome'), 'erro'); return } return salvar() } })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+      <div onClick={e => e.stopPropagation()} className="soma10-no-invert" style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: perfilClinica ? 560 : 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
           <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)', flex: 1, minWidth: 140 }}>{contato ? (perfilClinica ? (contato.tipo === 'paciente' ? tr('crm.editar-paciente') : tr('crm.editar-contato')) : tr('crm.editar-contato')) : (perfilClinica ? (tipoPadrao === 'paciente' ? tr('crm.novo-paciente') : tr('crm.novo-contato')) : tr('crm.novo-contato'))}</h3>
           {/* Atalhos só na ficha JÁ SALVA: a oportunidade precisa do id do contato,
@@ -1804,6 +1844,13 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
               style={{ padding: '7px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 999, fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>{tr('crm.agendar')}</button>
           )}
         </div>
+        {/* Alergia no TOPO da ficha: é o dado que ninguém pode deixar passar. */}
+        {alergia && (
+          <div role="alert" style={{ display: 'flex', alignItems: 'flex-start', gap: 8, margin: '-6px 0 14px', padding: '8px 12px', borderRadius: 10, background: 'var(--v2-hot-bg)', color: 'var(--v2-hot)', fontSize: 12.5, fontWeight: 700 }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01" /></svg>
+            <span style={{ wordBreak: 'break-word' }}>{tr('ficha.alerta-alergia', { texto: alergia })}</span>
+          </div>
+        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div><label style={labelStyle}>{tr('crm.nome-obrigatorio')}</label><input value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} style={inputStyle} /></div>
           {perfilClinica && (
@@ -1917,7 +1964,86 @@ function ContatoModal({ contato, prefill, onClose, onSalvo, podeExcluir = false,
               <textarea lang="pt-BR" value={f.preferenciasViagem} onChange={e => setF({ ...f, preferenciasViagem: e.target.value })} placeholder={tr('crm.sonhos-ph')} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} />
             </div>
           )}
+          {/* FICHA CLÍNICA (anamnese) — campos e rótulos em lib/fichaPaciente. */}
+          {perfilClinica && (
+            <div style={{ border: '1px solid var(--v2-rule)', borderRadius: 12, overflow: 'hidden' }}>
+              <button type="button" onClick={() => setFichaAberta(v => !v)} aria-expanded={fichaAberta}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: 'var(--v2-surface1)', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink2)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ transform: fichaAberta ? 'rotate(90deg)' : 'none', transition: 'transform .15s', flexShrink: 0 }}><path d="M9 18l6-6-6-6" /></svg>
+                <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('ficha.titulo')}</span>
+                <span style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: nFicha ? 'var(--v2-ok)' : 'var(--v2-ink3)' }}>{tr('ficha.preenchidos', { n: nFicha, total: CAMPOS_FICHA.length + 1 })}</span>
+              </button>
+              {fichaAberta && (
+                <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+                    <div>
+                      <label style={labelStyle}>{tr('ficha.cpf')}</label>
+                      <input value={formatarDoc(f.cpfCnpj)} onChange={e => setF({ ...f, cpfCnpj: soDigitosDoc(e.target.value) })} inputMode="numeric" placeholder={tr('crm.so-numeros')} style={inputStyle} />
+                      {f.cpfCnpj && !docValido(f.cpfCnpj) && <span style={{ display: 'block', marginTop: 3, fontSize: 11, color: 'var(--v2-hot)' }}>{tipoDoc(f.cpfCnpj) === 'incompleto' ? tr('crm.doc-incompleto') : tr('crm.digitos-nao-conferem')}</span>}
+                    </div>
+                    {CAMPOS_FICHA.filter(c => !c.longo).map(c => (
+                      <div key={c.chave}>
+                        <label style={labelStyle}>{tr(c.rotulo)}</label>
+                        <input value={f.fichaClinica?.[c.chave] || ''} maxLength={c.max} onChange={e => setFicha(c.chave, e.target.value)} placeholder={tr(c.dica)} style={inputStyle} />
+                      </div>
+                    ))}
+                  </div>
+                  {CAMPOS_FICHA.filter(c => c.longo).map(c => (
+                    <div key={c.chave}>
+                      <label style={{ ...labelStyle, ...(c.chave === 'alergias' && alergia ? { color: 'var(--v2-hot)' } : {}) }}>{tr(c.rotulo)}</label>
+                      <textarea lang="pt-BR" value={f.fichaClinica?.[c.chave] || ''} maxLength={c.max} onChange={e => setFicha(c.chave, e.target.value)} placeholder={tr(c.dica)} rows={2} style={{ ...inputStyle, minHeight: 44, resize: 'vertical' }} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div><label style={labelStyle}>{tr('crm.observacoes')}</label><textarea lang="pt-BR" value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} style={{ ...inputStyle, minHeight: 56, resize: 'vertical' }} /></div>
+
+          {/* O QUE SABEMOS — notas da equipe sobre a pessoa. Do WhatsApp chegam
+              pelo "Salvar na ficha" de cada mensagem, com a hora da mensagem. */}
+          {perfilClinica && contato?.id && (
+            <div>
+              <label style={{ ...labelStyle, marginBottom: 2 }}>{tr('ficha.sabemos')}</label>
+              <p style={{ margin: '0 0 8px', fontSize: 11.5, color: 'var(--v2-ink3)', lineHeight: 1.45 }}>{tr('ficha.sabemos-ajuda')}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: anotacoes.length ? 10 : 0 }}>
+                <textarea lang="pt-BR" value={novaNota.texto} onChange={e => setNovaNota(n => ({ ...n, texto: e.target.value }))}
+                  onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); addNota() } }}
+                  placeholder={tr('ficha.anotar-ph')} rows={2} style={{ ...inputStyle, minHeight: 44, resize: 'vertical' }} />
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {CATEGORIAS_ANOTACAO.map(c => {
+                    const ativo = novaNota.categoria === c.chave
+                    return (
+                      <button key={c.chave} type="button" onClick={() => setNovaNota(n => ({ ...n, categoria: c.chave }))} aria-pressed={ativo}
+                        style={{ padding: '3px 10px', borderRadius: 999, border: `1px solid ${ativo ? c.cor : 'var(--v2-rule)'}`, background: ativo ? c.fundo : 'var(--v2-surface)', color: ativo ? c.cor : 'var(--v2-ink3)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{tr(c.rotulo)}</button>
+                    )
+                  })}
+                  <button type="button" onClick={() => { addNota() }} disabled={notaBusy || !novaNota.texto.trim()}
+                    style={{ marginLeft: 'auto', padding: '7px 14px', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 9, fontWeight: 700, fontSize: 12, cursor: novaNota.texto.trim() ? 'pointer' : 'default', opacity: novaNota.texto.trim() ? 1 : 0.5 }}>{tr('ficha.anotar')}</button>
+                </div>
+              </div>
+              {anotacoes.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 280, overflowY: 'auto', border: '1px solid var(--v2-rule)', borderRadius: 10 }}>
+                  {anotacoes.map(n => {
+                    const cat = categoriaAnotacao(n.categoria)
+                    return (
+                      <div key={n.id} style={{ padding: '8px 10px', borderBottom: '1px solid var(--v2-surface1)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 9.5, fontWeight: 800, color: cat.cor, background: cat.fundo, borderRadius: 4, padding: '2px 6px' }}>{tr(cat.rotulo).toUpperCase()}</span>
+                          {n.origem === 'whatsapp' && <span style={{ fontSize: 9.5, fontWeight: 800, color: 'var(--v2-ok)', background: 'var(--v2-ok-bg)', borderRadius: 4, padding: '2px 6px' }}>{tr('crm.whatsapp-maiusculo')}</span>}
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink)' }}>{new Date(n.em).toLocaleDateString(localeDe(idioma))}</span>
+                          {n.autor && <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)' }}>{n.autor}</span>}
+                          {podeExcluir && <button onClick={() => removerNota(n.id)} title={tr('comum.remover')} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 15, lineHeight: 1 }}>×</button>}
+                        </div>
+                        <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--v2-ink2)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{n.texto}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {perfilClinica && contato?.id && (
             <div>
@@ -2980,6 +3106,12 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
   const [enviando, setEnviando] = useState(false)
   const [carregando, setCarregando] = useState(true)
   // Encaminhar (escolhe a conversa destino na lista) e editar mensagem enviada (~15 min)
+  // "Salvar na ficha" (clínica): o que a paciente contou na conversa vai para o
+  // "o que sabemos" da ficha dela, com a hora da mensagem. Ver lib/fichaPaciente.
+  const [salvarFicha, setSalvarFicha] = useState<{ msgId: string; em: string; texto: string; categoria: CategoriaAnotacao } | null>(null)
+  const [salvandoFicha, setSalvandoFicha] = useState(false)
+  const [salvasNaFicha, setSalvasNaFicha] = useState<Set<string>>(() => new Set())
+  useEffect(() => { setSalvarFicha(null) }, [sel])
   const [encaminhar, setEncaminhar] = useState<MsgItem | null>(null)
   const [editando, setEditando] = useState<MsgItem | null>(null)
   // Vincular contato: com centenas de contatos, o <select> era inviável — vira
@@ -3321,6 +3453,21 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
   }, [mensagens, digitando])
 
   const conversaSel = conversas.find(c => c.id === sel)
+  // Ficha de quem é a conversa (clínica). Sem cadastro vinculado não há onde salvar.
+  const contatoConversa = perfilClinica && conversaSel?.contatoId ? contatos.find(c => c.id === conversaSel.contatoId) : undefined
+  const jaNaFicha = new Set<string>([...(contatoConversa?.anotacoes || []).map(a => a.msgId || ''), ...Array.from(salvasNaFicha)])
+  async function salvarNaFicha() {
+    if (!salvarFicha || !contatoConversa || !salvarFicha.texto.trim() || salvandoFicha) return
+    const alvo = salvarFicha, quem = contatoConversa
+    setSalvandoFicha(true)
+    const r = await fetch('/api/crm/contatos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: quem.id, novaAnotacao: { texto: alvo.texto, categoria: alvo.categoria, origem: 'whatsapp', em: alvo.em, msgId: alvo.msgId } }) }).then(x => x.json()).catch(() => null)
+    setSalvandoFicha(false)
+    if (!r?.ok) { toast(r?.error || tr('ficha.falha-salvar'), 'erro'); return }
+    setSalvasNaFicha(s => new Set(s).add(alvo.msgId))
+    setSalvarFicha(null)
+    toast(tr('ficha.salva', { nome: quem.nome }), 'sucesso')
+    onContatosMudou?.()
+  }
 
   // Modelos de mensagem (respostas rápidas) — compartilhados pela equipe
   const [templates, setTemplates] = useState<{ id: string; titulo: string; texto: string }[]>([])
@@ -3589,12 +3736,21 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                     <span style={{ display: 'block', fontSize: 9.5, color: 'var(--v2-ink3)', marginTop: 3, textAlign: 'right' }}>{m.editada ? 'editada · ' : ''}{m.autor ? `${m.autor} · ` : ''}{new Date(m.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                     {(m.texto || m.midiaUrl) && (
                       <span style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 2 }}>
+                        {canal === 'whatsapp' && contatoConversa && textoVisivel && (
+                          jaNaFicha.has(m.id)
+                            ? <span title={tr('ficha.na-ficha-dica', { nome: contatoConversa.nome })} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, color: 'var(--v2-ok)', fontSize: 10, fontWeight: 800 }}>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
+                                {tr('ficha.na-ficha')}
+                              </span>
+                            : <button onClick={() => { setEncaminhar(null); setEditando(null); setSalvarFicha({ msgId: m.id, em: m.em, texto: textoVisivel, categoria: 'outro' }) }} title={tr('ficha.salvar-na-ficha-dica', { nome: contatoConversa.nome })}
+                                style={{ background: 'none', border: 'none', color: 'var(--v2-ok)', cursor: 'pointer', fontSize: 10, fontWeight: 800, padding: 0 }}>{tr('ficha.salvar-na-ficha')}</button>
+                        )}
                         {canal === 'whatsapp' && (
-                          <button onClick={() => { setEditando(null); setEncaminhar(m) }} title={tr('crm.encaminhar-outra')}
+                          <button onClick={() => { setEditando(null); setSalvarFicha(null); setEncaminhar(m) }} title={tr('crm.encaminhar-outra')}
                             style={{ background: 'none', border: 'none', color: '#8aa', cursor: 'pointer', fontSize: 10, fontWeight: 800, padding: 0 }}>{tr('crm.encaminhar')}</button>
                         )}
                         {canal === 'whatsapp' && m.de === 'agente' && !m.tipo && (Date.now() - new Date(m.em).getTime()) < 15 * 60 * 1000 && (
-                          <button onClick={() => { setEncaminhar(null); setEditando(m); setTexto(m.texto) }} title={tr('crm.editar-15min')}
+                          <button onClick={() => { setEncaminhar(null); setSalvarFicha(null); setEditando(m); setTexto(m.texto) }} title={tr('crm.editar-15min')}
                             style={{ background: 'none', border: 'none', color: '#8aa', cursor: 'pointer', fontSize: 10, fontWeight: 800, padding: 0 }}>{tr('comum.editar')}</button>
                         )}
                         {podeExcluir && cfg.excluirMensagem && (
@@ -3614,6 +3770,29 @@ function MensagensInbox({ contatos, negocios = [], perfilClinica = false, podeEx
                 </div>
               )}
             </div>
+            {salvarFicha && contatoConversa && (
+              <div style={{ borderTop: '1px solid var(--v2-rule)', padding: '10px 12px', background: 'var(--v2-ok-bg)', display: 'flex', flexDirection: 'column', gap: 7 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--v2-ok)' }}>{tr('ficha.salvar-de', { nome: contatoConversa.nome })}</span>
+                  <span style={{ flex: 1 }} />
+                  <button onClick={() => setSalvarFicha(null)} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', fontWeight: 800, cursor: 'pointer', fontSize: 12, padding: 0 }}>{tr('comum.cancelar')}</button>
+                </div>
+                <textarea lang="pt-BR" value={salvarFicha.texto} onChange={e => setSalvarFicha(s => s && { ...s, texto: e.target.value })} rows={2}
+                  style={{ padding: '7px 9px', borderRadius: 8, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', resize: 'vertical', background: 'var(--v2-surface)', color: 'var(--v2-ink)' }} />
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {CATEGORIAS_ANOTACAO.map(c => {
+                    const ativo = salvarFicha.categoria === c.chave
+                    return (
+                      <button key={c.chave} type="button" onClick={() => setSalvarFicha(s => s && { ...s, categoria: c.chave })} aria-pressed={ativo}
+                        style={{ padding: '3px 10px', borderRadius: 999, border: `1px solid ${ativo ? c.cor : 'var(--v2-rule)'}`, background: ativo ? c.fundo : 'var(--v2-surface)', color: ativo ? c.cor : 'var(--v2-ink3)', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>{tr(c.rotulo)}</button>
+                    )
+                  })}
+                  <span style={{ fontSize: 10.5, color: 'var(--v2-ink3)' }}>{tr('ficha.dica-salvar')}</span>
+                  <button onClick={salvarNaFicha} disabled={salvandoFicha || !salvarFicha.texto.trim()}
+                    style={{ marginLeft: 'auto', padding: '6px 14px', background: 'var(--v2-ok)', color: 'var(--v2-surface)', border: 'none', borderRadius: 8, fontWeight: 800, fontSize: 12, cursor: salvarFicha.texto.trim() ? 'pointer' : 'default', opacity: salvarFicha.texto.trim() ? 1 : 0.5 }}>{salvandoFicha ? tr('crm.salvando') : tr('ficha.salvar-na-ficha')}</button>
+                </div>
+              </div>
+            )}
             {(encaminhar || editando) && (
               <div style={{ borderTop: '1px solid var(--v2-rule)', padding: '7px 12px', background: 'var(--v2-amber-bg)', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--v2-amber)', fontWeight: 600 }}>
                 {encaminhar ? tr('crm.encaminhando') : tr('crm.editando-enviada')}

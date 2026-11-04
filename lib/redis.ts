@@ -1232,6 +1232,12 @@ export type CrmContato = {
   // na cadeira: sem ele, campo vazio é ambíguo (nunca veio × ninguém anotou).
   ultimoProcedimento?: string
   nuncaVeio?: boolean
+  // Clínica: FICHA DO PACIENTE (dono, 04/11/2026) — anamnese que vale para a
+  // pessoa (alergias, medicamentos, condições…) e "o que sabemos", as notas que
+  // a equipe junta da conversa de WhatsApp e da experiência. O prontuário de
+  // cada visita segue no atendimento da Agenda. Ver lib/fichaPaciente.
+  fichaClinica?: import('./fichaPaciente').FichaClinica
+  anotacoes?: import('./fichaPaciente').AnotacaoPaciente[]
   etiquetas?: string[]
   ativo?: boolean // ausente = ativo
   observacoes?: string

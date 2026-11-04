@@ -8,6 +8,7 @@ import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { getPerfilInstancia } from '@/lib/perfisInstancia'
 import { resolverEscopoLoja, podeEscreverNaLoja } from '@/lib/escopoLoja'
 import { soDigitosDoc } from '@/lib/cnpj'
+import { sanitizarFicha, novaAnotacao, juntarAnotacao } from '@/lib/fichaPaciente'
 
 export const runtime = 'nodejs'
 
@@ -82,6 +83,7 @@ export async function POST(req: NextRequest) {
     return {
       id: uuid(), nome: String(d.nome).trim(), ...(lojaIdCarimbo ? { lojaId: lojaIdCarimbo } : {}), email: d.email || '', telefone: d.telefone || '', empresa: d.empresa || '', empresaId: d.empresaId || '', profissionalAutonomo: !!d.profissionalAutonomo, areaAtuacao: d.areaAtuacao || '', cargo: d.cargo || '', observacoes: d.observacoes || '', ultimoProcedimento: d.ultimoProcedimento || '', nuncaVeio: !!d.nuncaVeio, criadoPor: autor, criadoEm: agora, atualizadoEm: agora,
       ...(d.cpfCnpj ? { cpfCnpj: soDigitosDoc(d.cpfCnpj) } : {}),
+      ...(sanitizarFicha(d.fichaClinica) ? { fichaClinica: sanitizarFicha(d.fichaClinica) } : {}),
       ...(d.tipo ? { tipo: d.tipo } : {}),
       ...(d.nascimento ? { nascimento: String(d.nascimento).slice(0, 10) } : {}),
       ...(d.preferenciasViagem ? { preferenciasViagem: String(d.preferenciasViagem).slice(0, 600) } : {}),
@@ -140,6 +142,25 @@ export async function PUT(req: NextRequest) {
   if (updates.removerInteracao) {
     const historico = (contato.historico || []).filter(h => h.id !== updates.removerInteracao)
     const atualizado: CrmContato = { ...contato, historico, atualizadoEm: new Date().toISOString() }
+    await redis.set(`contato:${id}`, atualizado)
+    return NextResponse.json({ ok: true, contato: atualizado })
+  }
+
+  // Ação: anotação "o que sabemos" na ficha do paciente (clínica) — escrita na
+  // própria ficha ou salva de uma mensagem do WhatsApp ("Salvar na ficha").
+  // A mesma mensagem salva duas vezes substitui, não duplica. Ver lib/fichaPaciente.
+  if (updates.novaAnotacao) {
+    const agora = new Date().toISOString()
+    const nota = novaAnotacao(updates.novaAnotacao, { id: uuid(), autor: session.user?.name || '', agora })
+    if ('erro' in nota) return NextResponse.json({ error: nota.erro }, { status: 400 })
+    const atualizado: CrmContato = { ...contato, anotacoes: juntarAnotacao(contato.anotacoes, nota), atualizadoEm: agora }
+    await redis.set(`contato:${id}`, atualizado)
+    return NextResponse.json({ ok: true, contato: atualizado, anotacao: nota })
+  }
+  // Remover anotação: apaga dado do paciente, então vale a permissão de EXCLUIR.
+  if (updates.removerAnotacao) {
+    if (await bloqueiaPapel((session.user as any).role, 'crm', 'excluir', (session.user as any).permissoes)) return NextResponse.json({ error: 'sem permissao' }, { status: 403 })
+    const atualizado: CrmContato = { ...contato, anotacoes: (contato.anotacoes || []).filter(a => a.id !== updates.removerAnotacao), atualizadoEm: new Date().toISOString() }
     await redis.set(`contato:${id}`, atualizado)
     return NextResponse.json({ ok: true, contato: atualizado })
   }
@@ -207,6 +228,12 @@ export async function PUT(req: NextRequest) {
   const atualizado: any = { ...contato, atualizadoEm: new Date().toISOString() }
   for (const c of campos) if (c in updates) atualizado[c] = updates[c]
   if ('cpfCnpj' in updates) atualizado.cpfCnpj = soDigitosDoc(updates.cpfCnpj) // guarda só dígitos
+  // Ficha clínica: só campos conhecidos e com teto; ficha esvaziada sai do registro.
+  if ('fichaClinica' in updates) {
+    const ficha = sanitizarFicha(updates.fichaClinica)
+    if (ficha) atualizado.fichaClinica = ficha
+    else delete atualizado.fichaClinica
+  }
   // #4 — empresa preenchida (ou alterada) sem vinculo explicito: acha/cria e amarra
   if (atualizado.empresa && (!atualizado.empresaId || ('empresa' in updates && !('empresaId' in updates)))) {
     atualizado.empresaId = await acharOuCriarEmpresa(atualizado.empresa, session.user?.name || '', await carregarEmpresas())
