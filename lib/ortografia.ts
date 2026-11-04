@@ -5,27 +5,33 @@
 // corrige nos idiomas que o USUÁRIO habilitou — sem Português (Brasil) na lista
 // (ou com uma extensão tipo Grammarly por cima), ele corrige tudo pelo dicionário
 // de inglês e sublinha o texto inteiro de vermelho. Nenhuma linha de código
-// nossa muda isso.
+// nossa escolhe o dicionário do navegador.
 //
-// O que o sistema pode fazer é DESLIGAR o corretor: melhor sem correção do que
-// com um mar de vermelho embaixo de palavras certas — sublinhado que sempre
-// mente é sublinhado que ninguém mais lê.
+// DECISÃO DO DONO (04/11/2026): "RESOLVA a questão do corretor em todo o
+// sistema". A caixa de 29/08 em Minha conta nascia LIGADA e quase ninguém sabia
+// dela, então o mar de vermelho continuou. Agora o corretor nasce DESLIGADO em
+// todo o sistema: o <html> já sai do servidor com spellcheck="false" (ver
+// app/layout.tsx) e só liga para quem marcar a caixa, neste navegador.
+//
+// A chave ganhou o sufixo _v2 de propósito: a preferência antiga gravada como
+// "ligado" (desmarcar e marcar de novo grava '1') faria o vermelho voltar para
+// essa pessoa. Chave nova = todo mundo começa no padrão novo.
 //
 // Como funciona: `spellcheck` é HERDADO. Marcar o `<html>` desliga em todos os
 // campos de uma vez — por isso nenhum campo pode fixar `spellCheck` na marra
-// (só `lang`), senão ele ganharia da herança e a chave não teria efeito.
+// (só `lang`), senão ele ganharia da herança e a caixa não teria efeito.
 
-export const CHAVE_ORTOGRAFIA = 'soma10_ortografia'
+export const CHAVE_ORTOGRAFIA = 'soma10_ortografia_v2'
 
 function store(): Storage | null {
   try { return typeof localStorage !== 'undefined' ? localStorage : null } catch { return null }
 }
 
-// Padrão LIGADO: quem tem o dicionário certo instalado merece a correção.
+// Padrão DESLIGADO: liga só quem escolheu ligar (gravado '1').
 export function ortografiaLigada(): boolean {
   const s = store()
-  if (!s) return true
-  try { return s.getItem(CHAVE_ORTOGRAFIA) !== '0' } catch { return true }
+  if (!s) return false
+  try { return s.getItem(CHAVE_ORTOGRAFIA) === '1' } catch { return false }
 }
 
 export function definirOrtografia(ligada: boolean): void {
@@ -34,8 +40,10 @@ export function definirOrtografia(ligada: boolean): void {
   aplicarOrtografia(ligada)
 }
 
-// Escreve (ou apaga) o atributo no <html>. Sem `documentElement` — no servidor,
-// no teste — é no-op, e não uma exceção que derruba a página.
+// Escreve (ou apaga) o atributo no <html>. Ligar APAGA o atributo (a herança
+// volta ao padrão do navegador); desligar escreve spellcheck="false". Sem
+// `documentElement` — no servidor, no teste — é no-op, e não uma exceção que
+// derruba a página.
 export function aplicarOrtografia(ligada = ortografiaLigada()): void {
   try {
     const el = typeof document !== 'undefined' ? document.documentElement : null

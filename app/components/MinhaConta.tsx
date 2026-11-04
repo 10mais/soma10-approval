@@ -25,7 +25,7 @@ export default function MinhaConta() {
   // Idioma DESTA pessoa (lib/i18n): fica no perfil e vale só para ela.
   const { idioma, definirIdioma } = useIdioma()
   const tr = useT()
-  const [corretor, setCorretor] = useState(true)
+  const [corretor, setCorretor] = useState(false)
   useEffect(() => { setCorretor(ortografiaLigada()) }, [])
   const [perfil, setPerfil] = useState<any>(null)
   const [salvando, setSalvando] = useState(false)
@@ -345,8 +345,7 @@ export default function MinhaConta() {
             {tr('conta.corretor-explicacao')}
           </p>
           <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.6 }}>
-            Enquanto isso não estiver resolvido, desmarque a caixa acima: melhor sem correção do que com um mar de
-            vermelho embaixo de texto certo.
+            {tr('conta.corretor-padrao')}
           </p>
         </div>
       </div>

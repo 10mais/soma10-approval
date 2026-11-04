@@ -25,7 +25,9 @@ function perfilAtual(p: { perfilClinica?: boolean; perfilTurismo?: boolean; perf
 }
 import BibliotecaVendasTela from './BibliotecaVendas'
 import EditorLinhagem from './EditorLinhagem'
-import { useT, useArea } from '@/app/components/Idioma'
+import { useT, useArea, useIdioma } from '@/app/components/Idioma'
+import { localeDe } from '@/lib/i18n'
+import { procedimentosPorContato, casaProcedimento, opcoesFiltroProcedimento, type ProcedimentoFeito } from '@/lib/procedimentosPaciente'
 
 type Estagio = { id: string; nome: string; ordem: number; ganho?: boolean; perdido?: boolean; pipelineId?: string }
 type Empresa = { id: string; nome: string; segmento?: string; site?: string; instagram?: string; telefone?: string; observacoes?: string }
@@ -66,8 +68,10 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   const [negocios, setNegocios] = useState<Negocio[]>([])
   const [contatos, setContatos] = useState<Contato[]>([])
   const [empresas, setEmpresas] = useState<Empresa[]>([])
-  // Atendimentos (clínica) — só para calcular a frequência dos pacientes na lista
-  const [agendamentos, setAgendamentos] = useState<{ contatoId?: string; status: string; dataInicio: string }[]>([])
+  // Atendimentos (clínica) — frequência dos pacientes e "quem fez qual procedimento" na lista
+  const [agendamentos, setAgendamentos] = useState<{ contatoId?: string; status: string; dataInicio: string; procedimentosRealizados?: string[] }[]>([])
+  // Catálogo de Procedimentos (clínica) — opções do filtro por procedimento na lista
+  const [catalogoProc, setCatalogoProc] = useState<string[]>([])
   const [carregando, setCarregando] = useState(true)
   const [novoModal, setNovoModal] = useState(false)
   // Contato já escolhido ao abrir a oportunidade (ex.: vindo do inbox)
@@ -292,8 +296,8 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       setEmpresas(Array.isArray(emp) ? emp : [])
       const pls = Array.isArray(pl) ? pl : []
       setPipelines(pls)
-      // Frequência dos pacientes: carrega os atendimentos (clínica) para a lista
-      if (perfilClinica) fetch('/api/agenda').then(r => r.json()).then(d => { if (Array.isArray(d?.agendamentos)) setAgendamentos(d.agendamentos) }).catch(() => {})
+      // Frequência e procedimentos dos pacientes: atendimentos da Agenda (clínica)
+      if (perfilClinica) carregarAgendamentos()
       // Turismo: as viagens cadastradas alimentam o vínculo "viagem de interesse"
       // e o filtro de interessados por viagem no funil.
       if (perfilTurismo) carregarViagens()
@@ -311,6 +315,25 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
   // carregar() do mount rodou com perfilTurismo=false e pulou as viagens — sem
   // este efeito, o seletor de viagem e os chips ficavam só com "Outro".
   useEffect(() => { if (perfilTurismo) carregarViagens() }, [perfilTurismo])
+
+  // A mesma corrida acontece na clínica: com o perfil chegando depois, a lista
+  // abria sem os atendimentos (frequência e filtro por procedimento vazios).
+  // O carimbo evita buscar duas vezes quando o perfil já veio no mount e o
+  // carregar() também pediu.
+  const agendaPedidaEm = useRef(0)
+  function carregarAgendamentos() {
+    if (Date.now() - agendaPedidaEm.current < 2000) return
+    agendaPedidaEm.current = Date.now()
+    fetch('/api/agenda').then(r => r.json()).then(d => { if (Array.isArray(d?.agendamentos)) setAgendamentos(d.agendamentos) }).catch(() => {})
+  }
+  useEffect(() => {
+    if (!perfilClinica) return
+    carregarAgendamentos()
+    fetch('/api/procedimentos').then(r => r.json())
+      .then(d => setCatalogoProc(Array.isArray(d?.procedimentos) ? d.procedimentos.map((p: any) => p?.nome).filter(Boolean) : []))
+      .catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [perfilClinica])
 
   // Mover de etapa (arrastando ou pelo "Mover para" do card). O update é
   // otimista, MAS o erro não pode ser silencioso: engolir o 403/500 e recarregar
@@ -443,7 +466,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         <PainelVendas negocios={negociosDoPipeline(pipelineSel)} estagios={estagiosDoPipeline(pipelineSel)} usuarios={usuarios} perfilClinica={perfilClinica} />
       ) : vista === 'contatos' ? (
         // Lista ÚNICA: leads e pacientes convivem aqui (o tipo vira só um selo).
-        <ContatosLista contatos={contatos} negocios={negocios} onAbrir={c => setContatoModal(c)} podeExcluir={podeExcluir} onRecarregar={carregar} perfilClinica={perfilClinica} agendamentos={perfilClinica ? agendamentos : undefined} mostrarFrequencia={perfilClinica} onImportar={podeEditar ? (f => importarCSV(f, perfilClinica ? 'lead' : undefined)) : undefined} />
+        <ContatosLista contatos={contatos} negocios={negocios} onAbrir={c => setContatoModal(c)} podeExcluir={podeExcluir} onRecarregar={carregar} perfilClinica={perfilClinica} agendamentos={perfilClinica ? agendamentos : undefined} catalogoProcedimentos={perfilClinica ? catalogoProc : undefined} mostrarFrequencia={perfilClinica} onImportar={podeEditar ? (f => importarCSV(f, perfilClinica ? 'lead' : undefined)) : undefined} />
       ) : vista === 'empresas' ? (
         <EmpresasLista empresas={empresas} contatos={contatos} negocios={negocios} onAbrir={e => setEmpresaModal(e)} />
       ) : vista === 'mensagens' ? (
@@ -1047,22 +1070,70 @@ function EmpresaModal({ empresa, contatos, negocios, onClose, onSalvo, podeExclu
 // Normaliza p/ busca: sem acento, minúsculo (achar "Joao" digitando "joão" e vice-versa)
 const semAcento = (s: string) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
-function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir = false, onRecarregar, perfilClinica = false, onImportar, agendamentos = [], mostrarFrequencia = false }: { contatos: Contato[]; negocios: Negocio[]; onAbrir: (c: Contato) => void; podeExcluir?: boolean; onRecarregar: () => void; perfilClinica?: boolean; onImportar?: (f: File) => void; agendamentos?: { contatoId?: string; status: string; dataInicio: string }[]; mostrarFrequencia?: boolean }) {
+// Padrões ESTÁVEIS (fora do componente): um `= []` na desestruturação cria um
+// array novo a cada render e faz todo useMemo que depende dele recalcular sempre.
+const SEM_ATENDIMENTOS: { contatoId?: string; status: string; dataInicio: string; procedimentosRealizados?: string[] }[] = []
+const SEM_CATALOGO: string[] = []
+const SEM_PROCEDIMENTOS = new Map<string, ProcedimentoFeito[]>()
+
+// Chips "o que fez" na lista de pacientes (clínica). Com filtro ou busca que
+// casa um procedimento, mostra os que casaram, com vezes e última data; sem
+// isso, os 2 mais recentes e "+N".
+function ProcsFeitos({ procs, termo }: { procs?: ProcedimentoFeito[]; termo: string }) {
+  const tr = useT()
+  const { idioma } = useIdioma()
+  if (!procs?.length) return <span style={{ color: 'var(--v2-ink3)' }}>—</span>
+  const casados = termo ? casaProcedimento(procs, termo) : []
+  const mostrar = casados.length ? casados : procs.slice(0, 2)
+  const escondidos = procs.filter(p => !mostrar.includes(p))
+  const dataCurta = (iso?: string) => iso ? new Date(iso).toLocaleDateString(localeDe(idioma), { day: '2-digit', month: '2-digit', year: '2-digit' }) : ''
+  const detalhe = (p: ProcedimentoFeito) => p.vezes > 0 ? tr('crm.proc-vezes-ultima', { n: p.vezes, data: dataCurta(p.ultima) }) : tr('crm.proc-anotado')
+  return (
+    <span style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+      {mostrar.map(p => (
+        <span key={p.chave} title={`${p.nome} — ${detalhe(p)}`}
+          style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, maxWidth: 280, padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', background: casados.length ? 'var(--v2-ok-bg)' : 'var(--v2-surface2)', color: casados.length ? 'var(--v2-ok)' : 'var(--v2-ink2)' }}>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.nome}</span>
+          {casados.length > 0 && <span style={{ fontWeight: 600, opacity: 0.85, flexShrink: 0 }}>{detalhe(p)}</span>}
+        </span>
+      ))}
+      {escondidos.length > 0 && <span title={escondidos.map(p => p.nome).join(' · ')} style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>{tr('crm.proc-mais', { n: escondidos.length })}</span>}
+    </span>
+  )
+}
+
+function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir = false, onRecarregar, perfilClinica = false, onImportar, agendamentos = SEM_ATENDIMENTOS, catalogoProcedimentos = SEM_CATALOGO, mostrarFrequencia = false }: { contatos: Contato[]; negocios: Negocio[]; onAbrir: (c: Contato) => void; podeExcluir?: boolean; onRecarregar: () => void; perfilClinica?: boolean; onImportar?: (f: File) => void; agendamentos?: { contatoId?: string; status: string; dataInicio: string; procedimentosRealizados?: string[] }[]; catalogoProcedimentos?: string[]; mostrarFrequencia?: boolean }) {
   const tr = useT()
   const [vista, setVista] = useState<'lista' | 'cards'>('lista')
   // Busca: nome, telefone, e-mail, empresa, área e etiquetas. Telefone casa só
   // pelos dígitos — assim "99994104" acha "+55 (55) 99994-4104".
   const [busca, setBusca] = useState('')
+  // Clínica: QUEM FEZ QUAL PROCEDIMENTO, sem abrir ficha (dono, 04/11). Junta os
+  // atendimentos concluídos da Agenda e o "Último procedimento" anotado na
+  // ficha — ver lib/procedimentosPaciente. A busca também acha por procedimento
+  // ("botox" → quem fez), e o seletor filtra por um procedimento do catálogo.
+  const procsPorContato = useMemo(
+    () => perfilClinica ? procedimentosPorContato(agendamentos, contatosTodos) : SEM_PROCEDIMENTOS,
+    [perfilClinica, agendamentos, contatosTodos])
+  const opcoesProc = useMemo(
+    () => perfilClinica ? opcoesFiltroProcedimento(procsPorContato, catalogoProcedimentos) : [],
+    [perfilClinica, procsPorContato, catalogoProcedimentos])
+  const [filtroProc, setFiltroProc] = useState('')
+  // O que destacar nos chips: o procedimento filtrado ou, sem ele, o termo da busca.
+  const termoProc = filtroProc || busca.trim()
   const contatos = useMemo(() => {
     const q = semAcento(busca.trim())
-    if (!q) return contatosTodos
+    const fezFiltrado = (c: Contato) => !filtroProc || casaProcedimento(procsPorContato.get(c.id), filtroProc).length > 0
+    if (!q) return filtroProc ? contatosTodos.filter(fezFiltrado) : contatosTodos
     const qDigitos = q.replace(/\D/g, '')
     return contatosTodos.filter(c => {
+      if (!fezFiltrado(c)) return false
       if (qDigitos && (c.telefone || '').replace(/\D/g, '').includes(qDigitos)) return true
       const alvo = semAcento([c.nome, c.email, c.empresa, c.areaAtuacao, c.cargo, (c.etiquetas || []).join(' ')].filter(Boolean).join(' '))
-      return alvo.includes(q)
+      if (alvo.includes(q)) return true
+      return perfilClinica && casaProcedimento(procsPorContato.get(c.id), busca).length > 0
     })
-  }, [contatosTodos, busca])
+  }, [contatosTodos, busca, filtroProc, procsPorContato, perfilClinica])
   // Datas dos atendimentos CONCLUÍDOS por contato — base da coluna Frequência
   const datasAtendidas = useMemo(() => {
     const m = new Map<string, string[]>()
@@ -1204,14 +1275,22 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
         <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', display: 'flex', color: 'var(--v2-ink3)', pointerEvents: 'none' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
         </span>
-        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder={tr('crm.buscar-nome-tel-email')}
+        <input value={busca} onChange={e => setBusca(e.target.value)} placeholder={perfilClinica ? tr('crm.buscar-paciente') : tr('crm.buscar-nome-tel-email')}
           style={{ width: '100%', boxSizing: 'border-box', padding: '8px 30px 8px 30px', borderRadius: 9, border: '1px solid var(--v2-rule)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none' }} />
         {busca && (
           <button onClick={() => setBusca('')} title={tr('crm.limpar-busca')}
             style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '2px 4px' }}>×</button>
         )}
       </div>
-      {busca && <span style={{ fontSize: 12, color: 'var(--v2-ink3)', fontWeight: 600 }}>{contatos.length} de {contatosTodos.length}</span>}
+      {/* Clínica: filtro por procedimento feito. Some enquanto não há catálogo nem registro. */}
+      {perfilClinica && opcoesProc.length > 0 && (
+        <select value={filtroProc} onChange={e => setFiltroProc(e.target.value)} title={tr('crm.filtro-procedimento-dica')}
+          style={{ padding: '8px 10px', borderRadius: 9, border: `1px solid ${filtroProc ? 'var(--v2-ok)' : 'var(--v2-rule)'}`, background: filtroProc ? 'var(--v2-ok-bg)' : 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 12.5, fontFamily: 'inherit', fontWeight: filtroProc ? 700 : 500, maxWidth: 260, cursor: 'pointer' }}>
+          <option value="">{tr('crm.todos-procedimentos')}</option>
+          {opcoesProc.map(o => <option key={o.nome} value={o.nome}>{o.nome} ({o.pacientes})</option>)}
+        </select>
+      )}
+      {(busca || filtroProc) && <span style={{ fontSize: 12, color: 'var(--v2-ink3)', fontWeight: 600 }}>{contatos.length} de {contatosTodos.length}</span>}
       {podeExcluir && quebrados.length > 0 && (
         <button onClick={selecionarQuebrados} title={tr('crm.selecionar-corrompidos')}
           style={{ padding: '6px 13px', background: 'var(--v2-hot-bg)', color: 'var(--v2-hot)', border: '1px solid var(--v2-hot-bg)', borderRadius: 8, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
@@ -1224,7 +1303,7 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
   // Busca sem resultado: mantém a caixa na tela para o usuário corrigir o termo.
   const nadaEncontrado = contatos.length === 0 && (
     <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '40px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-      <p style={{ margin: 0, fontSize: 13.5, color: 'var(--v2-ink3)' }}>Nenhum contato encontrado para “{busca}”.</p>
+      <p style={{ margin: 0, fontSize: 13.5, color: 'var(--v2-ink3)' }}>{filtroProc && !busca.trim() ? tr('crm.nenhum-fez-procedimento', { proc: filtroProc }) : <>Nenhum contato encontrado para “{busca}”.</>}</p>
     </div>
   )
 
@@ -1248,6 +1327,7 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
                   {c.telefone && <span style={{ fontSize: 12, color: 'var(--v2-ink2)' }}>{c.telefone}</span>}
                   {c.email && <span style={{ fontSize: 12, color: 'var(--v2-ink2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.email}</span>}
                 </div>
+                {perfilClinica && procsPorContato.has(c.id) && <div style={{ marginTop: 8 }}><ProcsFeitos procs={procsPorContato.get(c.id)} termo={termoProc} /></div>}
                 {nNeg > 0 && <span style={{ display: 'inline-block', marginTop: 8, fontSize: 10.5, fontWeight: 700, color: 'var(--v2-info)', background: 'var(--v2-info-bg)', borderRadius: 999, padding: '2px 8px' }}>{tr('crm.n-negocios', { n: nNeg })}</span>}
               </div>
             )
@@ -1272,6 +1352,7 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
             <tr>
               <th style={{ ...th, width: 40 }}><input type="checkbox" checked={todos} onChange={toggleTodos} style={{ width: 16, height: 16, cursor: 'pointer' }} title={tr('crm.selecionar-todos')} /></th>
               <th style={th}>{tr('crm.nome')}</th>
+              {perfilClinica && <th style={th}>{tr('crm.col-procedimentos')}</th>}
               <th style={th}>{tr('crm.empresa')}</th>
               <th style={th}>{tr('crm.area-atuacao')}</th>
               <th style={th}>{tr('crm.telefone')}</th>
@@ -1290,6 +1371,7 @@ function ContatosLista({ contatos: contatosTodos, negocios, onAbrir, podeExcluir
                 <tr key={c.id} style={{ background: marcado ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', cursor: 'pointer' }} onClick={() => onAbrir(c)}>
                   <td style={td} onClick={e => e.stopPropagation()}><input type="checkbox" checked={marcado} onChange={() => toggle(c.id)} style={{ width: 16, height: 16, cursor: 'pointer' }} /></td>
                   <td style={{ ...td, fontWeight: 700, color: 'var(--v2-ink)' }}>{c.nome}</td>
+                  {perfilClinica && <td style={{ ...td, maxWidth: 340 }}><ProcsFeitos procs={procsPorContato.get(c.id)} termo={termoProc} /></td>}
                   <td style={td}>{empresaLabel(c)}</td>
                   <td style={{ ...td, color: c.areaAtuacao ? '#7c3aed' : 'var(--v2-ink3)' }}>{c.areaAtuacao || '—'}</td>
                   <td style={td}>{c.telefone || '—'}</td>

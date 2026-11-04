@@ -41,7 +41,10 @@ export const viewport = { themeColor: '#111111', viewportFit: 'cover' as const, 
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={outfit.variable}>
+    // spellcheck="false" já no HTML do servidor: o corretor do navegador nasce
+    // desligado em todo o sistema (dono, 04/11). Quem ligou em Minha conta tem
+    // o atributo apagado na carga por <Ortografia /> — ver lib/ortografia.
+    <html lang="pt-BR" spellCheck={false} className={outfit.variable}>
       <body className={outfit.variable} style={{ margin: 0, fontFamily: 'Inter, system-ui, sans-serif', background: '#f8f8f8' }}>
         <Providers>{children}<PushSetup /><Ortografia /><AssistenteIA /><Toaster /><Desfazer /></Providers>
       </body>
