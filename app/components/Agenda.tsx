@@ -1,7 +1,8 @@
 'use client'
 import { useT } from '@/app/components/Idioma'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast, confirmar } from '@/lib/toast'
+import { fecharFora } from '@/lib/fecharModal'
 import { Bloqueio, bloqueioNoDia, feriadoDoDia, ehProfissionalAgenda } from '@/lib/agenda'
 
 // Módulo Agenda (clínicas/serviços): semana e dia, agendamento por profissional,
@@ -81,6 +82,15 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
   const [carregando, setCarregando] = useState(true)
   const [modal, setModal] = useState<Partial<Ag> | null>(null) // sem id = novo
   const [salvando, setSalvando] = useState(false)
+  // Salvar automático ao clicar fora (regra do sistema, lib/fecharModal): guarda
+  // como o modal ABRIU para saber se algo mudou. Antes o clique fora descartava
+  // tudo, inclusive a evolução do atendimento já digitada.
+  const modalAbertoRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!modal) { modalAbertoRef.current = null; return }
+    if (modalAbertoRef.current === null) modalAbertoRef.current = JSON.stringify(modal)
+  }, [modal])
+  const modalMudou = () => !!modal && modalAbertoRef.current !== null && JSON.stringify(modal) !== modalAbertoRef.current
   // Lista de espera (clínicas): quem quer horário mas ainda não tem
   const [espera, setEspera] = useState<Espera[]>([])
   const [esperaAberta, setEsperaAberta] = useState(false)
@@ -96,6 +106,13 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
   const [blocosModal, setBlocosModal] = useState(false)
   const [blocoForm, setBlocoForm] = useState<BlocoForm | null>(null)
   const [salvandoBloco, setSalvandoBloco] = useState(false)
+  // Mesma regra para o formulário de bloqueio aberto dentro do modal de bloqueios.
+  const blocoAbertoRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!blocoForm) { blocoAbertoRef.current = null; return }
+    if (blocoAbertoRef.current === null) blocoAbertoRef.current = JSON.stringify(blocoForm)
+  }, [blocoForm])
+  const blocoMudou = () => !!blocoForm && blocoAbertoRef.current !== null && JSON.stringify(blocoForm) !== blocoAbertoRef.current
   const carregarBloqueios = useCallback(() => {
     fetch('/api/agenda/bloqueios').then(r => r.json()).then(d => { if (Array.isArray(d?.bloqueios)) setBloqueios(d.bloqueios) }).catch(() => {})
   }, [])
@@ -269,13 +286,13 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
     const eu = profissionais.find(u => u.email === meuEmail)
     setBlocoForm({ profissionalEmail: profFiltro || eu?.email || profissionais[0]?.email || '', titulo: '', recorrente: true, dataInicio: toLocalInput(base), duracaoMin: 60, diasSemana: [], horaInicio: '12:00', horaFim: '13:00', ate: '' })
   }
-  async function salvarBloco() {
-    if (!blocoForm || salvandoBloco) return
-    if (!blocoForm.profissionalEmail) { toast(tr('ag.escolha-profissional'), 'erro'); return }
+  async function salvarBloco(): Promise<boolean> {
+    if (!blocoForm || salvandoBloco) return false
+    if (!blocoForm.profissionalEmail) { toast(tr('ag.escolha-profissional'), 'erro'); return false }
     const prof = usuarios.find(u => u.email === blocoForm.profissionalEmail)
     const corpo: any = { profissionalEmail: blocoForm.profissionalEmail, profissionalNome: prof?.nome, titulo: blocoForm.titulo.trim() || undefined, recorrente: blocoForm.recorrente }
     if (blocoForm.recorrente) {
-      if (!blocoForm.diasSemana.length) { toast(tr('ag.escolha-dia'), 'erro'); return }
+      if (!blocoForm.diasSemana.length) { toast(tr('ag.escolha-dia'), 'erro'); return false }
       corpo.diasSemana = blocoForm.diasSemana; corpo.horaInicio = blocoForm.horaInicio; corpo.horaFim = blocoForm.horaFim
       if (blocoForm.ate) corpo.ate = blocoForm.ate
     } else {
@@ -284,8 +301,9 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
     setSalvandoBloco(true)
     const r = await fetch('/api/agenda/bloqueios', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).then(x => x.json()).catch(() => null)
     setSalvandoBloco(false)
-    if (r?.ok) { toast(tr('ag.bloqueio-adicionado'), 'sucesso'); setBlocoForm(null); carregarBloqueios() }
-    else toast(r?.error || tr('ag.falha-bloqueio'), 'erro')
+    if (r?.ok) { toast(tr('ag.bloqueio-adicionado'), 'sucesso'); setBlocoForm(null); carregarBloqueios(); return true }
+    toast(r?.error || tr('ag.falha-bloqueio'), 'erro')
+    return false
   }
   async function removerBloco(id: string) {
     if (!(await confirmar(tr('ag.remover-bloqueio'), { titulo: tr('ag.bloqueio'), okLabel: tr('comum.remover'), perigo: true }))) return
@@ -564,7 +582,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
 
       {/* Modal criar/editar */}
       {modal && (
-        <div onClick={() => { setModal(null); setEsperaOrigem(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+        <div onClick={fecharFora(() => { setModal(null); setEsperaOrigem(null) }, { temAlteracoes: modalMudou, salvar: podeEditar ? () => salvar() : undefined })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
             <h3 style={{ margin: '0 0 14px', fontSize: 16.5, color: 'var(--v2-ink)' }}>{modal.id ? tr('ag.editar-agendamento') : tr('ag.novo-agendamento')}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -674,7 +692,7 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
 
       {/* Modal de bloqueios/compromissos da profissional */}
       {blocosModal && (
-        <div onClick={() => { setBlocosModal(false); setBlocoForm(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
+        <div onClick={fecharFora(() => { setBlocosModal(false); setBlocoForm(null) }, { temAlteracoes: blocoMudou, salvar: podeEditar ? async () => { if (await salvarBloco()) setBlocosModal(false) } : undefined })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 520, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <h3 style={{ margin: 0, fontSize: 16.5, color: 'var(--v2-ink)' }}>{tr('ag.bloqueios-agenda')}</h3>

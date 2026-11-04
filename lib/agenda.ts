@@ -17,6 +17,14 @@ export function ocupaAgenda(status?: string): boolean {
   return OCUPA.includes(status || 'agendado')
 }
 
+// Situação com que o agendamento NASCE. Na criação, a tela da clínica oferece
+// "Aguardando confirmação" (agendado = pagamento pendente) ou "Confirmado (pago)";
+// atendido, faltou e cancelado só existem depois. Qualquer outro valor vira
+// 'agendado'. Antes o POST gravava sempre 'agendado' e o "pago" escolhido se perdia.
+export function statusInicialAgendamento(valor: unknown): 'agendado' | 'confirmado' {
+  return valor === 'confirmado' ? 'confirmado' : 'agendado'
+}
+
 // Sobreposição de intervalos meio-abertos: fim às 10h e início às 10h NÃO conflitam.
 export function sobrepoe(a: Compromisso, b: Compromisso): boolean {
   const ia = new Date(a.dataInicio).getTime()

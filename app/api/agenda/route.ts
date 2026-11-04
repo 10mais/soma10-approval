@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis, Agendamento, CrmContato } from '@/lib/redis'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
-import { acharConflito, acharContatoPorNome, acharBloqueioConflitante, Bloqueio } from '@/lib/agenda'
+import { acharConflito, acharContatoPorNome, acharBloqueioConflitante, Bloqueio, statusInicialAgendamento } from '@/lib/agenda'
 import { getPerfilInstancia } from '@/lib/perfisInstancia'
 import { v4 as uuid } from 'uuid'
 
@@ -119,7 +119,8 @@ export async function POST(req: NextRequest) {
     servico: (b.servico || '').toString().slice(0, 80) || undefined,
     dataInicio,
     duracaoMin: Math.min(600, Math.max(5, Number(b.duracaoMin) || 30)),
-    status: 'agendado',
+    // A situação escolhida na criação vale: "Confirmado (pago)" já nasce pago.
+    status: statusInicialAgendamento(b.status),
     observacoes: (b.observacoes || '').toString().slice(0, 800) || undefined,
     queixaPrincipal: (b.queixaPrincipal || '').toString().slice(0, 400) || undefined,
     criadoEm: new Date().toISOString(),

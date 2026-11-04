@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sobrepoe, acharConflito, ocupaAgenda, normalizaNome, acharContatoPorNome, horaParaMin, componentesLocais, bloqueioNoDia, acharBloqueioConflitante, Bloqueio, domingoDePascoa, feriadosBR, feriadoDoDia, ehProfissionalAgenda, frequenciaPaciente } from '@/lib/agenda'
+import { sobrepoe, acharConflito, ocupaAgenda, normalizaNome, acharContatoPorNome, horaParaMin, componentesLocais, bloqueioNoDia, acharBloqueioConflitante, Bloqueio, domingoDePascoa, feriadosBR, feriadoDoDia, ehProfissionalAgenda, frequenciaPaciente, statusInicialAgendamento } from '@/lib/agenda'
 
 // Conflito de horário da Agenda. Guarda contra: encaixe silencioso em cima de
 // outro paciente e falso conflito entre profissionais diferentes/cancelados.
@@ -205,5 +205,19 @@ describe('feriados BR', () => {
     expect(cache[2026]?.['2026-12-25']).toBe('Natal')
     const naoFeriado = (() => { const x = new Date(); x.setFullYear(2026, 6, 13); x.setHours(0, 0, 0, 0); return x })()
     expect(feriadoDoDia(naoFeriado, cache)).toBeNull()
+  })
+})
+
+describe('statusInicialAgendamento', () => {
+  it('mantém "Confirmado (pago)" escolhido na criação', () => {
+    expect(statusInicialAgendamento('confirmado')).toBe('confirmado')
+  })
+  it('nasce aguardando confirmação em qualquer outro caso', () => {
+    expect(statusInicialAgendamento('agendado')).toBe('agendado')
+    expect(statusInicialAgendamento(undefined)).toBe('agendado')
+    expect(statusInicialAgendamento('')).toBe('agendado')
+    expect(statusInicialAgendamento('atendido')).toBe('agendado')
+    expect(statusInicialAgendamento('cancelado')).toBe('agendado')
+    expect(statusInicialAgendamento({ status: 'confirmado' })).toBe('agendado')
   })
 })
