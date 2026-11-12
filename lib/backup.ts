@@ -274,27 +274,37 @@ export async function exportarTudo(opts: { prazo?: number } = {}): Promise<any> 
 // Store do backup. O backup tem hash de senha e tokens da Meta: só vai para store
 // PRIVADO. Instância cujo store principal é público (a agência: o Instagram
 // precisa baixar a mídia por URL) liga um segundo store, privado, só para o
-// backup, com o prefixo de env BACKUP_BLOB (vira BACKUP_BLOB_READ_WRITE_TOKEN).
-// Sem ele, cai no store principal — que precisa ser privado, ou o put falha.
-export function tokenBackup(): string | undefined {
-  return process.env.BACKUP_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN
+// backup, com o prefixo de env BACKUP_BLOB.
+// Store privado novo da Vercel (nov/2026) liga SEM token: cria só
+// BACKUP_BLOB_STORE_ID e autentica por OIDC (o SDK lê o token OIDC da própria
+// requisição na Vercel). Store antigo cria BACKUP_BLOB_READ_WRITE_TOKEN.
+// Sem nenhum dos dois, cai no store principal — que precisa ser privado, ou o put falha.
+export type CredBackup = { token: string } | { storeId: string }
+export function credenciaisBackup(): CredBackup | null {
+  const storeId = process.env.BACKUP_BLOB_STORE_ID?.trim()
+  if (storeId) return { storeId }
+  const token = process.env.BACKUP_BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN
+  return token ? { token } : null
 }
 
 // Gera o backup e salva no Blob PRIVADO em backups/YYYY-MM-DD.json (sobrescreve o
 // do dia). Mantém os últimos 35 diários. Retorna a URL (privada) e o tamanho.
 export async function salvarBackup(): Promise<{ pathname: string; tamanho: number; contagens: any; incompleto: boolean }> {
-  const token = tokenBackup()
-  if (!token) throw new Error('BLOB_READ_WRITE_TOKEN não configurado')
+  const cred = credenciaisBackup()
+  if (!cred) throw new Error('BLOB_READ_WRITE_TOKEN não configurado')
   const inicio = Date.now()
   const dados = await exportarTudo({ prazo: inicio + PRAZO_PADRAO_MS })
   const agora = new Date()
   dados._meta.geradoEm = agora.toISOString()
   const json = JSON.stringify(dados)
   const dia = agora.toISOString().slice(0, 10)
-  const res = await put(`backups/${dia}.json`, json, { access: 'private' as any, contentType: 'application/json', addRandomSuffix: false, allowOverwrite: true, token })
+  const res = await put(`backups/${dia}.json`, json, { access: 'private' as any, contentType: 'application/json', addRandomSuffix: false, allowOverwrite: true, ...cred })
     .catch((e: any) => {
       if (/private access on a public store/i.test(String(e?.message))) {
-        throw new Error('o store de Blob desta instância é PÚBLICO e o backup não pode ir para lá. Crie um store privado na Vercel e ligue ao projeto com o prefixo BACKUP_BLOB (env BACKUP_BLOB_READ_WRITE_TOKEN).')
+        // Com storeId, o SDK só chega no store público se o OIDC faltou e ele
+        // caiu no BLOB_READ_WRITE_TOKEN principal.
+        if ('storeId' in cred) throw new Error('o store privado do backup (BACKUP_BLOB_STORE_ID) não autenticou: sem token OIDC da Vercel nesta execução, o SDK caiu no store principal, que é PÚBLICO.')
+        throw new Error('o store de Blob desta instância é PÚBLICO e o backup não pode ir para lá. Crie um store privado na Vercel e ligue ao projeto com o prefixo BACKUP_BLOB (env BACKUP_BLOB_STORE_ID ou BACKUP_BLOB_READ_WRITE_TOKEN).')
       }
       throw e
     })
@@ -305,12 +315,12 @@ export async function salvarBackup(): Promise<{ pathname: string; tamanho: numbe
 
   // Retenção: mantém os 35 backups diários mais recentes.
   try {
-    const { blobs } = await list({ prefix: 'backups/', token })
+    const { blobs } = await list({ prefix: 'backups/', ...cred })
     const antigos = blobs
       .filter(b => /backups\/\d{4}-\d{2}-\d{2}\.json$/.test(b.pathname))
       .sort((a, b) => b.pathname.localeCompare(a.pathname))
       .slice(35)
-    for (const b of antigos) await del(b.url, { token }).catch(() => {})
+    for (const b of antigos) await del(b.url, { ...cred }).catch(() => {})
   } catch { /* retenção é best-effort */ }
 
   return { pathname: res.pathname, tamanho: json.length, contagens: dados._meta.contagens, incompleto: !!dados._meta.incompleto }
@@ -319,11 +329,12 @@ export async function salvarBackup(): Promise<{ pathname: string; tamanho: numbe
 // Lê um backup gerenciado (backups/AAAA-MM-DD.json) no servidor. Store privado
 // exige o get() do SDK: fetch cru com Authorization: Bearer não autentica.
 export async function lerBackupDoBlob(pathname: string): Promise<any | null> {
-  const token = tokenBackup()
-  const { blobs } = await list({ prefix: 'backups/', token })
+  const cred = credenciaisBackup()
+  if (!cred) return null
+  const { blobs } = await list({ prefix: 'backups/', ...cred })
   const alvo = blobs.find(b => b.pathname === pathname)
   if (!alvo) return null
-  const r = await get(alvo.url, { access: 'private', token })
+  const r = await get(alvo.url, { access: 'private', ...cred })
   if (!r?.stream) throw new Error('não consegui ler o backup do Blob')
   return JSON.parse(await new Response(r.stream as any).text())
 }

@@ -10,7 +10,7 @@ import { ideogramConfigurado } from '@/lib/ideogram'
 import { nanoBananaConfigurado } from '@/lib/nanoBanana'
 import { whatsappConfigurado } from '@/lib/whatsapp'
 import { list } from '@vercel/blob'
-import { tokenBackup } from '@/lib/backup'
+import { credenciaisBackup } from '@/lib/backup'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -64,9 +64,9 @@ export async function GET(_req: NextRequest) {
   let ultimoBackup: { pathname: string; tamanho: number; em: string } | null = null
   let backups: { pathname: string; tamanho: number; em: string }[] = []
   try {
-    const token = tokenBackup()
-    if (token) {
-      const { blobs } = await list({ prefix: 'backups/', limit: 40, token })
+    const cred = credenciaisBackup()
+    if (cred) {
+      const { blobs } = await list({ prefix: 'backups/', limit: 40, ...cred })
       backups = blobs
         .filter(b => /backups\/\d{4}-\d{2}-\d{2}\.json$/.test(b.pathname))
         .sort((a, b) => (a.pathname < b.pathname ? 1 : -1))

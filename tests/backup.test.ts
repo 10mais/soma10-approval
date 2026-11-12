@@ -49,7 +49,7 @@ vi.mock('@/lib/redis', () => ({ redis: fake }))
 vi.mock('@/lib/erros', () => ({ capturarErro: vi.fn(async () => null) }))
 vi.mock('@vercel/blob', () => ({ put: vi.fn(), list: vi.fn(async () => ({ blobs: [] })), del: vi.fn() }))
 
-import { exportarTudo, restaurarBackup, foraDoBackup, ttlRestante, itensQueFaltam, chaveDoCliente, salvarBackup, tokenBackup } from '@/lib/backup'
+import { exportarTudo, restaurarBackup, foraDoBackup, ttlRestante, itensQueFaltam, chaveDoCliente, salvarBackup, credenciaisBackup } from '@/lib/backup'
 import { put } from '@vercel/blob'
 
 const AGORA = Date.parse('2026-11-12T12:00:00.000Z')
@@ -305,14 +305,34 @@ describe('backup — store do Blob', () => {
   it('store público: o erro diz o que fazer, em vez do texto cru da Vercel', async () => {
     process.env.BLOB_READ_WRITE_TOKEN = 'tok-principal'
     vi.mocked(put).mockRejectedValueOnce(new Error('Vercel Blob: Cannot use private access on a public store.'))
-    await expect(salvarBackup()).rejects.toThrow(/BACKUP_BLOB_READ_WRITE_TOKEN/)
+    await expect(salvarBackup()).rejects.toThrow(/BACKUP_BLOB_STORE_ID/)
   })
   it('store só do backup ganha do principal', () => {
     process.env.BLOB_READ_WRITE_TOKEN = 'tok-principal'
     process.env.BACKUP_BLOB_READ_WRITE_TOKEN = 'tok-backup'
-    expect(tokenBackup()).toBe('tok-backup')
+    expect(credenciaisBackup()).toEqual({ token: 'tok-backup' })
     delete process.env.BACKUP_BLOB_READ_WRITE_TOKEN
-    expect(tokenBackup()).toBe('tok-principal')
+    expect(credenciaisBackup()).toEqual({ token: 'tok-principal' })
+  })
+  it('store privado novo (só STORE_ID, OIDC) ganha de qualquer token', async () => {
+    process.env.BLOB_READ_WRITE_TOKEN = 'tok-principal'
+    process.env.BACKUP_BLOB_READ_WRITE_TOKEN = 'tok-backup'
+    process.env.BACKUP_BLOB_STORE_ID = 'store_UUe'
+    try {
+      expect(credenciaisBackup()).toEqual({ storeId: 'store_UUe' })
+      vi.mocked(put).mockResolvedValueOnce({ pathname: 'backups/x.json' } as any)
+      await salvarBackup()
+      const opcoes = vi.mocked(put).mock.calls.at(-1)![2] as any
+      expect(opcoes.storeId).toBe('store_UUe')
+      expect(opcoes.token).toBeUndefined()
+      expect(opcoes.access).toBe('private')
+      // OIDC faltou e o SDK caiu no store público: o erro aponta o OIDC
+      vi.mocked(put).mockRejectedValueOnce(new Error('Vercel Blob: Cannot use private access on a public store.'))
+      await expect(salvarBackup()).rejects.toThrow(/OIDC/)
+    } finally {
+      delete process.env.BACKUP_BLOB_STORE_ID
+      delete process.env.BACKUP_BLOB_READ_WRITE_TOKEN
+    }
   })
   it('grava privado, com o JSON inteiro', async () => {
     process.env.BLOB_READ_WRITE_TOKEN = 'tok-principal'
