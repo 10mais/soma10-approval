@@ -12,6 +12,7 @@ import { descricaoTarefaDesigner, tituloSubtarefa, tituloTarefaMae, prazoTarefaM
 import { notificar } from './notificacoes'
 import { fmtDiaDoInstante, diaDoInstante, fimDoDiaBR, inicioDoDiaBR } from './datas'
 import { dispararEvento } from './automacoesEngine'
+import { anexosParaNovaRodada, planoDeEntregasDaPauta } from './vinculoTarefa'
 
 // Etapa da Esteira -> tipo de tarefa (regra herdada do /api/esteira/relacionar).
 // 'pronto' não gera tarefa: a pauta já virou post no Planner.
@@ -164,7 +165,9 @@ export async function nascerTarefaDesigner(postId: string, autor: string, opts: 
         // O formato pode ter mudado depois da tarefa criada (virou carrossel):
         // o chip e o checklist do kanban têm de acompanhar.
         tipo: tipoTarefaDoFormato(post.formato),
-        ...(anexosT.length ? { anexos: anexosT } : {}),
+        // SOMA (lib/vinculoTarefa): a copy reaprovada não apaga o que o designer já tinha
+        // anexado; a arte anterior fica como referência e a nova precisa ser marcada de novo.
+        ...(anexosT.length ? { anexos: anexosParaNovaRodada(t.anexos || [], anexosT) } : {}),
         atualizadoEm: agora,
         atividades: [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: opts.manual ? 'Tarefa atualizada com o conteúdo atual da pauta (Studio)' : 'Copy reaprovada pelo cliente — tarefa atualizada com a copy nova', autor, criadoEm: agora }],
       }
@@ -211,7 +214,8 @@ export async function nascerTarefaDesigner(postId: string, autor: string, opts: 
     responsavelNome: designerNome,
     clienteId: post.clienteId || '',
     clienteNome: post.clienteNome || '',
-    marcoId: post.marcoId || '',
+    // Marco E etapa da pauta: só o marco deixava a peça fora da conta por etapa do Gantt.
+    ...planoDeEntregasDaPauta(post),
     ...(maeId ? { tarefaPaiId: maeId } : {}),
     dataInicio: inicioDoDiaBR(hoje),
     prazo: prazoCriativo ? fimDoDiaBR(prazoCriativo) : '',

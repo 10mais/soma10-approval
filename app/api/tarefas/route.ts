@@ -9,6 +9,7 @@ import { camposDoCorpo } from '@/lib/tarefaCampos'
 import { diaDoInstante, fmtDiaDoInstante } from '@/lib/datas'
 import { podeSerFilha, camposAoVincular } from '@/lib/hierarquiaTarefas'
 import { midiasParaPauta, deveEntregarCriativo } from '@/lib/producaoVinculo'
+import { pautaLivrePara, soltaPautaAntiga } from '@/lib/vinculoTarefa'
 import { entregaNaRodada, emRodadaDeAjuste } from '@/lib/rodadaAjuste'
 import { dispararEvento } from '@/lib/automacoesEngine'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
@@ -114,7 +115,10 @@ export async function POST(req: NextRequest) {
   if ((tarefa as any).origemPostId) {
     try {
       const post = await redis.get<any>(`post:${(tarefa as any).origemPostId}`)
-      if (post && !post.tarefaId) await redis.set(`post:${post.id}`, { ...post, tarefaId: tarefa.id, atualizadoEm: agora })
+      // A pauta passa a apontar para esta tarefa se estiver livre OU se o vínculo que ela
+      // guarda estiver morto (lib/vinculoTarefa) — antes só quando livre.
+      const dona = post?.tarefaId ? await redis.get<Tarefa>(`tarefa:${post.tarefaId}`) : null
+      if (post && post.tarefaId !== tarefa.id && pautaLivrePara(post, tarefa.id, dona as any)) await redis.set(`post:${post.id}`, { ...post, tarefaId: tarefa.id, atualizadoEm: agora })
     } catch { /* vínculo é bônus, nunca bloqueia a criação */ }
   }
   // Notifica o responsavel se for diferente de quem criou
@@ -284,10 +288,30 @@ export async function PUT(req: NextRequest) {
   // PAUTA ↔ TAREFA: o vínculo fecha nos dois lados (post.tarefaId) e os anexos da
   // tarefa ficam espelhados na pauta (post.anexosTarefa) — o Studio/Planner mostram
   // e podem usá-los como criativo. Nunca bloqueia o salvamento da tarefa.
-  if (atualizado.origemPostId && ('anexos' in updates || ('origemPostId' in updates && updates.origemPostId !== tarefa.origemPostId))) {
+  // TROCAR ou TIRAR a pauta: a pauta antiga solta esta tarefa (e o espelho de anexos dela),
+  // senão fica apontando para cá e um ajuste do cliente nela reabriria esta tarefa.
+  const mudouPauta = 'origemPostId' in updates && (updates.origemPostId || '') !== (tarefa.origemPostId || '')
+  if (mudouPauta && tarefa.origemPostId) {
+    try {
+      const antiga = await redis.get<Post>(`post:${tarefa.origemPostId}`)
+      if (antiga && soltaPautaAntiga(tarefa.origemPostId, updates.origemPostId, antiga, id)) {
+        const { tarefaId: _t, anexosTarefa: _a, ...resto } = antiga as any
+        await redis.set(`post:${antiga.id}`, { ...resto, atualizadoEm: agora })
+      }
+      if (!updates.origemPostId) novasAtividades.push({ id: uuid(), tipo: 'status', descricao: `Desvinculada da pauta "${(antiga?.briefing || antiga?.headline || 'Pauta').slice(0, 60)}"`, autor, criadoEm: agora })
+    } catch { /* limpeza de vínculo nunca bloqueia o salvamento */ }
+  }
+  if (atualizado.origemPostId && ('anexos' in updates || mudouPauta)) {
     try {
       const post = await redis.get<Post>(`post:${atualizado.origemPostId}`)
-      if (post) await redis.set(`post:${post.id}`, { ...post, tarefaId: post.tarefaId || id, anexosTarefa: atualizado.anexos || [], atualizadoEm: agora })
+      if (post) {
+        // Fecha o vínculo do lado da pauta quando ela está livre ou o vínculo dela está morto.
+        // Pauta segura por OUTRA tarefa viva fica com ela (mover vínculo = decisão do dono).
+        const dona = post.tarefaId && post.tarefaId !== id ? await redis.get<Tarefa>(`tarefa:${post.tarefaId}`) : null
+        const livre = pautaLivrePara(post, id, dona as any)
+        await redis.set(`post:${post.id}`, { ...post, tarefaId: livre ? id : post.tarefaId, ...(livre ? { anexosTarefa: atualizado.anexos || [] } : {}), atualizadoEm: agora })
+        if (mudouPauta) novasAtividades.push({ id: uuid(), tipo: 'status', descricao: `Vinculada à pauta "${(post.briefing || post.headline || 'Pauta').slice(0, 60)}"`, autor, criadoEm: agora })
+      }
     } catch { /* espelho nunca bloqueia */ }
   }
   if (updates.status === 'concluido' && tarefa.status !== 'concluido') atualizado.concluidoEm = new Date().toISOString()

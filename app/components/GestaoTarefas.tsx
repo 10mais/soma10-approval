@@ -15,6 +15,7 @@ import OptImg from './OptImg'
 import UploadProgress from './UploadProgress'
 import { fecharFora } from '@/lib/fecharModal'
 import { ehTarefaDeProducao, anexosCriativoPronto, avisoAoConcluir } from '@/lib/producaoVinculo'
+import { somarAnexos } from '@/lib/vinculoTarefa'
 import { useT } from '@/app/components/Idioma'
 import { avisarTarefasMudaram } from './BarraProximasTarefas'
 import { TEXTOS } from '@/lib/i18n'
@@ -1060,7 +1061,9 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
       ...(p.anexos || []),
       ...((p.laminas || []).map((l: any, i: number) => l?.anexo ? { ...l.anexo, nome: tr('tarefa.lamina-n', { n: i + 1, nome: l.anexo.nome }) } : null).filter(Boolean)),
     ]
-    setAnexos(anx)
+    // SOMA aos anexos que a tarefa já tem (lib/vinculoTarefa): antes substituía e o
+    // criativo pronto e as referências do designer sumiam no salvamento automático.
+    setAnexos(atuais => somarAnexos(atuais, anx as Anexo[]))
     const esc = (s: string) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     const linhas = [
       p.briefing && `<strong>Briefing:</strong> ${esc(p.briefing)}`,
