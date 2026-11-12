@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 // Redis simulado em memória: guarda o valor JS direto (sem a serialização do SDK)
 // e o TTL de cada chave, com só os comandos que lib/backup usa.
@@ -302,6 +302,12 @@ describe('backup — regras puras', () => {
 })
 
 describe('backup — store do Blob', () => {
+  // O build da Vercel roda com as envs reais da instância (a agência tem
+  // BACKUP_BLOB_STORE_ID): cada teste começa sem as envs de Blob e devolve no fim.
+  const ENVS_BLOB = ['BLOB_READ_WRITE_TOKEN', 'BACKUP_BLOB_READ_WRITE_TOKEN', 'BACKUP_BLOB_STORE_ID']
+  const salvas: Record<string, string | undefined> = {}
+  beforeEach(() => { for (const k of ENVS_BLOB) { salvas[k] = process.env[k]; delete process.env[k] } })
+  afterEach(() => { for (const k of ENVS_BLOB) { if (salvas[k] === undefined) delete process.env[k]; else process.env[k] = salvas[k] } })
   it('store público: o erro diz o que fazer, em vez do texto cru da Vercel', async () => {
     process.env.BLOB_READ_WRITE_TOKEN = 'tok-principal'
     vi.mocked(put).mockRejectedValueOnce(new Error('Vercel Blob: Cannot use private access on a public store.'))
