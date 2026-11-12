@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { list } from '@vercel/blob'
-import { restaurarBackup } from '@/lib/backup'
+import { restaurarBackup, lerBackupDoBlob } from '@/lib/backup'
 import { registrarAuditoria } from '@/lib/auditoria'
 import { capturarErro } from '@/lib/erros'
 
@@ -38,12 +37,8 @@ export async function POST(req: NextRequest) {
       if (!/^backups\/[\w-]+\.json$/.test(String(pathname))) {
         return NextResponse.json({ error: 'caminho de backup inválido' }, { status: 400 })
       }
-      const token = process.env.BLOB_READ_WRITE_TOKEN
-      const { blobs } = await list({ prefix: 'backups/', token })
-      const alvo = blobs.find(b => b.pathname === pathname)
-      if (!alvo) return NextResponse.json({ error: 'backup não encontrado' }, { status: 404 })
-      const res = await fetch(alvo.url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-      payload = await res.json()
+      payload = await lerBackupDoBlob(String(pathname))
+      if (!payload) return NextResponse.json({ error: 'backup não encontrado' }, { status: 404 })
       origem = pathname
     }
     if (!payload || !payload._meta) {
