@@ -25,6 +25,9 @@ function perfilAtual(p: { perfilClinica?: boolean; perfilTurismo?: boolean; perf
 }
 import BibliotecaVendasTela from './BibliotecaVendas'
 import LimiteDeErro from './LimiteDeErro'
+import { PainelSemanaClinica, FunilMesClinica } from './PainelClinica'
+import { passaMesFunil } from '@/lib/painelClinica'
+import { intervaloMes } from '@/lib/metas'
 import EditorLinhagem from './EditorLinhagem'
 import { useT, useArea, useIdioma } from '@/app/components/Idioma'
 import { localeDe } from '@/lib/i18n'
@@ -393,6 +396,14 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       { id: 'outro', rotulo: tr('crm.outro-nao-especificado'), n: conta(x => !x.viagemId) },
     ]
   }, [perfilTurismo, negocios, viagens, pipelineSel, pipelines, idsFretamento])
+  // ── Clínica: o FUNIL POR MÊS (dono, 13/11). Com um mês escolhido, o quadro
+  // mostra o que entrou e o que fechou nele; a chave (ligada por padrão) mantém
+  // as abertas de meses anteriores, então nada aberto some. '' = todos os meses,
+  // o quadro como sempre foi. Regra em lib/painelClinica (passaMesFunil).
+  const [mesFunil, setMesFunil] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` })
+  const [incluirAbertas, setIncluirAbertas] = useState(true)
+  const intervaloFunil = useMemo(() => (/^\d{4}-\d{2}$/.test(mesFunil) ? intervaloMes(Number(mesFunil.slice(0, 4)), Number(mesFunil.slice(5, 7)) - 1) : null), [mesFunil])
+  const passaFiltroMes = (n: Negocio) => !perfilClinica || !intervaloFunil || passaMesFunil(n as any, intervaloFunil[0], intervaloFunil[1], incluirAbertas)
   // Filtros por pipeline (negócio/etapa sem pipelineId caem no pipeline padrão = o primeiro)
   const padraoId = pipelines[0]?.id || ''
   const estagiosDoPipeline = (pid: string) => estagios.filter(e => (e.pipelineId || padraoId) === pid)
@@ -450,6 +461,14 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
       </div>
       {subtitulo && <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--v2-ink3)' }}>{subtitulo}</p>}
 
+      {/* Clínica: PAINEL DA SEMANA no topo do Painel (metas, comercial, paradas).
+          O painel por funil, que já existia, continua logo abaixo. */}
+      {perfilClinica && vista === 'painel' && !carregando && (
+        <PainelSemanaClinica negocios={negocios} contatos={contatos} agendamentos={agendamentos} estagios={estagios} pipelines={pipelines}
+          onAbrirNegocio={id => { const n = negocios.find(x => x.id === id); if (n) setAberto(n) }}
+          onWhatsApp={(tel, contatoId) => abrirWhatsAppInterno(tel, contatoId)} />
+      )}
+
       {/* Seletor de pipeline (funil e painel) */}
       {(vista === 'funil' || vista === 'painel') && pipelines.length > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
@@ -480,6 +499,11 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         <BibliotecaVendasTela podeEditar={podeEditar} />
       ) : (
         <>
+        {/* Clínica: mês do quadro + faixa Entraram → Agendaram → Compareceram → Fecharam */}
+        {perfilClinica && (
+          <FunilMesClinica negocios={negocios} agendamentos={agendamentos} contatos={contatos} pipelines={pipelines}
+            mes={mesFunil} onMes={setMesFunil} incluirAbertas={incluirAbertas} onIncluirAbertas={setIncluirAbertas} />
+        )}
         {/* Turismo: interessados por VIAGEM — cada chip conta os negócios do
             pipeline vinculados àquela viagem; sem vínculo = "Outro". */}
         {perfilTurismo && chipsViagem.length > 0 && (
@@ -510,7 +534,7 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
         <div ref={funilRef} className="crm-kanban" onScroll={medirBarra} onDragOver={autoScrollDrag} onDrop={pararAutoScroll} onDragEnd={pararAutoScroll}
           style={{ display: 'flex', gap: 12, overflowX: 'auto', overflowY: 'hidden', paddingBottom: 12, alignItems: 'stretch', height: alturaFunil || 'calc(100vh - 260px)' }}>
           {estagiosDoPipeline(pipelineSel).map(est => {
-            const cards = negocios.filter(n => n.estagioId === est.id && passaFiltroViagem(n))
+            const cards = negocios.filter(n => n.estagioId === est.id && passaFiltroViagem(n) && passaFiltroMes(n))
             const cor = est.ganho ? 'var(--v2-ok)' : est.perdido ? 'var(--v2-hot)' : 'var(--v2-ink)'
             return (
               <div key={est.id}
@@ -529,7 +553,8 @@ export default function CRM({ usuarios = [], onClienteCriado, podeEditar = false
                     <span style={{ fontSize: 13, fontWeight: 800, color: cor }}>{est.nome}</span>
                     <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)' }}>{cards.length}</span>
                   </div>
-                  {cards.length > 0 && <p style={{ margin: '0 6px 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>{fmtR$(totalPorEstagio(est.id))}</p>}
+                  {/* Clínica: o total é o dos cards VISÍVEIS (o mês filtra o quadro). */}
+                  {cards.length > 0 && <p style={{ margin: '0 6px 8px', fontSize: 11, color: 'var(--v2-ink3)' }}>{fmtR$(perfilClinica ? cards.reduce((s, n) => s + (Number(n.valor) || 0), 0) : totalPorEstagio(est.id))}</p>}
                 </div>
                 {/* minHeight 0: sem isso o item flex se recusa a encolher abaixo
                     do conteúdo e a lista não rola — ela estoura a coluna. */}

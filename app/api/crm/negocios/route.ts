@@ -176,7 +176,13 @@ export async function PUT(req: NextRequest) {
     agendamentos.push({ id: uuid(), quando: String(a.quando).slice(0, 10), canal: a.canal || 'whatsapp', titulo: String(a.titulo), nota: a.nota || '', feito: false, criadoEm: new Date().toISOString() })
   }
   if (updates.toggleAgendamento) {
-    agendamentos = agendamentos.map(a => a.id === updates.toggleAgendamento ? { ...a, feito: !a.feito } : a)
+    // Quem marcou e quando: o Painel da clínica conta o follow-up na semana e na
+    // pessoa certas (lib/painelClinica). Reabrir apaga a marca.
+    agendamentos = agendamentos.map(a => {
+      if (a.id !== updates.toggleAgendamento) return a
+      const { feitoEm: _e, feitoPor: _p, ...resto } = a
+      return a.feito ? { ...resto, feito: false } : { ...resto, feito: true, feitoEm: new Date().toISOString(), feitoPor: autor }
+    })
   }
   if (updates.removerAgendamento) {
     agendamentos = agendamentos.filter(a => a.id !== updates.removerAgendamento)

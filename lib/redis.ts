@@ -1292,6 +1292,8 @@ export type CrmAgendamento = {
   titulo: string
   nota?: string
   feito?: boolean
+  feitoEm?: string  // quando foi marcado feito (Painel da clínica: follow-up da semana)
+  feitoPor?: string // quem marcou (nome da sessão)
   criadoEm: string
 }
 

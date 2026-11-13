@@ -9,6 +9,8 @@ import {
   realizadoNoIntervalo, progresso, dataDoGanho, NegocioMeta, Progresso,
   CORES_SITUACAO, MESES_CURTO, MESES_LONGO,
 } from '@/lib/metas'
+import { normalizaMetasSemana, type MetasSemana } from '@/lib/painelClinica'
+import { useT } from './Idioma'
 
 // META DE VENDAS — o painel que responde "quanto falta para bater o mês?".
 //
@@ -20,6 +22,73 @@ import {
 const brl = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })
 const brlExato = (v: number) => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const dataCurta = (iso: string) => { const d = new Date(iso); return isNaN(d.getTime()) ? '' : `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}` }
+
+// METAS DA SEMANA (quantidade): consultas novas, retornos e comparecimentos.
+// Moram aqui porque é aqui que o admin define meta; o acompanhamento fica no
+// Painel do CRM (lib/painelClinica). Plano aprovado pelo dono em 13/11/2026.
+const CAMPOS_SEMANA = [['consultasNovas', 'pc.consultas-novas'], ['retornos', 'pc.retornos'], ['comparecimentos', 'pc.comparecimentos']] as const
+function MetasSemanaCard({ podeEditar }: { podeEditar: boolean }) {
+  const tr = useT()
+  const [metas, setMetas] = useState<MetasSemana | null>(null)
+  const [editando, setEditando] = useState(false)
+  const [form, setForm] = useState({ consultasNovas: '', retornos: '', comparecimentos: '' })
+  const [salvando, setSalvando] = useState(false)
+  useEffect(() => {
+    fetch('/api/metas/semana').then(r => r.json()).then(d => setMetas(normalizaMetasSemana(d?.metas))).catch(() => setMetas(normalizaMetasSemana(null)))
+  }, [])
+  function abrir() {
+    if (!metas) return
+    setForm({ consultasNovas: metas.consultasNovas ? String(metas.consultasNovas) : '', retornos: metas.retornos ? String(metas.retornos) : '', comparecimentos: metas.comparecimentos ? String(metas.comparecimentos) : '' })
+    setEditando(true)
+  }
+  async function salvar() {
+    setSalvando(true)
+    const r = await fetch('/api/metas/semana', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) }).then(x => x.json()).catch(() => null)
+    setSalvando(false)
+    if (!r?.ok) { toast(r?.error || tr('pc.falha-metas'), 'erro'); return }
+    setMetas(normalizaMetasSemana(r.metas)); setEditando(false); toast(tr('pc.salvo-metas'), 'sucesso')
+  }
+  const vazio = !!metas && !metas.consultasNovas && !metas.retornos && !metas.comparecimentos
+  const botao: React.CSSProperties = { padding: '7px 14px', borderRadius: 9, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }
+  return (
+    <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
+        <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--v2-ink)' }}>{tr('pc.metas-semana')}</span>
+        <span style={{ flex: 1 }} />
+        {podeEditar && !editando && metas && <button onClick={abrir} style={botao}>{vazio ? tr('pc.definir') : tr('comum.editar')}</button>}
+      </div>
+      <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--v2-ink3)', lineHeight: 1.5 }}>{tr('pc.metas-semana-ajuda')}</p>
+      {!metas ? <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('conta.carregando')}</p> : editando ? (
+        <div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
+            {CAMPOS_SEMANA.map(([k, rot]) => (
+              <label key={k} style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>
+                {tr(rot)}
+                <input type="number" min={0} step={1} inputMode="numeric" value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} placeholder="0"
+                  style={{ padding: '9px 11px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 14, fontFamily: 'inherit', fontWeight: 700, color: 'var(--v2-ink)', background: 'var(--v2-surface)' }} />
+              </label>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
+            <button onClick={() => setEditando(false)} style={botao}>{tr('comum.cancelar')}</button>
+            <button onClick={salvar} disabled={salvando} style={{ ...botao, background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', cursor: salvando ? 'wait' : 'pointer' }}>{salvando ? tr('crm.salvando') : tr('comum.salvar')}</button>
+          </div>
+        </div>
+      ) : vazio ? (
+        <p style={{ margin: 0, fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('pc.sem-metas-semana')}{podeEditar ? '' : ` ${tr('pc.so-admin')}`}</p>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10 }}>
+          {CAMPOS_SEMANA.map(([k, rot]) => (
+            <div key={k} style={{ background: 'var(--v2-surface1)', borderRadius: 10, padding: '10px 12px' }}>
+              <p style={{ margin: 0, fontSize: 11.5, fontWeight: 700, color: 'var(--v2-ink3)' }}>{tr(rot)}</p>
+              <p style={{ margin: '3px 0 0', fontSize: 22, fontWeight: 800, color: 'var(--v2-ink)' }}>{metas[k] || '—'}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // Anel de progresso. Vai além de 100% sem estourar o desenho: o excedente
 // pinta o anel inteiro e o número segue crescendo (bater 140% da meta é
@@ -139,6 +208,8 @@ export default function Metas({ podeEditar = false }: { podeEditar?: boolean }) 
           </button>
         )}
       </div>
+
+      <MetasSemanaCard podeEditar={podeEditar} />
 
       {/* Funil: a clínica tem mais de um (Agendamentos e Tratamentos). A meta em
           R$ costuma viver no de tratamento — mas quem escolhe é quem olha. */}
