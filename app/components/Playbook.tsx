@@ -76,7 +76,7 @@ function corCategoria(cat: string) { return CATEGORIAS.find(c => c.key === cat)?
 function corDoMarco(m: { cor?: string; categoria: string }) { return m.cor || corCategoria(m.categoria) }
 const PALETA = ['#0f766e', '#2563eb', '#7c3aed', '#db2777', '#ea580c', '#ca8a04', '#16a34a', '#0891b2', '#dc2626', '#475569']
 type TarefaLeve = { id: string; titulo: string; status: string; tipo?: string; prioridade?: string; responsavelNome?: string; responsavelEmail?: string; prazo?: string; marcoId?: string; subetapaId?: string; clienteId?: string; excluidoEm?: string }
-const STATUS_TAREFA: Record<string, { label: string; cor: string }> = { a_fazer: { label: 'A fazer', cor: 'var(--v2-ink3)' }, em_andamento: { label: 'Em andamento', cor: 'var(--v2-amber)' }, em_revisao: { label: 'Em revisão', cor: 'var(--v2-info)' }, concluido: { label: 'Concluída', cor: 'var(--v2-ok)' }, descartado: { label: 'Descartada', cor: 'var(--v2-ink3)' } }
+const STATUS_TAREFA: Record<string, { label: string; cor: string }> = { a_fazer: { label: 'A fazer', cor: 'var(--v2-ink3)' }, em_andamento: { label: 'Em andamento', cor: 'var(--v2-amber)' }, em_ajuste: { label: 'Em ajuste', cor: 'var(--v2-hot)' }, em_revisao: { label: 'Em revisão', cor: 'var(--v2-info)' }, concluido: { label: 'Concluída', cor: 'var(--v2-ok)' }, descartado: { label: 'Descartada', cor: 'var(--v2-ink3)' } }
 function ColorPicker({ valor, onChange, titulo }: { valor?: string; onChange: (cor?: string) => void; titulo?: string }) {
   const tr = useT()
   return (

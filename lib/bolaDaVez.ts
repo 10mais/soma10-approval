@@ -66,7 +66,7 @@ const ETAPAS_DO_CLIENTE = ['aprovacao_copy', 'aprovacao_criativo']
 const STATUS_DE_AJUSTE = ['corrigir', 'reprovado']
 
 // Tarefa que ainda consome alguém. 'descartado' e 'concluido' saem da conta.
-const TAREFA_ABERTA = ['a_fazer', 'em_andamento', 'em_revisao']
+const TAREFA_ABERTA = ['a_fazer', 'em_andamento', 'em_ajuste', 'em_revisao'] // = STATUS_ABERTOS de lib/statusTarefa
 
 function rotuloPost(p: PostBola): string {
   const t = (p.titulo || p.briefing || p.headline || p.legenda || '').replace(/\s+/g, ' ').trim()

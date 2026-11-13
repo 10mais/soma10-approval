@@ -679,18 +679,6 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
       carregarPautas(planoSel)
     } catch { toast('Erro de conexão.', 'erro') } finally { setAcaoPauta(null) }
   }
-  async function criarTarefaManual(p: Pauta) {
-    setAcaoPauta(p.id)
-    try {
-      const r = await fetch('/api/esteira/relacionar', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId: p.id }),
-      }).then(x => x.json())
-      if (!r?.ok) { toast(r?.error || 'Falha ao criar a tarefa.', 'erro'); return }
-      toast(r.resultado === 'criada' ? 'Tarefa criada na Gestão de tarefas.' : r.resultado === 'jaVinculada' ? 'Esta pauta já tem tarefa vinculada — foi atualizada.' : 'Pauta pronta não gera tarefa.', 'sucesso')
-      carregarPautas(planoSel)
-    } catch { toast('Erro de conexão.', 'erro') } finally { setAcaoPauta(null) }
-  }
 
   async function salvarData(id: string, localValue: string) {
     const iso = localValue ? new Date(localValue).toISOString() : ''
@@ -1711,10 +1699,13 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                         {podeEditar && onAbrirComposer && (
                           <button className="st-btn" onClick={() => onAbrirComposer(p)} style={{ padding: '10px 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink2)', border: '1px solid var(--v2-rule)', borderRadius: 11, fontWeight: 500, fontSize: 11.5, cursor: 'pointer' }}>{semMidia ? 'Subir manual' : 'Abrir no Planner'}</button>
                         )}
-                        {(() => { const t = tarefaDaPauta(p as any, tarefasVinc); if (!t) return null; const aberta = tarefaAberta(t); return (
-                          <span title={tr('est.tarefa-producao', { nome: t.titulo || '' })} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: aberta ? 'var(--v2-amber-bg)' : 'var(--v2-ok-bg)', color: aberta ? 'var(--v2-amber)' : 'var(--v2-ok)' }}>
-                            <span style={{ width: 6, height: 6, borderRadius: 999, background: 'currentColor' }} />Tarefa · {STATUS_TAREFA_LABEL[t.status || ''] || t.status}{t.responsavelNome ? ` · ${t.responsavelNome}` : ''}
-                          </span>
+                        {/* A TAREFA DA PAUTA (dono, 13/11/2026): toda pauta nasce com a sua tarefa; aqui se vê
+                            com quem está e em que fase, e um clique abre a tarefa. "Criar tarefa desta
+                            pauta" deixou de existir. */}
+                        {(() => { const t = tarefaDaPauta(p as any, tarefasVinc); if (!t) return null; const aberta = tarefaAberta(t); const fase = (t as any).fasePauta === 'copy' ? ' (copy)' : (t as any).fasePauta === 'criativo' ? ' (criativo)' : ''; return (
+                          <button type="button" className="st-btn" onClick={() => abrirTarefa(t.id, u => router.push(u))} title={`Abrir a tarefa: ${t.titulo || ''}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', background: aberta ? 'var(--v2-amber-bg)' : 'var(--v2-ok-bg)', color: aberta ? 'var(--v2-amber)' : 'var(--v2-ok)' }}>
+                            <span style={{ width: 6, height: 6, borderRadius: 999, background: 'currentColor' }} />Tarefa{fase} · {STATUS_TAREFA_LABEL[t.status || ''] || t.status}{t.responsavelNome ? ` · ${t.responsavelNome}` : ''} · Abrir
+                          </button>
                         ) })()}
                         {/* RODADA DE AJUSTE: versão nova do designer esperando a revisão da equipe. O cliente
                             ainda vê a anterior; aprovar aqui troca a arte e reenvia (lib/rodadaAjuste). */}
@@ -1805,13 +1796,6 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                             title={tr(p.marcoId ? 'est.trocar-etapa' : 'est.sem-etapa-nao-sai')}
                             style={{ padding: '10px 14px', background: 'var(--v2-surface)', color: p.marcoId ? 'var(--v2-ink2)' : 'var(--v2-hot)', border: `1px solid ${p.marcoId ? 'var(--v2-rule)' : 'var(--v2-hot-bg)'}`, borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: 'pointer', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {p.marcoId ? tr('est.etapa-do-plano', { etapa: rotuloEtapa(marcosCliente, p.marcoId, p.subetapaId) || tr('est.etapa-removida') }) : tr('est.sem-etapa')}
-                          </button>
-                        )}
-                        {podeEditar && p.etapa && p.etapa !== 'pronto' && (
-                          <button className="st-btn" onClick={() => criarTarefaManual(p)} disabled={acaoPauta === p.id}
-                            title={p.tarefaId ? 'Já existe tarefa vinculada — clicar atualiza/reabre' : 'Cria a tarefa desta pauta na Gestão de tarefas'}
-                            style={{ padding: '10px 14px', background: 'var(--v2-surface)', color: 'var(--v2-info)', border: '1px solid var(--v2-info-bg)', borderRadius: 11, fontWeight: 600, fontSize: 11.5, cursor: acaoPauta === p.id ? 'wait' : 'pointer' }}>
-                            {p.tarefaId ? 'Tarefa vinculada' : 'Criar tarefa desta pauta'}
                           </button>
                         )}
                         {podeEditar && (p.etapa === 'aprovacao_copy' || (p.status === 'reprovado' && (p.etapa === 'copy' || p.etapa === 'briefing'))) && (

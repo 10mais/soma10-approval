@@ -30,6 +30,25 @@ export function apareceNoPlanner(p: PostFiltravel): boolean {
   return !et || et === 'pronto' || et === 'aprovacao_criativo'
 }
 
+// ---------------------------------------------------------------- FILA DE PROGRAMAÇÃO
+// Dono, 13/11/2026: "quando a tarefa for concluída (anexado o criativo pronto) ele já se vira
+// uma postagem em rascunho como Fila de programação. Aí o colaborador abre, revisa e finaliza a
+// programação." A Fila é um RECORTE do Programador (a peça continua aparecendo na Lista e no
+// Calendário — apareceNoPlanner): o que a produção entregou e ainda depende da equipe.
+//   'nova'        entregue pelo designer, esperando revisão e envio ao cliente
+//   'nova_versao' o cliente pediu ajuste e o designer já entregou a nova versão
+//   'em_ajuste'   o cliente pediu ajuste e a peça está com o designer
+// O que já foi para o cliente (aguardando aprovação) ou foi aprovado sai da Fila.
+export type PostDaFila = PostFiltravel & { filaProgramacaoDesde?: string; versaoNova?: unknown; excluidoEm?: string }
+export type EstadoNaFila = 'nova' | 'nova_versao' | 'em_ajuste'
+
+export function estadoNaFila(p: PostDaFila): EstadoNaFila | null {
+  if (p.excluidoEm) return null
+  if (p.etapa === 'pronto' && p.status === 'rascunho' && p.filaProgramacaoDesde) return 'nova'
+  if (p.etapa === 'aprovacao_criativo' && (p.status === 'corrigir' || p.status === 'reprovado')) return p.versaoNova ? 'nova_versao' : 'em_ajuste'
+  return null
+}
+
 // ---------------------------------------------------------------- ORDEM DO PLANNER
 // Dono, 09/09/2026: "organize o Planner por DATA DE POSTAGEM (independente se está
 // programado ou em aprovação)". A lista ordenava por `atualizadoEm` — qualquer toque numa

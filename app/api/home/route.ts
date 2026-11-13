@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
     })
 
   // 4) Fila da pessoa (abertas, mais urgente primeiro)
-  const abertas = ['a_fazer', 'em_andamento', 'em_revisao']
+  const abertas = ['a_fazer', 'em_andamento', 'em_ajuste', 'em_revisao'] // = STATUS_ABERTOS de lib/statusTarefa
   const fila = T
     .filter(t => (t.responsavelEmail || '').toLowerCase() === pessoa.email.toLowerCase() && abertas.includes(t.status))
     .map(t => ({ id: t.id, titulo: t.titulo, tipo: t.tipo, status: t.status, prazo: t.prazo, clienteNome: t.clienteNome, anexos: (t.anexos || []).length }))

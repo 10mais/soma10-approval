@@ -4,6 +4,11 @@
 // pelo mesmo motivo do lib/plannerFiltro: regra de fluxo inline em rota nao e
 // alcancada por teste nenhum, e esta regra mexe no status de material do cliente.
 //
+// FLUXO VIGENTE (dono, 13/11/2026): a pauta nasce JUNTO com a tarefa (Social Media, fase da
+// copy); copy aprovada passa a MESMA tarefa ao designer; designer entrega (Em revisão) e a
+// pauta vira rascunho na Fila de programação; cliente aprova lá e a tarefa conclui; ajuste
+// põe a tarefa Em ajuste. Memória: proj-fluxo-pauta-tarefa. O que segue é o histórico.
+//
 // O fluxo (decisoes do dono em 23/07):
 //   1. copy produzida no Studio -> cliente aprova a copy (aprovacao_copy)
 //   2. copy aprovada -> nasce a SUB-TAREFA do designer (deveCriarTarefaDesigner)
@@ -20,17 +25,40 @@ import type { SquadPapeis } from './squadPapeis'
 // A automacao nunca tira o controle do humano: concluir/reabrir tarefa fora da
 // etapa certa nao mexe na pauta, e nada aqui regride etapa.
 
-// Concluir a tarefa do designer devolve a pauta ao STUDIO com o criativo pronto
-// (decisao do dono, 07/09: "inicia no Studio, quando aprovado vira tarefa; quando
-// a tarefa for concluida, volta pro Studio" — e do Studio a equipe sobe para
-// aprovacao do cliente ou para o Planner). A pauta fica em 'criativo' (etapa da
-// arte), status rascunho, e o chamador grava `criativoEntregueEm` + as midias.
-// Antes (23/07) ia direto ao Planner como rascunho; isso pulava a revisao no Studio.
-// So age quando a pauta esta em 'criativo'. Qualquer outra etapa — inclusive
-// aprovacoes (bola do cliente) e 'pronto' (ja no Planner) — devolve null: concluir
-// de novo, reabrir ou tarefa de pauta avulsa sem esteira nunca regride nem re-dispara.
-export function aoConcluirTarefa(etapa?: string): { etapa: 'criativo'; status: 'rascunho'; voltaAoStudio: true } | null {
-  return etapa === 'criativo' ? { etapa: 'criativo', status: 'rascunho', voltaAoStudio: true } : null
+// ENTREGA DO CRIATIVO (dono, 13/11/2026): "quando a tarefa for concluída (anexado o criativo
+// pronto) ele já se vira uma postagem em rascunho como Fila de programação. Aí o colaborador
+// abre, revisa e finaliza a programação." + "Quando o criativo é finalizado a tarefa passa para
+// o status EM REVISÃO". A entrega (tarefa em Em revisão, ou concluída à mão, com criativo
+// pronto) leva a pauta ao PROGRAMADOR: etapa 'pronto', status 'rascunho', marcada como na Fila
+// de programação. O chamador grava `criativoEntregueEm`, `filaProgramacaoDesde` e as mídias.
+// Histórico: 23/07 ia ao Planner como rascunho; 07/09 voltava ao Studio; 13/11 volta ao
+// Programador, agora com a revisão e o envio ao cliente feitos na Fila de programação.
+// Só age quando a pauta está em 'criativo' E há arte: sem criativo pronto nada vai ao
+// Programador (a peça fica onde está). Qualquer outra etapa devolve null — entregar de novo,
+// reabrir ou tarefa de pauta avulsa nunca regride nem re-dispara.
+export function aoEntregarCriativo(etapa: string | undefined, temArte: boolean): { etapa: 'pronto'; status: 'rascunho'; naFila: true } | null {
+  return etapa === 'criativo' && temArte ? { etapa: 'pronto', status: 'rascunho', naFila: true } : null
+}
+
+// Status que contam como ENTREGA do criativo pelo designer: Em revisão (o caminho do dono) e
+// Concluído (quem conclui à mão antes da aprovação — a arte não pode ficar parada na tarefa).
+export const STATUS_DE_ENTREGA = ['em_revisao', 'concluido']
+
+// Cliente ou revisão interna pediu ajuste: a tarefa vai para EM AJUSTE (dono, 13/11). Tarefa
+// descartada fica como está (alguém decidiu parar a peça; o ajuste não ressuscita).
+export function statusAoPedirAjuste(statusAtual?: string): string {
+  return statusAtual === 'descartado' ? 'descartado' : 'em_ajuste'
+}
+
+// PRAZO DA COPY (fase do Social Media, quando a tarefa nasce junto com a pauta): 2 dias úteis
+// antes do prazo do criativo, para a copy ser aprovada a tempo de a arte ser feita. Nunca nasce
+// atrasada (vira hoje). Sem data de postagem, sem prazo. Devolve AAAA-MM-DD.
+export const DIAS_UTEIS_DA_COPY_ANTES_DO_CRIATIVO = 2
+export function prazoDaCopy(dataPostagem: string | undefined, hoje: string): string {
+  const criativo = prazoDoCriativo(dataPostagem, hoje)
+  if (!criativo) return ''
+  const alvo = subtrairDiasUteis(criativo, DIAS_UTEIS_DA_COPY_ANTES_DO_CRIATIVO)
+  return alvo < hoje ? hoje : alvo
 }
 
 // Copy aprovada => nasce a tarefa do designer. Idempotente: pauta que ja tem
@@ -150,9 +178,14 @@ export function prazoDoCriativo(dataPostagem: string | undefined, hoje: string):
 // AVISO "pauta para produzir" (dono, 20/10/2026: "O Designer precisa receber as notificações").
 // Várias pautas do mesmo cliente em poucos minutos (o cliente aprova as copies de uma vez) viram
 // UM aviso só, que vai sendo atualizado — dez pushes seguidos no celular fazem o designer silenciar.
-export function avisoPautasNovas(clienteNome: string | undefined, titulos: string[], prazoTexto?: string): { titulo: string; mensagem: string } {
+export function avisoPautasNovas(clienteNome: string | undefined, titulos: string[], prazoTexto?: string, fase: 'copy' | 'criativo' = 'criativo'): { titulo: string; mensagem: string } {
   const cli = (clienteNome || '').trim() || 'Cliente'
   const lista = titulos.map(t => (t || '').trim() || 'Pauta')
+  if (fase === 'copy') {
+    if (lista.length <= 1) return { titulo: `Copy para escrever — ${cli}`, mensagem: `A pauta "${lista[0] || 'Pauta'}" nasceu e está com você para a copy.${prazoTexto ? ` Prazo: ${prazoTexto}.` : ''}` }
+    const prim = lista.slice(0, 3).map(t => `"${t}"`).join(', ')
+    return { titulo: `${lista.length} copies para escrever — ${cli}`, mensagem: `Estão com você: ${prim}${lista.length > 3 ? ` e mais ${lista.length - 3}` : ''}.` }
+  }
   if (lista.length <= 1) {
     return { titulo: `Pauta para produzir — ${cli}`, mensagem: `A pauta "${lista[0] || 'Pauta'}" está com você.${prazoTexto ? ` Prazo: ${prazoTexto}.` : ''}` }
   }

@@ -83,7 +83,7 @@ export type Relatorio = {
 
 const DIA = 86400000
 const ETAPA_LABEL: Record<string, string> = { briefing: 'Briefing', copy: 'Copy em produção', aprovacao_copy: 'Copy em aprovação', criativo: 'Criativo em produção', aprovacao_criativo: 'Criativo em aprovação', pronto: 'Pronto' }
-const TAREFA_ABERTA = ['a_fazer', 'em_andamento', 'em_revisao']
+const TAREFA_ABERTA = ['a_fazer', 'em_andamento', 'em_ajuste', 'em_revisao'] // = STATUS_ABERTOS de lib/statusTarefa
 
 function ms(iso?: string): number | undefined {
   if (!iso) return undefined

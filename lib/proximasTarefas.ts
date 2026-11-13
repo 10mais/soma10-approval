@@ -11,7 +11,7 @@ import { diaDoInstante, somarDias } from './datas'
 
 export type QuandoPrazo = 'atrasada' | 'hoje' | 'amanha' | 'semana' | 'depois' | 'sem_prazo'
 
-export const STATUS_ABERTOS = ['a_fazer', 'em_andamento', 'em_revisao']
+export const STATUS_ABERTOS = ['a_fazer', 'em_andamento', 'em_ajuste', 'em_revisao'] // = STATUS_ABERTOS de lib/statusTarefa
 
 export type TarefaParaBarra = {
   id: string; titulo?: string; status?: string; prioridade?: string; tipo?: string

@@ -352,7 +352,7 @@ export default function DashboardHomeV2({ tema, meuEmail, onIr, onVerCliente }: 
                 {dados.fila.length === 0 && <p className="v2-vazio">{tr('home.sem-tarefas')}</p>}
                 {dados.fila.map(t => { const pz = prazoCurto(t.prazo); return (
                   <div key={t.id} className="v2-t" role="button" tabIndex={0} onClick={() => onIr('tarefas')} onKeyDown={e => { if (e.key === 'Enter') onIr('tarefas') }} style={{ cursor: 'pointer' }}>
-                    <div className="tx"><p>{t.titulo}</p><small>{[t.clienteNome, tr(t.status === 'em_revisao' ? 'status.em_revisao' : t.status === 'em_andamento' ? 'status.em_andamento' : 'status.a_fazer'), t.anexos ? `${t.anexos} anexo${t.anexos > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ')}</small></div>
+                    <div className="tx"><p>{t.titulo}</p><small>{[t.clienteNome, tr(t.status === 'em_revisao' ? 'status.em_revisao' : t.status === 'em_ajuste' ? 'status.em_ajuste' : t.status === 'em_andamento' ? 'status.em_andamento' : 'status.a_fazer'), t.anexos ? `${t.anexos} anexo${t.anexos > 1 ? 's' : ''}` : ''].filter(Boolean).join(' · ')}</small></div>
                     {t.tipo && <span className="v2-tipo">{TEM_TIPO(t.tipo) ? tr(`tipo.${t.tipo}`) : t.tipo}</span>}
                     <span className={`v2-prazo${pz.hoje ? ' hoje' : ''}${pz.atrasada ? ' atrasada' : ''}`}>{pz.t}</span>
                   </div>

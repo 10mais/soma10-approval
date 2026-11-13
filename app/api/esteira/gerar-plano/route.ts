@@ -262,6 +262,8 @@ Responda APENAS com um JSON válido (sem markdown, sem explicação, sem backtic
       await redis.sadd('posts', post.id)
       await redis.sadd(`plano:${planoId}:pautas`, post.id)
       await indexarPost(post.clienteId, post.id)
+      // Cada pauta nasce com a sua tarefa (dono, 13/11/2026).
+      try { const { nascerTarefaDaPauta } = await import('@/lib/tarefasDaPauta'); await nascerTarefaDaPauta(post.id, session.user?.name || '') } catch { /* segue */ }
       postsCriados.push(post)
     }
 

@@ -22,7 +22,7 @@ export type TarefaH = {
 // (sem união discriminada: o tsconfig não estreita por `ok`; motivo vem vazio quando ok)
 export type Veredito = { ok: boolean; motivo?: string }
 
-const ABERTA = ['a_fazer', 'em_andamento', 'em_revisao']
+const ABERTA = ['a_fazer', 'em_andamento', 'em_ajuste', 'em_revisao'] // = STATUS_ABERTOS de lib/statusTarefa
 
 export function filhasDe(maeId: string, tarefas: TarefaH[]): TarefaH[] {
   return tarefas.filter(t => t.tarefaPaiId === maeId && !t.excluidoEm)

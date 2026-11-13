@@ -380,6 +380,8 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
     // anterior). A pendente é descartada com registro, nunca publicada sem ele ver (lib/rodadaAjuste).
     await redis.set(`post:${id}`, { ...atualizado, ...versaoNaAprovacao(atualizado as any, autorizadoPorEquipe, new Date().toISOString()), status: 'agendado', dataAgendada: quando, ...((post as any).etapa ? { etapa: 'pronto' } : {}), atualizadoEm: new Date().toISOString() })
     await redis.sadd('agendados', id)
+    // Cliente aprovou o criativo: a tarefa da pauta conclui sozinha (dono, 13/11/2026).
+    try { const { concluirTarefaDaPauta } = await import('@/lib/tarefasDaPauta'); await concluirTarefaDaPauta(id, clienteNome, autorizadoPorEquipe ? 'Criativo aprovado pela equipe' : 'Cliente aprovou o criativo') } catch { /* segue */ }
 
     // Automação: post aprovado -> cria tarefa de publicação para a equipe
     try {

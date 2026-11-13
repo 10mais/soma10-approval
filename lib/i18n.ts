@@ -1513,6 +1513,7 @@ export const TEXTOS: Record<string, Entrada> = {
   'status.a_fazer': { pt: 'A fazer', en: 'To do', es: 'Por hacer' },
   'status.em_andamento': { pt: 'Em andamento', en: 'In progress', es: 'En curso' },
   'status.em_revisao': { pt: 'Em revisão', en: 'In review', es: 'En revisión' },
+  'status.em_ajuste': { pt: 'Em ajuste', en: 'Changes requested', es: 'En ajuste' },
   'status.concluida': { pt: 'Concluída', en: 'Done', es: 'Concluida' },
 
   // ---- tipo do trabalho (etiqueta na tarefa)

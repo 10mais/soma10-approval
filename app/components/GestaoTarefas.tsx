@@ -14,7 +14,7 @@ import { ordenarPorNome } from '@/lib/ordenarNomes'
 import OptImg from './OptImg'
 import UploadProgress from './UploadProgress'
 import { fecharFora } from '@/lib/fecharModal'
-import { ehTarefaDeProducao, anexosCriativoPronto, avisoAoConcluir } from '@/lib/producaoVinculo'
+import { ehTarefaDeProducao, anexosCriativoPronto, avisoAoConcluir, avisoConcluirAntesDaAprovacao } from '@/lib/producaoVinculo'
 import { somarAnexos } from '@/lib/vinculoTarefa'
 import { useT } from '@/app/components/Idioma'
 import { avisarTarefasMudaram } from './BarraProximasTarefas'
@@ -317,8 +317,9 @@ function useRotulos() {
 const COLUNAS: { key: string; label: string }[] = [
   { key: 'a_fazer', label: 'A fazer' },
   { key: 'em_andamento', label: 'Em andamento' },
-  { key: 'em_revisao', label: 'Em revisao' },
-  { key: 'concluido', label: 'Concluido' },
+  { key: 'em_ajuste', label: 'Em ajuste' }, // dono, 13/11: cliente ou revisão interna pediu ajuste (lib/statusTarefa)
+  { key: 'em_revisao', label: 'Em revisão' },
+  { key: 'concluido', label: 'Concluído' },
   { key: 'descartado', label: 'Descartado' },
 ]
 
@@ -418,7 +419,10 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
     carregar()
   }
   // Concluir com pergunta: se alguma das tarefas é mãe com filhas abertas, pergunta antes.
-  function concluirComPergunta(ids: string[], aplicar: (idsFilhasTambem: string[]) => void) {
+  async function concluirComPergunta(ids: string[], aplicar: (idsFilhasTambem: string[]) => void) {
+    // Tarefa que nasceu com a pauta conclui sozinha na aprovação do cliente (13/11): pergunta antes.
+    const aviso = ids.map(id => avisoConcluirAntesDaAprovacao((tarefas.find(t => t.id === id) || {}) as any)).find(Boolean)
+    if (aviso && !(await confirmar(ids.length > 1 ? `Há tarefas de pauta na seleção. ${aviso}` : aviso, { titulo: 'Peça ainda não aprovada', okLabel: 'Concluir mesmo assim' }))) return
     const abertas = ids.flatMap(id => progressoDaMae(id, tarefas as any).abertas)
     if (abertas.length === 0) { aplicar([]); return }
     setPerguntaMae({ ids, abertas, depois: aplicar })
@@ -460,6 +464,8 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
       return
     }
     const antes = tarefas.find(t => t.id === id)
+    // Arrastou para Em revisão (entrega) sem criativo pronto: avisa que a peça não segue.
+    if (status === 'em_revisao' && antes) { const av = avisoAoConcluir(antes as any); if (av) toast(av, 'erro') }
     setTarefas(ts => ts.map(t => t.id === id ? { ...t, status } : t))
     await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) }).catch(() => {})
     if (antes) registrarDesfazer(tr('tarefa.desfazer-status', { nome: antes.titulo }), async () => {
@@ -533,7 +539,7 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
 
   function excluirSelecionadas() {
     setConfirmPopup({
-      mensagem: tr('tarefa.excluir-n', { n: selecionadas.length }),
+      mensagem: tr('tarefa.excluir-n', { n: selecionadas.length }) + (selecionadas.some(id => (tarefas.find(t => t.id === id) as any)?.fasePauta) ? ' As pautas do Estúdio dessas tarefas vão junto para a lixeira (e voltam junto ao restaurar).' : ''),
       onConfirm: async () => {
         const ids = [...selecionadas]
         await Promise.all(ids.map(id => fetch(`/api/tarefas?id=${id}`, { method: 'DELETE' })))
@@ -551,7 +557,7 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
   // Exclusao individual a partir do "X" na linha da lista (tarefa ou subtarefa)
   function excluirUma(id: string, titulo: string) {
     setConfirmPopup({
-      mensagem: tr('tarefa.dlg-excluir', { nome: titulo }),
+      mensagem: tr('tarefa.dlg-excluir', { nome: titulo }) + ((tarefas.find(t => t.id === id) as any)?.fasePauta ? ' A pauta do Estúdio vai junto para a lixeira (e volta junto ao restaurar).' : ''),
       onConfirm: async () => {
         setConfirmPopup(null)
         setTarefas(ts => ts.filter(t => t.id !== id)) // remocao otimista
@@ -970,7 +976,7 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
             const id = editModal.id
             const titulo = editModal.titulo
             setConfirmPopup({
-              mensagem: tr('tarefa.dlg-excluir', { nome: editModal.titulo }),
+              mensagem: tr('tarefa.dlg-excluir', { nome: editModal.titulo }) + ((editModal as any).fasePauta ? ' A pauta do Estúdio vai junto para a lixeira (e volta junto ao restaurar).' : ''),
               onConfirm: async () => {
                 await fetch(`/api/tarefas?id=${id}`, { method: 'DELETE' })
                 registrarDesfazer(tr('tarefa.desfazer-exclusao', { nome: titulo }), async () => {
@@ -1149,7 +1155,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
   const subtarefas = todasTarefas.filter(s => s.tarefaPaiId === tarefa?.id)
   // Concluir a mãe com filhas abertas: pergunta antes de gravar (decisão do dono).
   const [perguntaConcluir, setPerguntaConcluir] = useState(false)
-  const subsAbertas = subtarefas.filter(s => ['a_fazer', 'em_andamento', 'em_revisao'].includes(s.status))
+  const subsAbertas = subtarefas.filter(s => ['a_fazer', 'em_andamento', 'em_ajuste', 'em_revisao'].includes(s.status))
   async function tirarDeDentro() {
     if (!tarefa) return
     const ok = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, tarefaPaiId: null }) }).then(r => r.ok).catch(() => false)
@@ -1339,8 +1345,13 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
     setPerguntaConcluir(false)
     // Tarefa de PRODUÇÃO vinculada a pauta indo para "concluído" sem criativo pronto: avisa (a pauta voltaria ao Studio sem arte).
     if (tarefa && form.status === 'concluido' && tarefa.status !== 'concluido') {
-      const aviso = avisoAoConcluir({ tipo: form.tipo, origemPostId: form.origemPostId, anexos })
-      if (aviso && !(await confirmar(aviso, { titulo: 'Concluir sem criativo pronto?', okLabel: 'Concluir mesmo assim', cancelLabel: 'Voltar e anexar' }))) return
+      const antes = avisoConcluirAntesDaAprovacao(tarefa as any)
+      if (antes && !(await confirmar(antes, { titulo: 'Peça ainda não aprovada', okLabel: 'Concluir mesmo assim' }))) return
+    }
+    // Entregar (Em revisão) ou concluir sem criativo pronto: a peça não vai para a Fila de programação.
+    if (tarefa && (form.status === 'concluido' || form.status === 'em_revisao') && form.status !== tarefa.status && !['concluido', 'em_revisao'].includes(tarefa.status)) {
+      const aviso = avisoAoConcluir({ tipo: form.tipo, origemPostId: form.origemPostId, anexos, fasePauta: (tarefa as any).fasePauta })
+      if (aviso && !(await confirmar(aviso, { titulo: 'Sem criativo pronto', okLabel: 'Seguir mesmo assim', cancelLabel: 'Voltar e anexar' }))) return
     }
     // Vinculo obrigatorio: tarefa de um cliente precisa de uma etapa do Playbook
     // Pauta vinculada dispensa a etapa do Playbook: a tarefa de produção nasce da esteira.
@@ -1879,7 +1890,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
                 <button type="button" onClick={() => setPickerRel(v => !v)} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{pickerRel ? 'Fechar' : '+ Relacionar tarefa'}</button>
               </div>
               {(() => {
-                const COR_STATUS: Record<string, string> = { a_fazer: 'var(--v2-ink3)', em_andamento: 'var(--v2-info)', em_revisao: 'var(--v2-amber)', concluido: 'var(--v2-ok)', descartado: 'var(--v2-ink2)' }
+                const COR_STATUS: Record<string, string> = { a_fazer: 'var(--v2-ink3)', em_andamento: 'var(--v2-info)', em_ajuste: 'var(--v2-hot)', em_revisao: 'var(--v2-amber)', concluido: 'var(--v2-ok)', descartado: 'var(--v2-ink2)' }
                 const relTarefas = relacionadas.map(rid => todasTarefas.find(t => t.id === rid)).filter(Boolean)
                 return (
                   <>

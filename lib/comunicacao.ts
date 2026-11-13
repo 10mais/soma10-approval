@@ -157,7 +157,7 @@ export type Candidato = {
 export const JANELA_DIAS = 7
 const ETAPAS_CLIENTE = ['aprovacao_copy', 'aprovacao_criativo']
 const AJUSTE = ['corrigir', 'reprovado']
-const ABERTA = ['a_fazer', 'em_andamento', 'em_revisao']
+const ABERTA = ['a_fazer', 'em_andamento', 'em_ajuste', 'em_revisao'] // = STATUS_ABERTOS de lib/statusTarefa
 
 function recente(iso: string | undefined, agora: number): boolean {
   if (!iso) return false

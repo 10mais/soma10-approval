@@ -179,7 +179,7 @@ export function fatosDe(c: ContextoPessoa, agora: number = Date.now(), idioma: I
   const semente = sementeDoDia(agora)
   const fatos: Fato[] = []
 
-  const abertas = c.tarefas.filter(t => ['a_fazer', 'em_andamento', 'em_revisao', undefined].includes(t.status as any))
+  const abertas = c.tarefas.filter(t => ['a_fazer', 'em_andamento', 'em_ajuste', 'em_revisao', undefined].includes(t.status as any))
   const atrasadas = abertas.filter(t => { const d = diasAte(t.prazo, agora); return d !== undefined && d < 0 })
   const hoje = abertas.filter(t => diasAte(t.prazo, agora) === 0)
 
@@ -252,7 +252,7 @@ export function montarManchete(c: ContextoPessoa, agora: number = Date.now(), id
   const v = VOC[idioma] || VOC.pt
   const semente = sementeDoDia(agora)
   const fatos = fatosDe(c, agora, idioma)
-  const abertas = c.tarefas.filter(t => ['a_fazer', 'em_andamento', 'em_revisao', undefined].includes(t.status as any))
+  const abertas = c.tarefas.filter(t => ['a_fazer', 'em_andamento', 'em_ajuste', 'em_revisao', undefined].includes(t.status as any))
 
   // Nada urgente: dizer isso de um jeito útil, apontando o que vem a seguir.
   if (!fatos.length) {

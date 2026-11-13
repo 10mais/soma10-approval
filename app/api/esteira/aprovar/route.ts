@@ -130,6 +130,8 @@ export async function POST(req: NextRequest) {
     await redis.sadd('agendados', postId)
     post.etapaDesde = agora; post.aguardandoDesde = undefined
     await redis.set(`post:${postId}`, post)
+    // Cliente (ou a equipe por ele) aprovou o criativo: a tarefa da pauta conclui (dono, 13/11).
+    try { const { concluirTarefaDaPauta } = await import('@/lib/tarefasDaPauta'); await concluirTarefaDaPauta(postId, quem, role === 'cliente' ? 'Cliente aprovou o criativo' : 'Criativo aprovado pela equipe') } catch { /* segue */ }
     const msg = `${quem} aprovou o criativo${sobrepoe ? ' internamente, sobrepondo a decisão do cliente,' : ''} e o post foi agendado para ${new Date(post.dataAgendada).toLocaleString('pt-BR')}.`
     await notificarDono(post.criadoPor, 'geral', `Criativo aprovado — ${nome}`, msg, postId)
     return NextResponse.json({ ok: true, etapa: post.etapa, status: post.status })
@@ -159,6 +161,7 @@ export async function POST(req: NextRequest) {
     await redis.sadd('agendados', postId)
     post.etapaDesde = agora; post.aguardandoDesde = undefined
     await redis.set(`post:${postId}`, post)
+    try { const { concluirTarefaDaPauta } = await import('@/lib/tarefasDaPauta'); await concluirTarefaDaPauta(postId, quem, 'Cliente ajustou a legenda e aprovou o criativo') } catch { /* segue */ }
     await notificarDono(post.criadoPor, 'geral', `Legenda ajustada e aprovado — ${nome}`, `${quem} ajustou a legenda e aprovou. Agendado para ${new Date(post.dataAgendada).toLocaleString('pt-BR')}.`, postId)
     return NextResponse.json({ ok: true, etapa: post.etapa, status: post.status })
   }

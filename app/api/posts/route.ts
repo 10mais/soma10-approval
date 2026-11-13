@@ -176,6 +176,10 @@ export async function POST(req: NextRequest) {
   if (post.status === 'agendado') await redis.sadd('agendados', post.id)
   // Índice de pautas por plano (esteira)
   if (planoId) await redis.sadd(`plano:${planoId}:pautas`, post.id)
+  // PAUTA NASCE COM A TAREFA (dono, 13/11/2026): "cada pauta criada, automaticamente vira tarefa".
+  if (post.etapa && post.etapa !== 'pronto') {
+    try { const { nascerTarefaDaPauta } = await import('@/lib/tarefasDaPauta'); const tid = await nascerTarefaDaPauta(post.id, session.user?.name || ''); if (tid) post.tarefaId = tid } catch { /* segue */ }
+  }
 
   const link = `${process.env.APPROVAL_BASE_URL}/aprovar/${post.id}`
   return NextResponse.json({ ok: true, post, link })
@@ -204,6 +208,8 @@ export async function PUT(req: NextRequest) {
     await redis.sadd('posts', id)
     await indexarPost(post.clienteId, id)
     if (restaurado.planoId) await redis.sadd(`plano:${restaurado.planoId}:pautas`, id)
+    // Pauta e tarefa são uma unidade (13/11): a tarefa volta junto.
+    try { const { tarefaDaPautaParaLixeira } = await import('@/lib/tarefasDaPauta'); await tarefaDaPautaParaLixeira(post, session.user?.name || '', true) } catch { /* segue */ }
     return NextResponse.json({ ok: true, post: restaurado })
   }
 
@@ -273,6 +279,10 @@ export async function PUT(req: NextRequest) {
     if (post.planoId) await redis.srem(`plano:${post.planoId}:pautas`, id)
     if (updates.planoId) await redis.sadd(`plano:${updates.planoId}:pautas`, id)
   }
+  // A pauta mudou de data, formato ou plano: a tarefa da unidade acompanha (13/11).
+  if (post.tarefaId && ['dataAgendada', 'formato', 'planoId'].some(k => k in updates)) {
+    try { const { sincronizarTarefaComPauta } = await import('@/lib/tarefasDaPauta'); await sincronizarTarefaComPauta(post, atualizado, session.user?.name || '') } catch { /* segue */ }
+  }
   return NextResponse.json({ ok: true, post: atualizado })
 }
 
@@ -312,7 +322,9 @@ export async function DELETE(req: NextRequest) {
     await desindexarPost(post.clienteId, id)
     if (post.planoId) await redis.srem(`plano:${post.planoId}:pautas`, id)
     await redis.sadd('posts_excluidos', id)
-    // Vínculo com a tarefa é PRESERVADO no soft-delete (para restaurar limpo).
+    // Vínculo com a tarefa é PRESERVADO no soft-delete (para restaurar limpo). A tarefa que
+    // nasceu com a pauta vai junto para a lixeira (unidade, 13/11).
+    try { const { tarefaDaPautaParaLixeira } = await import('@/lib/tarefasDaPauta'); await tarefaDaPautaParaLixeira(post, session.user?.name || '') } catch { /* segue */ }
     return NextResponse.json({ ok: true, lixeira: true })
   }
 

@@ -81,6 +81,7 @@ const ms = (iso?: string) => { const n = iso ? new Date(iso).getTime() : NaN; re
 export type PostFila = {
   id: string; status?: string; etapa?: string; excluidoEm?: string
   criativoEntregueEm?: string; criativoRevisaoInternaEm?: string; ajusteInterno?: string
+  filaProgramacaoDesde?: string // entregue e esperando a revisão/envio na Fila de programação (13/11)
   versaoNova?: unknown; criativoAprovadoEm?: string; etapaDesde?: string; aguardandoDesde?: string; atualizadoEm?: string
 }
 export type TarefaFila = {
@@ -93,18 +94,26 @@ export function colunaDoCriativo(p: PostFila, t: TarefaFila | undefined, agora: 
   if (p.excluidoEm) return null
   // Só entra criativo de pauta do Estúdio com a copy aprovada.
   if (!p.etapa || p.etapa === 'briefing' || p.etapa === 'copy' || p.etapa === 'aprovacao_copy') return null
+  // Entregue e na FILA DE PROGRAMAÇÃO (dono, 13/11): rascunho no Programador esperando a equipe
+  // revisar e enviar ao cliente. É revisão interna, não "Aprovado" (etapa 'pronto' enganaria).
+  if (p.etapa === 'pronto' && p.status === 'rascunho' && p.filaProgramacaoDesde) return 'revisao_interna'
   // Aprovado/agendado/publicado: fica 7 dias à vista e sai. Sem data nenhuma = peça antiga, de antes
   // destes campos: fica fora (senão o histórico inteiro lotaria a coluna).
   if (p.etapa === 'pronto' || ['aprovado', 'agendado', 'publicado', 'publicando'].includes(p.status || '')) {
     const desde = ms(p.criativoAprovadoEm || p.etapaDesde || p.atualizadoEm)
     return desde === undefined || agora - desde > APROVADO_SAI_EM_DIAS * DIA ? null : 'aprovado'
   }
+  // Tarefa EM AJUSTE (dono, 13/11): cliente ou revisão interna pediu ajuste e o designer refaz.
+  if (t && t.status === 'em_ajuste') return t.aguardandoMaterial ? 'aguardando_material' : 'ajuste_pedido'
   // Designer com a tarefa aberta (inclusive refazendo um ajuste).
   if (t && ABERTA.includes(t.status)) {
     if (t.aguardandoMaterial) return 'aguardando_material'
     if (t.status === 'a_fazer') return t.ajustePedidoEm ? 'ajuste_pedido' : 'na_fila'
     return 'em_producao'
   }
+  // Com o cliente vem antes da tarefa: no fluxo de 13/11 a tarefa segue Em revisão enquanto o
+  // cliente avalia, e só conclui quando ele aprova.
+  if (p.etapa === 'aprovacao_criativo' && p.status === 'aguardando_aprovacao') return 'com_cliente'
   // A tarefa no "Em revisão" do quadro de Tarefas = entregue para a equipe revisar.
   if (t && t.status === 'em_revisao') return 'revisao_interna'
   // O cliente pediu ajuste: se o designer já entregou a nova versão, a equipe revisa; senão, ajuste.

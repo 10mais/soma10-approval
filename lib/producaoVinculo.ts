@@ -33,11 +33,11 @@ export type Anexo = { nome: string; url: string; tipo: string; papel?: 'referenc
 // Tipos de tarefa que são PRODUÇÃO de conteúdo/criativo. 'tarefa' genérica,
 // estratégia, landing page etc. ficam de fora.
 export const TIPOS_PRODUCAO = ['criativo', 'carrossel', 'reel', 'story', 'post', 'video', 'copy', 'briefing'] as const
-const ABERTA = ['a_fazer', 'em_andamento', 'em_revisao']
+const ABERTA = ['a_fazer', 'em_andamento', 'em_ajuste', 'em_revisao'] // = STATUS_ABERTOS de lib/statusTarefa
 const ETAPAS_PRODUCAO = ['briefing', 'copy', 'criativo']
 const ETAPAS_CLIENTE = ['aprovacao_copy', 'aprovacao_criativo']
 
-export const STATUS_TAREFA_LABEL: Record<string, string> = { a_fazer: 'A fazer', em_andamento: 'Em andamento', em_revisao: 'Em revisão', concluido: 'Concluída', descartado: 'Descartada' }
+export const STATUS_TAREFA_LABEL: Record<string, string> = { a_fazer: 'A fazer', em_andamento: 'Em andamento', em_ajuste: 'Em ajuste', em_revisao: 'Em revisão', concluido: 'Concluída', descartado: 'Descartada' }
 
 export function ehTarefaDeProducao(t: { tipo?: string }): boolean {
   return (TIPOS_PRODUCAO as readonly string[]).includes(t.tipo || '')
@@ -108,24 +108,36 @@ export function midiasParaPauta(post: PostV, anexosTarefa: Anexo[] = []): { imag
   return urls.length ? { imagens: urls } : {}
 }
 
-/** Concluir tarefa de PRODUÇÃO vinculada a pauta sem criativo pronto: a tela avisa (não bloqueia). */
-export function avisoAoConcluir(t: { tipo?: string; origemPostId?: string; anexos?: Anexo[] }): string | null {
-  if (!t.origemPostId || !ehTarefaDeProducao(t)) return null
+/** Entregar (Em revisão) ou concluir tarefa de PRODUÇÃO vinculada a pauta sem criativo pronto: a tela avisa (não bloqueia). */
+export function avisoAoConcluir(t: { tipo?: string; origemPostId?: string; anexos?: Anexo[]; fasePauta?: string }): string | null {
+  if (!t.origemPostId || !ehTarefaDeProducao(t) || t.fasePauta === 'copy') return null
   if (anexosCriativoPronto(t.anexos || []).length) return null
-  return 'Esta tarefa está vinculada a uma pauta e não tem criativo pronto anexado. Concluir assim devolve a pauta ao Studio SEM arte.'
+  return 'Esta tarefa é de uma pauta e não tem criativo pronto anexado: a peça não vai para a Fila de programação. Anexe a arte e marque como criativo pronto para ela seguir.'
+}
+
+/** Tarefa que nasceu com a pauta conclui sozinha quando o cliente aprova o criativo (13/11).
+ *  Concluir à mão antes disso é permitido (o responsável manda), com uma pergunta. */
+export function avisoConcluirAntesDaAprovacao(t: { fasePauta?: string; status?: string }): string | null {
+  if (!t.fasePauta || t.status === 'concluido') return null
+  return t.fasePauta === 'copy'
+    ? 'Esta tarefa é a da pauta: a copy ainda não foi aprovada e, quando for, a tarefa passa para o designer. Concluir agora mesmo assim?'
+    : 'Esta tarefa conclui sozinha quando o cliente aprova o criativo. Concluir agora mesmo assim? (Para entregar a arte, use Em revisão.)'
 }
 
 /** A pauta deve RECEBER o criativo agora? (usado pelo PUT de /api/tarefas)
  *  Duas portas: concluir a tarefa vinculada, OU vincular a pauta a uma tarefa que já estava
  *  concluída — o vínculo só passou a ser editável em 09/09, e sem essa segunda porta o
  *  designer teria de reabrir e concluir de novo só para a arte chegar ao Studio. */
+// Desde 13/11/2026 a entrega é a tarefa entrar em EM REVISÃO (ou ser concluída à mão), e
+// passar de Em revisão para Concluído (cliente aprovou) não entrega de novo.
+const ENTREGUE = ['em_revisao', 'concluido']
 export function deveEntregarCriativo(
   antes: { status?: string; origemPostId?: string },
   depois: { status?: string; origemPostId?: string },
 ): boolean {
   if (!depois.origemPostId) return false
-  if (depois.status !== 'concluido') return false
-  const concluiuAgora = antes.status !== 'concluido'
+  if (!ENTREGUE.includes(depois.status || '')) return false
+  const entregouAgora = !ENTREGUE.includes(antes.status || '')
   const vinculouAgora = depois.origemPostId !== antes.origemPostId
-  return concluiuAgora || vinculouAgora
+  return entregouAgora || vinculouAgora
 }

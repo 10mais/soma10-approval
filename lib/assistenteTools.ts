@@ -18,7 +18,7 @@ export function ferramentasPara(role: string): any[] {
       input_schema: {
         type: 'object',
         properties: {
-          status: { type: 'string', enum: ['a_fazer', 'em_andamento', 'em_revisao', 'concluido'], description: 'filtra por status (opcional)' },
+          status: { type: 'string', enum: ['a_fazer', 'em_andamento', 'em_ajuste', 'em_revisao', 'concluido'], description: 'filtra por status (opcional)' },
           responsavel: { type: 'string', description: 'nome ou e-mail do responsavel (opcional)' },
           cliente: { type: 'string', description: 'nome do cliente (opcional)' },
           atrasadas: { type: 'boolean', description: 'apenas tarefas com prazo vencido e nao concluidas' },

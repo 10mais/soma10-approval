@@ -39,7 +39,7 @@ export type ResumoCliente = {
 }
 
 const DIA = 86400000
-const TAREFA_ABERTA = ['a_fazer', 'em_andamento', 'em_revisao']
+const TAREFA_ABERTA = ['a_fazer', 'em_andamento', 'em_ajuste', 'em_revisao'] // = STATUS_ABERTOS de lib/statusTarefa
 const ETAPA_LABEL: Record<string, string> = { briefing: 'Briefing', copy: 'Copy', aprovacao_copy: 'Copy em aprovação', criativo: 'Criativo', aprovacao_criativo: 'Criativo em aprovação', pronto: 'Pronto' }
 
 const ms = (iso?: string) => { const n = iso ? new Date(iso).getTime() : NaN; return Number.isFinite(n) ? n : undefined }

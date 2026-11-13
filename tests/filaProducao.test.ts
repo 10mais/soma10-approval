@@ -102,3 +102,16 @@ describe('alertas, pronto para enviar e ordem', () => {
     expect(diasDesde(undefined, AGORA)).toBeUndefined()
   })
 })
+
+describe('colunaDoCriativo — fluxo de 13/11 (entrega vira rascunho na Fila de programação)', () => {
+  it('entregue e esperando a revisão na Fila de programação: Revisão interna (e não Aprovado)', () => {
+    expect(colunaDoCriativo(pauta({ etapa: 'pronto', status: 'rascunho', filaProgramacaoDesde: '2026-10-26T12:00:00Z' }), tarefa({ status: 'em_revisao' }), AGORA)).toBe('revisao_interna')
+  })
+  it('tarefa Em ajuste: Ajuste pedido (ou Aguardando material)', () => {
+    expect(colunaDoCriativo(pauta({ etapa: 'aprovacao_criativo', status: 'corrigir' }), tarefa({ status: 'em_ajuste' }), AGORA)).toBe('ajuste_pedido')
+    expect(colunaDoCriativo(pauta({ etapa: 'aprovacao_criativo', status: 'corrigir' }), tarefa({ status: 'em_ajuste', aguardandoMaterial: { motivo: 'foto', desde: 'x' } }), AGORA)).toBe('aguardando_material')
+  })
+  it('com o cliente enquanto a tarefa segue Em revisão: Com o cliente', () => {
+    expect(colunaDoCriativo(pauta({ etapa: 'aprovacao_criativo', status: 'aguardando_aprovacao' }), tarefa({ status: 'em_revisao' }), AGORA)).toBe('com_cliente')
+  })
+})

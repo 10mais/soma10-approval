@@ -1,34 +1,57 @@
 import { describe, it, expect } from 'vitest'
-import { aoConcluirTarefa, deveCriarTarefaDesigner, descricaoTarefaDesigner, tituloTarefaMae, tituloSubtarefa, prazoTarefaMae, tipoTarefaDoFormato, revisaoInternaDoCriativo, podeEnviarAoCliente, prazoDoCriativo, donoDoPlano, avisoPautasNovas } from '@/lib/esteiraFluxo'
-import { apareceNoPlanner } from '@/lib/plannerFiltro'
+import { aoEntregarCriativo, statusAoPedirAjuste, prazoDaCopy, STATUS_DE_ENTREGA, deveCriarTarefaDesigner, descricaoTarefaDesigner, tituloTarefaMae, tituloSubtarefa, prazoTarefaMae, tipoTarefaDoFormato, revisaoInternaDoCriativo, podeEnviarAoCliente, prazoDoCriativo, donoDoPlano, avisoPautasNovas } from '@/lib/esteiraFluxo'
+import { apareceNoPlanner, estadoNaFila } from '@/lib/plannerFiltro'
 
 // Linha de montagem Studio > Tarefa > Planner: as transicoes do fluxo.
 // O plannerFiltro entra como ORACULO (intocavel): o que a transicao produz
 // precisa de fato aparecer no Planner — senao a peca some entre as estacoes.
 
-describe('aoConcluirTarefa', () => {
-  it('criativo (designer terminou) -> VOLTA AO STUDIO com o criativo pronto (nao pula para o Planner)', () => {
-    expect(aoConcluirTarefa('criativo')).toEqual({ etapa: 'criativo', status: 'rascunho', voltaAoStudio: true })
+describe('aoEntregarCriativo (dono, 13/11: entrega vira rascunho na Fila de programacao)', () => {
+  it('criativo + arte -> pauta vai ao Programador como rascunho, na Fila', () => {
+    expect(aoEntregarCriativo('criativo', true)).toEqual({ etapa: 'pronto', status: 'rascunho', naFila: true })
+  })
+
+  it('sem criativo pronto nada vai ao Programador', () => {
+    expect(aoEntregarCriativo('criativo', false)).toBeNull()
   })
 
   it('qualquer outra etapa nao mexe na pauta (nunca regride, nunca pula aprovacao)', () => {
-    for (const etapa of ['briefing', 'copy', 'aprovacao_copy', 'aprovacao_criativo', 'pronto']) {
-      expect(aoConcluirTarefa(etapa), `etapa ${etapa}`).toBeNull()
+    for (const etapa of ['briefing', 'copy', 'aprovacao_copy', 'aprovacao_criativo', 'pronto', undefined, '', 'x']) {
+      expect(aoEntregarCriativo(etapa as any, true), `etapa ${etapa}`).toBeNull()
     }
   })
 
-  it('pauta avulsa (sem etapa) e valor invalido -> nada', () => {
-    expect(aoConcluirTarefa(undefined)).toBeNull()
-    expect(aoConcluirTarefa('')).toBeNull()
-    expect(aoConcluirTarefa('qualquer_coisa')).toBeNull()
-  })
-
-  it('ORACULO plannerFiltro: concluir a tarefa NAO poe a pauta no Planner — ela volta ao Studio (a equipe sobe de la)', () => {
+  it('ORACULO plannerFiltro: a peca entregue APARECE no Programador e esta na Fila de programacao', () => {
     const antes = { status: 'rascunho', etapa: 'criativo', rascunhoInterno: true }
     expect(apareceNoPlanner(antes)).toBe(false)
-    const av = aoConcluirTarefa(antes.etapa)!
-    const depois = { ...antes, etapa: av.etapa, status: av.status }
-    expect(apareceNoPlanner(depois)).toBe(false)
+    const av = aoEntregarCriativo(antes.etapa, true)!
+    const depois = { ...antes, etapa: av.etapa, status: av.status, filaProgramacaoDesde: '2026-11-13T12:00:00Z' }
+    expect(apareceNoPlanner(depois)).toBe(true)
+    expect(estadoNaFila(depois)).toBe('nova')
+  })
+
+  it('Em revisao e Concluido contam como entrega', () => {
+    expect(STATUS_DE_ENTREGA).toEqual(['em_revisao', 'concluido'])
+  })
+})
+
+describe('statusAoPedirAjuste', () => {
+  it('ajuste do cliente ou da revisao interna -> Em ajuste', () => {
+    for (const s of ['a_fazer', 'em_andamento', 'em_revisao', 'concluido', 'em_ajuste', undefined]) expect(statusAoPedirAjuste(s as any)).toBe('em_ajuste')
+  })
+  it('tarefa descartada nao ressuscita', () => {
+    expect(statusAoPedirAjuste('descartado')).toBe('descartado')
+  })
+})
+
+describe('prazoDaCopy', () => {
+  it('2 dias uteis antes do prazo do criativo (que e 3 dias uteis antes da postagem)', () => {
+    // postagem sábado 28/11 -> criativo quarta 25/11 -> copy segunda 23/11
+    expect(prazoDaCopy('2026-11-28T15:00:00-03:00', '2026-11-03')).toBe('2026-11-23')
+  })
+  it('nunca nasce atrasada e sem data nao tem prazo', () => {
+    expect(prazoDaCopy('2026-11-14T15:00:00-03:00', '2026-11-13')).toBe('2026-11-13')
+    expect(prazoDaCopy(undefined, '2026-11-13')).toBe('')
   })
 })
 

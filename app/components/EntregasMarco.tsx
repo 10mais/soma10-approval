@@ -6,8 +6,8 @@ export type Entregas = {
   briefings: { id: string; marcoId: string; titulo: string; objetivo?: string }[]
 }
 
-const TAREFA_LABEL: Record<string, string> = { a_fazer: 'A fazer', em_andamento: 'Em andamento', em_revisao: 'Em revisao', concluido: 'Concluido' }
-const TAREFA_COR: Record<string, string> = { a_fazer: 'var(--v2-ink3)', em_andamento: 'var(--v2-amber)', em_revisao: 'var(--v2-info)', concluido: 'var(--v2-ok)' }
+const TAREFA_LABEL: Record<string, string> = { a_fazer: 'A fazer', em_andamento: 'Em andamento', em_ajuste: 'Em ajuste', em_revisao: 'Em revisão', concluido: 'Concluído' }
+const TAREFA_COR: Record<string, string> = { a_fazer: 'var(--v2-ink3)', em_andamento: 'var(--v2-amber)', em_ajuste: 'var(--v2-hot)', em_revisao: 'var(--v2-info)', concluido: 'var(--v2-ok)' }
 const POST_LABEL: Record<string, string> = { rascunho: 'Rascunho', agendado: 'Agendado', aguardando_aprovacao: 'Aguardando aprovação', aprovado: 'Aprovado', publicado: 'Publicado', falha_publicacao: 'Falha', corrigir: 'Corrigir', reprovado: 'Reprovado' }
 const POST_COR: Record<string, string> = { rascunho: 'var(--v2-ink3)', agendado: 'var(--v2-amber)', publicado: 'var(--v2-ok)', falha_publicacao: 'var(--v2-hot)', aguardando_aprovacao: 'var(--v2-info)', aprovado: 'var(--v2-ok)' }
 

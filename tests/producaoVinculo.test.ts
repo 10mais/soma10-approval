@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { estadoDaPauta, resumoProducao, tarefaDaPauta, anexosParaCriativo, midiasParaPauta, ehTarefaDeProducao, anexosCriativoPronto, avisoAoConcluir, deveEntregarCriativo } from '@/lib/producaoVinculo'
+import { estadoDaPauta, resumoProducao, tarefaDaPauta, anexosParaCriativo, midiasParaPauta, ehTarefaDeProducao, anexosCriativoPronto, avisoAoConcluir, avisoConcluirAntesDaAprovacao, deveEntregarCriativo } from '@/lib/producaoVinculo'
 
 // O hub do cliente mostrava "0 em produção" com 10 tarefas de criativo abertas:
 // a pauta estava "pronta" no Studio enquanto a tarefa do designer seguia aberta.
@@ -90,7 +90,7 @@ describe('criativo pronto (anexo com papel) — dono 07/09', () => {
     expect(midiasParaPauta({ id: 'p' }, [ref, arte])).toEqual({ imagens: ['https://x/arte.png'] })
   })
   it('avisoAoConcluir: tarefa de producao vinculada sem criativo pronto avisa; com criativo ou sem pauta, nao', () => {
-    expect(avisoAoConcluir({ tipo: 'criativo', origemPostId: 'p1', anexos: [ref] })).toMatch(/sem arte/i)
+    expect(avisoAoConcluir({ tipo: 'criativo', origemPostId: 'p1', anexos: [ref] })).toMatch(/Fila de programação/i)
     expect(avisoAoConcluir({ tipo: 'criativo', origemPostId: 'p1', anexos: [ref, arte] })).toBeNull()
     expect(avisoAoConcluir({ tipo: 'criativo', anexos: [] })).toBeNull()
     expect(avisoAoConcluir({ tipo: 'tarefa', origemPostId: 'p1', anexos: [] })).toBeNull()
@@ -104,9 +104,30 @@ describe('deveEntregarCriativo — quando a pauta recebe a arte', () => {
   it('vincular a pauta numa tarefa JÁ concluída também entrega', () => {
     expect(deveEntregarCriativo({ status: 'concluido', origemPostId: '' }, { status: 'concluido', origemPostId: 'p1' })).toBe(true)
   })
+  it('13/11: entrar em Em revisão é a entrega do criativo', () => {
+    expect(deveEntregarCriativo({ status: 'em_andamento', origemPostId: 'p1' }, { status: 'em_revisao', origemPostId: 'p1' })).toBe(true)
+    expect(deveEntregarCriativo({ status: 'em_ajuste', origemPostId: 'p1' }, { status: 'em_revisao', origemPostId: 'p1' })).toBe(true)
+  })
+  it('13/11: Em revisão -> Concluído (cliente aprovou) não entrega de novo', () => {
+    expect(deveEntregarCriativo({ status: 'em_revisao', origemPostId: 'p1' }, { status: 'concluido', origemPostId: 'p1' })).toBe(false)
+  })
   it('não entrega sem vínculo, sem conclusão, nem ao salvar a mesma tarefa concluída de novo', () => {
     expect(deveEntregarCriativo({ status: 'em_andamento' }, { status: 'concluido' })).toBe(false)
     expect(deveEntregarCriativo({ status: 'a_fazer', origemPostId: 'p1' }, { status: 'em_andamento', origemPostId: 'p1' })).toBe(false)
     expect(deveEntregarCriativo({ status: 'concluido', origemPostId: 'p1' }, { status: 'concluido', origemPostId: 'p1' })).toBe(false)
+  })
+})
+
+describe('avisoConcluirAntesDaAprovacao (13/11)', () => {
+  it('tarefa que nasceu com a pauta pergunta antes de concluir à mão', () => {
+    expect(avisoConcluirAntesDaAprovacao({ fasePauta: 'criativo', status: 'em_revisao' })).toMatch(/cliente aprova/)
+    expect(avisoConcluirAntesDaAprovacao({ fasePauta: 'copy', status: 'a_fazer' })).toMatch(/copy/)
+  })
+  it('tarefa comum ou já concluída não pergunta', () => {
+    expect(avisoConcluirAntesDaAprovacao({ status: 'em_andamento' })).toBeNull()
+    expect(avisoConcluirAntesDaAprovacao({ fasePauta: 'criativo', status: 'concluido' })).toBeNull()
+  })
+  it('tarefa na fase da copy não pede criativo pronto', () => {
+    expect(avisoAoConcluir({ tipo: 'copy', origemPostId: 'p1', anexos: [], fasePauta: 'copy' })).toBeNull()
   })
 })

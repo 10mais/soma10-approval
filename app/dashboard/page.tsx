@@ -8,7 +8,8 @@ import { ABAS_PERM, ACOES_PERM, podeAbaGranular, podeAcaoGranular } from '@/lib/
 // A regra vive em lib/perfisInstanciaCatalogo.ts, com testes.
 import { abasOcultasDoPerfil as abasOcultas, PERFIS as PERFIS_INSTANCIA } from '@/lib/perfisInstanciaCatalogo'
 import { MODULOS, MODULOS_PAGOS, totalMensalModulos } from '@/lib/modulos'
-import { apareceNoPlanner, ordenarPorPostagem } from '@/lib/plannerFiltro'
+import { apareceNoPlanner, ordenarPorPostagem, estadoNaFila } from '@/lib/plannerFiltro'
+import FilaProgramacao from '@/app/components/FilaProgramacao'
 // Nome de cada área vem do dicionário (lib/i18n), no idioma de quem está usando.
 import { TEXTOS, t as traduz } from '@/lib/i18n'
 import { useArea, useT, useIdioma } from '@/app/components/Idioma'
@@ -403,7 +404,8 @@ function Dashboard() {
   const [listeningLoading, setListeningLoading] = useState(false)
   // SUBIR EM MASSA (dono, 29/10/2026): vários posts de uma vez no Programador (components/SubirEmMassa).
   const [loteAberto, setLoteAberto] = useState(false)
-  const [plannerView, setPlannerView] = useState<'lista' | 'calendario'>(() => (typeof window !== 'undefined' && sessionStorage.getItem('soma10_plannerView') === 'calendario') ? 'calendario' : 'lista')
+  // 'fila' = Fila de programação (dono, 13/11/2026): o que a produção entregou para revisar e enviar.
+  const [plannerView, setPlannerView] = useState<'lista' | 'calendario' | 'fila'>(() => { const v = typeof window !== 'undefined' ? sessionStorage.getItem('soma10_plannerView') : null; return v === 'calendario' || v === 'fila' ? v : 'lista' })
   // Tema (claro/escuro) — persistido no navegador, inicializa direto do localStorage
   const [tema, setTema] = useState<'claro' | 'escuro'>(() => {
     if (typeof window !== 'undefined') {
@@ -2560,13 +2562,16 @@ function Dashboard() {
             <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{area('planner')}{clienteEmVisualizacao ? ` — ${clienteEmVisualizacao.nome}` : ''}</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }}>
-                {(['lista', 'calendario'] as const).map(v => (
+                {(['lista', 'calendario', 'fila'] as const).map(v => {
+                  const naFila = v === 'fila' ? postsView.filter(p => estadoNaFila(p as any)).length : 0
+                  return (
                   <button key={v} onClick={() => setPlannerView(v)} style={{
                     padding: '7px 14px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700,
                     background: plannerView === v ? 'var(--v2-surface)' : 'transparent', color: plannerView === v ? 'var(--v2-ink)' : 'var(--v2-ink3)',
                     boxShadow: plannerView === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
-                  }}>{tr(v === 'lista' ? 'dash.lista' : 'dash.calendario')}</button>
-                ))}
+                  }}>{v === 'fila' ? `Fila de programação${naFila ? ` (${naFila})` : ''}` : tr(v === 'lista' ? 'dash.lista' : 'dash.calendario')}</button>
+                  )
+                })}
               </div>
               <button onClick={() => setLoteAberto(true)} title="Vários posts de uma vez: cada um com a sua legenda, dia, horário e colab" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, padding: '8px 14px', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" /></svg> Subir em massa
@@ -2597,6 +2602,14 @@ function Dashboard() {
             )}
             <style>{`@keyframes barraInd{0%{left:-40%;width:40%}50%{left:30%;width:50%}100%{left:100%;width:40%}}`}</style>
           </div>
+        )}
+
+        {/* FILA DE PROGRAMAÇÃO (dono, 13/11/2026): peças entregues pela produção para revisar e enviar ao cliente. */}
+        {aba === 'planner' && plannerView === 'fila' && (
+          <FilaProgramacao posts={postsView as any} filtroCliente={bibCliente || undefined}
+            onAbrir={(p: any) => setPostPreview(p)}
+            onIrSolicitacoes={() => setAba('solicitacoes' as any)}
+            onMudou={() => { fetch('/api/posts').then(r => r.json()).then(d => { if (Array.isArray(d)) setPosts(d) }).catch(() => {}) }} />
         )}
 
         {/* CALENDÁRIO (avulso ou dentro do Planner) */}

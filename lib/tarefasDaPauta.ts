@@ -8,11 +8,12 @@
 
 import { redis, Post, Tarefa, Plano, Cliente, Notificacao } from './redis'
 import { v4 as uuid } from 'uuid'
-import { descricaoTarefaDesigner, tituloSubtarefa, tituloTarefaMae, prazoTarefaMae, tipoTarefaDoFormato, prazoDoCriativo, donoDoPlano, avisoPautasNovas } from './esteiraFluxo'
+import { descricaoTarefaDesigner, tituloSubtarefa, tituloTarefaMae, prazoTarefaMae, tipoTarefaDoFormato, prazoDoCriativo, prazoDaCopy, donoDoPlano, avisoPautasNovas, statusAoPedirAjuste } from './esteiraFluxo'
 import { notificar } from './notificacoes'
 import { fmtDiaDoInstante, diaDoInstante, fimDoDiaBR, inicioDoDiaBR } from './datas'
 import { dispararEvento } from './automacoesEngine'
-import { anexosParaNovaRodada, planoDeEntregasDaPauta } from './vinculoTarefa'
+import { anexosParaNovaRodada, planoDeEntregasDaPauta, somarAnexos } from './vinculoTarefa'
+import { desindexarPost, indexarPost } from './postsIndex'
 
 // Etapa da Esteira -> tipo de tarefa (regra herdada do /api/esteira/relacionar).
 // 'pronto' não gera tarefa: a pauta já virou post no Planner.
@@ -78,9 +79,8 @@ export async function tarefaMaeDoPlano(planoId: string, autor: string): Promise<
 }
 
 // Cliente devolveu o criativo (ajuste/reprovacao): a linha de montagem devolve
-// a peca para a estacao certa — reabre a tarefa do designer com o feedback
-// dentro. Idempotente: tarefa ja aberta so registra o feedback (nao reseta o
-// status de quem ja esta trabalhando). Nunca mexe na etapa da pauta.
+// a peca para a estacao certa — a tarefa do designer vai para EM AJUSTE (13/11) com
+// o feedback dentro. Nunca mexe na etapa da pauta.
 export async function reabrirTarefaDaPauta(postId: string, feedback: string, autor: string, origem: 'cliente' | 'equipe' = 'cliente'): Promise<boolean> {
   const quemPediu = origem === 'cliente' ? 'Cliente' : 'Revisão interna'
   const post = await redis.get<Post>(`post:${postId}`)
@@ -90,9 +90,12 @@ export async function reabrirTarefaDaPauta(postId: string, feedback: string, aut
   if (!t) return false
   const agora = new Date().toISOString()
   const estavaConcluida = t.status === 'concluido'
+  // Dono, 13/11/2026: "Quando o cliente pedir ajuste, volta a tarefa com o status EM AJUSTE".
+  // Vale também para o ajuste pedido pela revisão interna. Descartada não ressuscita.
+  const novoStatus = statusAoPedirAjuste(t.status) as Tarefa['status']
   const atualizada: Tarefa = {
     ...t,
-    status: estavaConcluida ? 'a_fazer' : t.status,
+    status: novoStatus,
     ...(estavaConcluida ? { concluidoEm: undefined } : {}),
     ajustePedidoEm: agora, // "Ajuste pedido" na página da pessoa e na barra do topo; some ao concluir
     atualizadoEm: agora,
@@ -121,20 +124,20 @@ function anexosDaPauta(post: Post): { nome: string; url: string; tipo: string }[
 // por pauta — dez pushes seguidos fazem o designer silenciar tudo. Agrupado, o clique abre a
 // tarefa do plano (onde estão todas). Nunca lança.
 const JANELA_AVISO_PAUTAS = 10 * 60
-async function avisarPautaNova(email: string, clienteId: string, clienteNome: string | undefined, sub: Tarefa, maeId: string | null): Promise<void> {
-  const chave = `aviso_pautas:${email}:${clienteId || 'sem-cliente'}`
+async function avisarPautaNova(email: string, clienteId: string, clienteNome: string | undefined, sub: Tarefa, maeId: string | null, fase: 'copy' | 'criativo' = 'criativo'): Promise<void> {
+  const chave = `${fase === 'copy' ? 'aviso_copies' : 'aviso_pautas'}:${email}:${clienteId || 'sem-cliente'}`
   const grupo = await redis.get<{ notifId: string; titulos: string[] }>(chave).catch(() => null)
   if (grupo?.notifId) {
     const n = await redis.get<Notificacao>(`notificacao:${grupo.notifId}`).catch(() => null)
     if (n) {
       const titulos = [...(grupo.titulos || []), sub.titulo]
-      const texto = avisoPautasNovas(clienteNome, titulos)
+      const texto = avisoPautasNovas(clienteNome, titulos, undefined, fase)
       await redis.set(`notificacao:${n.id}`, { ...n, ...texto, lida: false, criadoEm: new Date().toISOString(), tarefaId: maeId || n.tarefaId })
       await redis.set(chave, { notifId: n.id, titulos }, { ex: JANELA_AVISO_PAUTAS })
       return
     }
   }
-  const texto = avisoPautasNovas(clienteNome, [sub.titulo], sub.prazo ? fmtDiaDoInstante(sub.prazo) : undefined)
+  const texto = avisoPautasNovas(clienteNome, [sub.titulo], sub.prazo ? fmtDiaDoInstante(sub.prazo) : undefined, fase)
   const nova = await notificar(email, 'tarefa_atribuida', texto.titulo, texto.mensagem, undefined, sub.id)
   if (nova?.id) await redis.set(chave, { notifId: nova.id, titulos: [sub.titulo] }, { ex: JANELA_AVISO_PAUTAS })
 }
@@ -156,6 +159,33 @@ export async function nascerTarefaDesigner(postId: string, autor: string, opts: 
   // reabre com a copy atualizada em vez de duplicar.
   if (post.tarefaId) {
     const t = await redis.get<Tarefa>(`tarefa:${post.tarefaId}`)
+    if (t && t.fasePauta === 'copy' && !(t as any).excluidoEm) {
+      // PASSAGEM AO DESIGNER (dono, 13/11/2026): a tarefa nasceu com a pauta, com o Social
+      // Media, para a copy. Copy aprovada: a MESMA tarefa passa ao designer. Uma tarefa só.
+      const cliente = post.clienteId ? await redis.get<Cliente>(`cliente:${post.clienteId}`) : null
+      const designerEmail = (cliente?.squadPapeis?.designer || '').trim()
+      const designerNome = designerEmail ? ((await redis.get<{ nome?: string }>(`usuario:${designerEmail}`).catch(() => null))?.nome || '') : ''
+      const hoje = diaDoInstante(agora)
+      const prazoCriativo = prazoDoCriativo(post.dataAgendada, hoje)
+      const passada: Tarefa = {
+        ...t,
+        fasePauta: 'criativo',
+        tipo: tipoTarefaDoFormato(post.formato),
+        status: 'a_fazer',
+        responsavelEmail: designerEmail,
+        responsavelNome: designerNome,
+        descricao: descricaoTarefaDesigner(post, { manual: opts.manual, etapa: post.etapa }),
+        anexos: somarAnexos(t.anexos || [], anexosDaPauta(post)),
+        dataInicio: inicioDoDiaBR(hoje),
+        prazo: prazoCriativo ? fimDoDiaBR(prazoCriativo) : '',
+        prazoManual: false,
+        atualizadoEm: agora,
+        atividades: [...(t.atividades || []), { id: uuid(), tipo: 'responsavel', descricao: `Copy aprovada — a tarefa passou para o designer${designerNome ? ` (${designerNome})` : ' (o squad do cliente não tem designer)'}`, autor, criadoEm: agora }],
+      }
+      await redis.set(`tarefa:${t.id}`, passada)
+      if (designerEmail) await avisarPautaNova(designerEmail, post.clienteId || '', post.clienteNome, passada, t.tarefaPaiId || null).catch(() => {})
+      return { tarefaId: t.id, reaberta: false }
+    }
     if (t) {
       const anexosT = anexosDaPauta(post)
       const atualizada: Tarefa = {
@@ -233,4 +263,163 @@ export async function nascerTarefaDesigner(postId: string, autor: string, opts: 
   if (designerEmail) await avisarPautaNova(designerEmail, post.clienteId || '', post.clienteNome, sub, maeId).catch(() => {})
   await dispararEvento('tarefa_criada', { tarefaId: sub.id, titulo: sub.titulo, tipo: sub.tipo, prioridade: sub.prioridade, clienteId: sub.clienteId, clienteNome: sub.clienteNome, responsavelEmail: sub.responsavelEmail, responsavelNome: sub.responsavelNome }).catch(() => {})
   return { tarefaId: sub.id, reaberta: false }
+}
+
+
+// ===================================================================== FLUXO DE 13/11/2026
+// Dono: "cada pauta criada, automaticamente vira tarefa ou subtarefa ... Tudo vinculado, nada
+// perdido ou duplicado." A pauta e a tarefa são uma UNIDADE: nascem juntas, mudam juntas e vão
+// para a lixeira juntas. Vale para as pautas novas (a tarefa delas tem `fasePauta`); as antigas
+// seguem o fluxo de antes. Memória: proj-fluxo-pauta-tarefa.
+
+// NASCE COM A PAUTA: subtarefa da tarefa do plano, com o Social Media do squad, fase da copy.
+// Idempotente: pauta que já tem tarefa viva não ganha outra. Nunca lança.
+export async function nascerTarefaDaPauta(postId: string, autor: string): Promise<string | null> {
+  try {
+    const post = await redis.get<Post>(`post:${postId}`)
+    if (!post || !post.etapa || post.etapa === 'pronto' || (post as any).excluidoEm) return null
+    if (post.tarefaId) {
+      const atual = await redis.get<Tarefa>(`tarefa:${post.tarefaId}`)
+      if (atual && !(atual as any).excluidoEm) return atual.id
+    }
+    const agora = new Date().toISOString()
+    const cliente = post.clienteId ? await redis.get<Cliente>(`cliente:${post.clienteId}`).catch(() => null) : null
+    const smEmail = donoDoPlano(cliente?.squadPapeis)
+    const smNome = smEmail ? ((await redis.get<{ nome?: string }>(`usuario:${smEmail}`).catch(() => null))?.nome || '') : ''
+    const maeId = post.planoId ? await tarefaMaeDoPlano(post.planoId, autor).catch(() => null) : null
+    const hoje = diaDoInstante(agora)
+    const prazo = prazoDaCopy(post.dataAgendada, hoje)
+    const esc = (s: string) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    const tarefa: Tarefa = {
+      id: uuid(),
+      titulo: tituloSubtarefa(post),
+      descricao: `<p>Pauta do Estúdio: escrever a copy (headline, texto da arte, CTA e legenda) e enviar para aprovação do cliente. Quando a copy for aprovada, esta tarefa passa para o designer.</p>${post.briefing ? `<p><strong>Briefing:</strong> ${esc(post.briefing)}</p>` : ''}`,
+      tipo: 'copy',
+      fasePauta: 'copy',
+      status: 'a_fazer',
+      prioridade: 'media',
+      responsavelEmail: smEmail,
+      responsavelNome: smNome,
+      clienteId: post.clienteId || '',
+      clienteNome: post.clienteNome || '',
+      ...planoDeEntregasDaPauta(post),
+      ...(maeId ? { tarefaPaiId: maeId } : {}),
+      dataInicio: inicioDoDiaBR(hoje),
+      prazo: prazo ? fimDoDiaBR(prazo) : '',
+      origemPostId: post.id,
+      criadoPor: autor,
+      criadoEm: agora,
+      atualizadoEm: agora,
+      atividades: [{ id: uuid(), tipo: 'criacao', descricao: 'Criada junto com a pauta no Estúdio — fase da copy', autor, criadoEm: agora }],
+      comentarios: [],
+    }
+    await redis.set(`tarefa:${tarefa.id}`, tarefa)
+    await redis.sadd('tarefas', tarefa.id)
+    await redis.set(`post:${post.id}`, { ...post, tarefaId: tarefa.id })
+    if (smEmail) await avisarPautaNova(smEmail, post.clienteId || '', post.clienteNome, tarefa, maeId, 'copy').catch(() => {})
+    return tarefa.id
+  } catch { return null }
+}
+
+// CLIENTE APROVOU O CRIATIVO: a tarefa da pauta conclui sozinha (dono, 13/11: "Quando o cliente
+// aprova o criativo aí sim a tarefa passa para CONCLUÍDA"). Tarefa ainda na fase da copy, já
+// concluída ou descartada fica como está. Nunca lança.
+export async function concluirTarefaDaPauta(postId: string, autor: string, motivo = 'Cliente aprovou o criativo'): Promise<boolean> {
+  try {
+    const post = await redis.get<Post>(`post:${postId}`)
+    if (!post?.tarefaId) return false
+    const t = await redis.get<Tarefa>(`tarefa:${post.tarefaId}`)
+    if (!t || (t as any).excluidoEm || t.fasePauta === 'copy' || t.status === 'concluido' || t.status === 'descartado') return false
+    const agora = new Date().toISOString()
+    const { ajustePedidoEm: _a, aguardandoMaterial: _m, ...resto } = t as any
+    await redis.set(`tarefa:${t.id}`, {
+      ...resto, status: 'concluido', concluidoEm: agora, atualizadoEm: agora, filaDesde: agora,
+      atividades: [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: `${motivo} — tarefa concluída`, autor, criadoEm: agora }],
+    })
+    await dispararEvento('tarefa_concluida', { tarefaId: t.id, titulo: t.titulo, tipo: t.tipo, prioridade: t.prioridade, clienteId: t.clienteId, clienteNome: t.clienteNome, responsavelEmail: t.responsavelEmail, responsavelNome: t.responsavelNome }).catch(() => {})
+    return true
+  } catch { return false }
+}
+
+// A PAUTA MUDOU (data, formato, plano): a tarefa da unidade acompanha. Só para a tarefa que
+// nasceu com a pauta (`fasePauta`), viva e aberta. Prazo mexido à mão (`prazoManual`) fica.
+export async function sincronizarTarefaComPauta(antes: Post, depois: Post, autor: string): Promise<void> {
+  try {
+    if (!depois.tarefaId) return
+    const t = await redis.get<Tarefa>(`tarefa:${depois.tarefaId}`)
+    if (!t || !t.fasePauta || (t as any).excluidoEm || t.origemPostId !== depois.id) return
+    if (t.status === 'concluido' || t.status === 'descartado') return
+    const agora = new Date().toISOString()
+    const patch: Partial<Tarefa> = {}
+    const notas: string[] = []
+    if ((antes.dataAgendada || '') !== (depois.dataAgendada || '') && !t.prazoManual) {
+      const hoje = diaDoInstante(agora)
+      const dia = t.fasePauta === 'copy' ? prazoDaCopy(depois.dataAgendada, hoje) : prazoDoCriativo(depois.dataAgendada, hoje)
+      patch.prazo = dia ? fimDoDiaBR(dia) : ''
+      notas.push(dia ? `Data da pauta mudou — prazo recalculado para ${fmtDiaDoInstante(patch.prazo)}` : 'Pauta sem data — prazo removido')
+    }
+    if ((antes.formato || '') !== (depois.formato || '') && t.fasePauta === 'criativo') {
+      patch.tipo = tipoTarefaDoFormato(depois.formato)
+      notas.push('Formato da pauta mudou — tipo da tarefa acompanhou')
+    }
+    if ((antes.planoId || '') !== (depois.planoId || '')) {
+      const novaMae = depois.planoId ? await tarefaMaeDoPlano(depois.planoId, autor).catch(() => null) : null
+      patch.tarefaPaiId = novaMae || undefined
+      notas.push('Pauta mudou de plano — a tarefa foi junto')
+    }
+    if (!notas.length) return
+    await redis.set(`tarefa:${t.id}`, {
+      ...t, ...patch, atualizadoEm: agora,
+      atividades: [...(t.atividades || []), ...notas.map(n => ({ id: uuid(), tipo: 'prazo' as const, descricao: n, autor, criadoEm: agora }))],
+    })
+  } catch { /* sincronizar nunca bloqueia a edição da pauta */ }
+}
+
+// LIXEIRA EM UNIDADE: excluir/restaurar a pauta leva a tarefa junto, e vice-versa. Só para a
+// tarefa que nasceu com a pauta (`fasePauta`). Operações diretas no Redis (sem rota) para não
+// voltar em laço.
+export async function tarefaDaPautaParaLixeira(post: Post, autor: string, restaurar = false): Promise<void> {
+  try {
+    if (!post.tarefaId) return
+    const t = await redis.get<Tarefa>(`tarefa:${post.tarefaId}`)
+    if (!t || !t.fasePauta || t.origemPostId !== post.id) return
+    const agora = new Date().toISOString()
+    if (restaurar) {
+      if (!(t as any).excluidoEm) return
+      const { excluidoEm: _e, excluidoPor: _p, ...resto } = t as any
+      await redis.set(`tarefa:${t.id}`, { ...resto, atualizadoEm: agora, atividades: [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: 'Pauta restaurada — a tarefa voltou junto', autor, criadoEm: agora }] })
+      await redis.srem('tarefas_excluidas', t.id); await redis.sadd('tarefas', t.id)
+      return
+    }
+    if ((t as any).excluidoEm) return
+    await redis.set(`tarefa:${t.id}`, { ...t, excluidoEm: agora, excluidoPor: autor, atualizadoEm: agora, atividades: [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: 'Pauta excluída — a tarefa foi junto para a lixeira', autor, criadoEm: agora }] })
+    await redis.srem('tarefas', t.id); await redis.sadd('tarefas_excluidas', t.id)
+  } catch { /* nunca bloqueia */ }
+}
+
+export async function pautaDaTarefaParaLixeira(t: Tarefa, autor: string, restaurar = false): Promise<void> {
+  try {
+    if (!t.fasePauta || !t.origemPostId) return
+    const post = await redis.get<Post>(`post:${t.origemPostId}`)
+    if (!post || post.tarefaId !== t.id) return
+    const agora = new Date().toISOString()
+    if (restaurar) {
+      if (!(post as any).excluidoEm) return
+      const { excluidoEm: _e, excluidoPor: _p, ...resto } = post as any
+      const planoVivo = post.planoId ? await redis.get(`plano:${post.planoId}`) : null
+      const volta = { ...resto, atualizadoEm: agora, ...(post.planoId && !planoVivo ? { planoId: undefined } : {}) }
+      await redis.set(`post:${post.id}`, volta)
+      await redis.srem('posts_excluidos', post.id); await redis.sadd('posts', post.id)
+      await indexarPost(post.clienteId, post.id)
+      if (volta.planoId) await redis.sadd(`plano:${volta.planoId}:pautas`, post.id)
+      if (volta.status === 'agendado') await redis.sadd('agendados', post.id)
+      return
+    }
+    if ((post as any).excluidoEm) return
+    await redis.set(`post:${post.id}`, { ...post, excluidoEm: agora, excluidoPor: autor })
+    await redis.srem('posts', post.id); await redis.srem('agendados', post.id)
+    await desindexarPost(post.clienteId, post.id)
+    if (post.planoId) await redis.srem(`plano:${post.planoId}:pautas`, post.id)
+    await redis.sadd('posts_excluidos', post.id)
+  } catch { /* nunca bloqueia */ }
 }

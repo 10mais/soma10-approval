@@ -65,3 +65,24 @@ describe('ordem do Planner — por DATA DE POSTAGEM, não por quem foi mexido po
     expect(lista.map(p => p.id)).toEqual(['sem', 'com'])
   })
 })
+
+import { estadoNaFila } from '@/lib/plannerFiltro'
+
+describe('estadoNaFila — Fila de programação (dono, 13/11)', () => {
+  it('entregue pelo designer e ainda não enviado: nova', () => {
+    expect(estadoNaFila({ etapa: 'pronto', status: 'rascunho', filaProgramacaoDesde: '2026-11-13T12:00:00Z' })).toBe('nova')
+  })
+  it('rascunho comum do Programador (sem vir da produção) não entra', () => {
+    expect(estadoNaFila({ etapa: 'pronto', status: 'rascunho' })).toBeNull()
+    expect(estadoNaFila({ status: 'rascunho' })).toBeNull()
+  })
+  it('cliente pediu ajuste: em ajuste, e com a versão nova entregue: nova versão', () => {
+    expect(estadoNaFila({ etapa: 'aprovacao_criativo', status: 'corrigir' })).toBe('em_ajuste')
+    expect(estadoNaFila({ etapa: 'aprovacao_criativo', status: 'reprovado', versaoNova: { url: 'x' } })).toBe('nova_versao')
+  })
+  it('com o cliente, aprovado, agendado ou excluído sai da Fila', () => {
+    expect(estadoNaFila({ etapa: 'aprovacao_criativo', status: 'aguardando_aprovacao' })).toBeNull()
+    expect(estadoNaFila({ etapa: 'pronto', status: 'agendado', filaProgramacaoDesde: 'x' })).toBeNull()
+    expect(estadoNaFila({ etapa: 'pronto', status: 'rascunho', filaProgramacaoDesde: 'x', excluidoEm: 'y' })).toBeNull()
+  })
+})

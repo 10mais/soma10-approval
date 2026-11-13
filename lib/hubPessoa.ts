@@ -34,7 +34,7 @@ export type ResumoPessoa = {
 }
 
 const DIA = 86400000
-const ABERTA = ['a_fazer', 'em_andamento', 'em_revisao']
+const ABERTA = ['a_fazer', 'em_andamento', 'em_ajuste', 'em_revisao'] // = STATUS_ABERTOS de lib/statusTarefa
 const PESO: Record<string, number> = { urgente: 0, alta: 1, media: 2, baixa: 3 }
 
 function diaLocal(ms: number): string {

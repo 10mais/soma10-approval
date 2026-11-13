@@ -25,7 +25,7 @@ export type TarefaLite = {
 }
 export type ReuniaoLite = { id: string; titulo: string; data: string; participantes?: string; area?: string }
 
-const ABERTA = ['a_fazer', 'em_andamento', 'em_revisao']
+const ABERTA = ['a_fazer', 'em_andamento', 'em_ajuste', 'em_revisao'] // = STATUS_ABERTOS de lib/statusTarefa
 const ESPERANDO_CLIENTE_ETAPA = ['aprovacao_copy', 'aprovacao_criativo']
 const VOLTOU = ['corrigir', 'reprovado']
 const SAI_HOJE = ['agendado', 'publicando', 'publicado']

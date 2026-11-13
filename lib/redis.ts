@@ -925,7 +925,7 @@ export type Marco = {
 }
 
 // Gestao de tarefas
-export type TarefaStatus = 'a_fazer' | 'em_andamento' | 'em_revisao' | 'concluido' | 'descartado'
+export type TarefaStatus = 'a_fazer' | 'em_andamento' | 'em_ajuste' | 'em_revisao' | 'concluido' | 'descartado' // ordem e rótulo: lib/statusTarefa
 export type TarefaPrioridade = 'baixa' | 'media' | 'alta' | 'urgente'
 export type TarefaTipo = 'tarefa' | 'carrossel' | 'criativo' | 'ecommerce' | 'estrategia' | 'landing_page' | 'planejamento' | 'post' | 'reel' | 'story' | 'video' | 'briefing' | 'copy' | 'campanha'
   // Tipos do perfil clínica (catálogo em GestaoTarefas TIPOS_CLINICA)
@@ -954,6 +954,8 @@ export type Tarefa = {
   checklist?: { id: string; texto: string; feito: boolean }[] // Definition of Done por tipo
   origemPostId?: string // pauta da Esteira que originou esta tarefa (vinculo)
   origemPlanoId?: string // tarefa DO PLANO do mês (mãe das pautas do Estúdio; Plano.tarefaId aponta de volta)
+  fasePauta?: 'copy' | 'criativo' // tarefa que nasce JUNTO com a pauta (13/11): Social Media na copy, designer no criativo (lib/tarefasDaPauta)
+  prazoManual?: boolean // alguém mudou o prazo à mão: mudar a data da pauta não recalcula mais
   ajustePedidoEm?: string // reaberta por AJUSTE pedido (cliente ou revisão interna); some ao concluir
   aguardandoMaterial?: { motivo: string; desde: string; por?: string } // FILA DE PRODUÇÃO: designer parado esperando material; some quando o status da tarefa muda (inclusive ao concluir)
   filaDesde?: string // FILA DE PRODUÇÃO: quando o cartão mudou de coluna pela última vez (lib/filaProducao)
@@ -1144,6 +1146,7 @@ export type Post = {
   etapaDesde?: string // ISO — quando a pauta entrou na etapa atual (cycle-time/aging)
   preAprovado?: boolean // conteúdo recorrente pré-aprovado pelo cliente (dispensa aprovação)
   tarefaId?: string // tarefa criada a partir desta pauta da Esteira (vinculo)
+  filaProgramacaoDesde?: string // criativo entregue: rascunho na Fila de programação desde (13/11, lib/plannerFiltro.estadoNaFila)
   // Studio Fase 0 — matéria-prima da IA e medição da taxa de edição
   iaGerado?: {
     briefing?: string

@@ -4,11 +4,11 @@ import { authOptions } from '@/lib/auth'
 import { redis, Tarefa, Usuario, Post } from '@/lib/redis'
 import { v4 as uuid } from 'uuid'
 import { notificar } from '@/lib/notificacoes'
-import { aoConcluirTarefa } from '@/lib/esteiraFluxo'
+import { aoEntregarCriativo } from '@/lib/esteiraFluxo'
 import { camposDoCorpo } from '@/lib/tarefaCampos'
 import { diaDoInstante, fmtDiaDoInstante } from '@/lib/datas'
 import { podeSerFilha, camposAoVincular } from '@/lib/hierarquiaTarefas'
-import { midiasParaPauta, deveEntregarCriativo } from '@/lib/producaoVinculo'
+import { midiasParaPauta, deveEntregarCriativo, anexosCriativoPronto } from '@/lib/producaoVinculo'
 import { pautaLivrePara, soltaPautaAntiga } from '@/lib/vinculoTarefa'
 import { entregaNaRodada, emRodadaDeAjuste } from '@/lib/rodadaAjuste'
 import { dispararEvento } from '@/lib/automacoesEngine'
@@ -149,6 +149,8 @@ export async function PUT(req: NextRequest) {
     delete restaurado.excluidoEm
     delete restaurado.excluidoPor
     await redis.set(`tarefa:${id}`, restaurado)
+    // Pauta e tarefa são uma unidade (13/11): a pauta volta junto.
+    try { const { pautaDaTarefaParaLixeira } = await import('@/lib/tarefasDaPauta'); await pautaDaTarefaParaLixeira(tarefa, session.user?.name || '', true) } catch { /* segue */ }
     return NextResponse.json({ ok: true })
   }
 
@@ -158,7 +160,7 @@ export async function PUT(req: NextRequest) {
   const novasAtividades = [...(tarefa.atividades || [])]
 
   // Registra mudancas no activity log
-  const statusLabels: Record<string, string> = { a_fazer: 'A fazer', em_andamento: 'Em andamento', em_revisao: 'Em revisao', concluido: 'Concluido', descartado: 'Descartado' }
+  const statusLabels: Record<string, string> = { a_fazer: 'A fazer', em_andamento: 'Em andamento', em_ajuste: 'Em ajuste', em_revisao: 'Em revisão', concluido: 'Concluído', descartado: 'Descartado' }
   if (updates.status && updates.status !== tarefa.status) novasAtividades.push({ id: uuid(), tipo: 'status', descricao: `Status alterado para ${statusLabels[updates.status] || updates.status}`, autor, criadoEm: agora })
   if (updates.responsavelNome && updates.responsavelNome !== tarefa.responsavelNome) novasAtividades.push({ id: uuid(), tipo: 'responsavel', descricao: `Responsavel alterado para ${updates.responsavelNome}`, autor, criadoEm: agora })
   if (updates.prioridade && updates.prioridade !== tarefa.prioridade) novasAtividades.push({ id: uuid(), tipo: 'prioridade', descricao: `Prioridade alterada para ${updates.prioridade}`, autor, criadoEm: agora })
@@ -280,7 +282,10 @@ export async function PUT(req: NextRequest) {
   Object.assign(atualizado, camposDoCorpo(updates))
   if (atualizado.tarefaPaiId === null) delete atualizado.tarefaPaiId
   // Entregou o ajuste: a marca "Ajuste pedido" (lib/tarefasDaPauta.reabrirTarefaDaPauta) sai.
-  if (updates.status === 'concluido') delete atualizado.ajustePedidoEm
+  // Entregou (Em revisão) ou concluiu: a marca "Ajuste pedido" sai.
+  if (updates.status === 'concluido' || updates.status === 'em_revisao') delete atualizado.ajustePedidoEm
+  // Prazo mexido à mão na tarefa que nasceu com a pauta: mudar a data da pauta não recalcula mais.
+  if ((atualizado as any).fasePauta && updates.prazo && diaDoInstante(updates.prazo) !== diaDoInstante(tarefa.prazo)) (atualizado as any).prazoManual = true
   // FILA DE PRODUÇÃO (lib/filaProducao): mudar o status pelo quadro de Tarefas também move o
   // cartão — "Aguardando material" acaba e o "há X dias" recomeça.
   if (updates.status && updates.status !== tarefa.status) { delete atualizado.aguardandoMaterial; atualizado.filaDesde = agora }
@@ -316,26 +321,32 @@ export async function PUT(req: NextRequest) {
   }
   if (updates.status === 'concluido' && tarefa.status !== 'concluido') atualizado.concluidoEm = new Date().toISOString()
 
-  // Linha de montagem: concluir a tarefa do DESIGNER devolve a pauta ao STUDIO
-  // com o criativo pronto (regra pura em lib/esteiraFluxo, testada: só age em
-  // etapa 'criativo' — reabrir nunca regride, aprovações não são puladas). Do
-  // Studio a equipe revisa e sobe para o cliente ou para o Planner. Falha no
-  // gancho nunca bloqueia a conclusão da tarefa.
+  // ENTREGA DO CRIATIVO (dono, 13/11/2026): a tarefa do designer entrar em EM REVISÃO (ou ser
+  // concluída à mão) com o criativo pronto leva a pauta ao PROGRAMADOR como rascunho, na Fila
+  // de programação (regra pura em lib/esteiraFluxo.aoEntregarCriativo, testada: só age em
+  // etapa 'criativo' e com arte). Lá a equipe revisa e envia ao cliente; a aprovação conclui a
+  // tarefa (lib/tarefasDaPauta.concluirTarefaDaPauta). Falha no gancho nunca bloqueia a tarefa.
   // VINCULAR DEPOIS também entrega: tarefa que já estava CONCLUÍDA e só agora recebeu a
   // pauta (o vínculo não existia na tela até 09/09) precisa levar o criativo ao Studio do
   // mesmo jeito — senão o designer teria de reabrir e concluir de novo só para destravar.
   if (deveEntregarCriativo(tarefa, atualizado)) {
     try {
       const post = await redis.get<Post>(`post:${atualizado.origemPostId}`)
-      const av = post ? aoConcluirTarefa(post.etapa) : null
+      const temArte = anexosCriativoPronto(atualizado.anexos || []).length > 0 || (post?.imagens || []).length > 0
+      const av = post ? aoEntregarCriativo(post.etapa, temArte) : null
       if (post && av) {
         // Pauta sem mídia recebe as imagens/vídeos anexados na tarefa como criativo (lib/producaoVinculo).
-        await redis.set(`post:${post.id}`, { ...post, etapa: av.etapa, status: av.status, etapaDesde: agora, aguardandoDesde: undefined, atualizadoEm: agora, criativoEntregueEm: agora, anexosTarefa: atualizado.anexos || post.anexosTarefa, ...midiasParaPauta(post as any, atualizado.anexos || []) })
-        atualizado.atividades = [...(atualizado.atividades || []), { id: uuid(), tipo: 'status' as const, descricao: 'Criativo pronto entregue — a pauta voltou ao Studio para revisão e envio', autor, criadoEm: agora }]
+        await redis.set(`post:${post.id}`, { ...post, etapa: av.etapa, status: av.status, etapaDesde: agora, aguardandoDesde: undefined, atualizadoEm: agora, criativoEntregueEm: agora, filaProgramacaoDesde: agora, ajusteInterno: undefined, anexosTarefa: atualizado.anexos || post.anexosTarefa, ...midiasParaPauta(post as any, atualizado.anexos || []) })
+        atualizado.atividades = [...(atualizado.atividades || []), { id: uuid(), tipo: 'status' as const, descricao: 'Criativo pronto entregue — a peça foi para a Fila de programação (Programador) para revisão e envio ao cliente', autor, criadoEm: agora }]
+        const cliente = post.clienteId ? await redis.get<any>(`cliente:${post.clienteId}`) : null
         const emailCriador = await resolverEmailPorNome(post.criadoPor).catch(() => null)
-        if (emailCriador && emailCriador !== (session.user as any).email) {
-          await notificar(emailCriador, 'geral', `Criativo pronto — ${post.clienteNome || 'Cliente'}`, `${autor} concluiu a tarefa "${atualizado.titulo}". O criativo pronto voltou ao Studio: revise e envie ao cliente ou ao Planner.`, post.id).catch(() => {})
+        const avisar = Array.from(new Set([emailCriador, cliente?.squadPapeis?.social_media].filter((e): e is string => !!e && e !== (session.user as any).email)))
+        for (const email of avisar) {
+          await notificar(email, 'geral', `Criativo pronto — ${post.clienteNome || 'Cliente'}`, `${autor} entregou o criativo de "${atualizado.titulo}". Está na Fila de programação: revise e envie ao cliente.`, post.id).catch(() => {})
         }
+      } else if (post && post.etapa === 'criativo' && !temArte) {
+        // Entregou sem arte: a peça fica onde está, e o histórico diz por quê.
+        atualizado.atividades = [...(atualizado.atividades || []), { id: uuid(), tipo: 'status' as const, descricao: 'Sem criativo pronto anexado — a peça não foi para a Fila de programação. Anexe a arte como criativo pronto e entregue de novo.', autor, criadoEm: agora }]
       } else if (post && emRodadaDeAjuste(post)) {
         // RODADA DE AJUSTE (lib/rodadaAjuste, dono 29/09): o cliente pediu ajuste e o designer
         // concluiu. Antes NADA acontecia aqui (a peça fica em aprovacao_criativo/corrigir e o
@@ -436,8 +447,10 @@ export async function DELETE(req: NextRequest) {
 
   const tarefa = await redis.get<any>(`tarefa:${id}`)
   // Linha de montagem: excluir a tarefa não deixa vínculo morto na pauta — a
-  // pauta volta a poder ganhar tarefa nova (automática ou manual).
-  if (tarefa?.origemPostId) {
+  // pauta volta a poder ganhar tarefa nova (automática ou manual). Exceção (13/11): a tarefa
+  // que nasceu com a pauta vai para a lixeira JUNTO com ela e o vínculo fica, para as duas
+  // voltarem juntas ao restaurar.
+  if (tarefa?.origemPostId && !(tarefa.fasePauta && !permanente)) {
     try {
       const post = await redis.get<Post>(`post:${tarefa.origemPostId}`)
       if (post?.tarefaId === id) await redis.set(`post:${post.id}`, { ...post, tarefaId: undefined, atualizadoEm: new Date().toISOString() })
@@ -450,6 +463,8 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ ok: true })
   }
 
+  // Pauta e tarefa são uma unidade (13/11): a tarefa que nasceu com a pauta leva a pauta junto.
+  if (tarefa?.fasePauta) { try { const { pautaDaTarefaParaLixeira } = await import('@/lib/tarefasDaPauta'); await pautaDaTarefaParaLixeira(tarefa, session.user?.name || '') } catch { /* segue */ } }
   if (tarefa) {
     tarefa.excluidoEm = new Date().toISOString()
     tarefa.excluidoPor = session.user?.name || ''
