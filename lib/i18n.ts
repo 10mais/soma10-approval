@@ -2591,6 +2591,11 @@ export const TEXTOS: Record<string, Entrada> = {
   'ag.paciente-novo-sera-cadastrado': { pt: 'Paciente novo — será cadastrado automaticamente ao salvar.', en: 'New patient — they are registered automatically on save.', es: 'Paciente nuevo — se registra automáticamente al guardar.' },
   'ag.procedimentos-realizados': { pt: 'Procedimentos realizados', en: 'Procedures performed', es: 'Procedimientos realizados' },
   'ag.registro-atendimento-evolucao': { pt: 'Registro do atendimento (evolução)', en: 'Visit record (progress notes)', es: 'Registro de la atención (evolución)' },
+  // Prontuário só para quem atende (lib/prontuario, dono 15/11/2026)
+  'ag.prontuario-restrito': { pt: 'O prontuário fica visível só para quem atende.', en: 'The visit record is visible only to whoever attends the patient.', es: 'El prontuario queda visible solo para quien atiende.' },
+  'ag.prontuario-registrado-restrito': { pt: 'Prontuário registrado. Visível só para quem atende.', en: 'Visit record on file. Visible only to whoever attends the patient.', es: 'Prontuario registrado. Visible solo para quien atiende.' },
+  'ag.falha-excluir': { pt: 'Não foi possível excluir.', en: 'It was not possible to delete.', es: 'No se pudo eliminar.' },
+  'crm.prontuario-restrito': { pt: 'Prontuário registrado · visível só para quem atende', en: 'Visit record on file · visible only to whoever attends', es: 'Prontuario registrado · visible solo para quien atiende' },
   'ag.tipo-atendimento': { pt: 'Tipo de atendimento...', en: 'Kind of visit...', es: 'Tipo de atención...' },
   'ag.todos-profissionais': { pt: 'Todos os profissionais', en: 'All professionals', es: 'Todos los profesionales' },
   'ag.ordem-chegada': { pt: 'ordem de chegada', en: 'order of arrival', es: 'orden de llegada' },

@@ -8,6 +8,7 @@ import { ABAS_PERM, ACOES_PERM, podeAbaGranular, podeAcaoGranular } from '@/lib/
 // A regra vive em lib/perfisInstanciaCatalogo.ts, com testes.
 import { abasOcultasDoPerfil as abasOcultas, PERFIS as PERFIS_INSTANCIA } from '@/lib/perfisInstanciaCatalogo'
 import { abasDoComercial, comercialVoltaAoCrm } from '@/lib/abasComercial'
+import { podeLerProntuario } from '@/lib/prontuario'
 import { MODULOS, MODULOS_PAGOS, totalMensalModulos } from '@/lib/modulos'
 import { apareceNoPlanner, ordenarPorPostagem, estadoNaFila } from '@/lib/plannerFiltro'
 import FilaProgramacao from '@/app/components/FilaProgramacao'
@@ -3629,6 +3630,8 @@ function Dashboard() {
             // Comercial da clínica marca, remarca e cancela consulta (lib/abasComercial).
             // O papel dele não passa pela matriz de módulos, por isso a exceção aqui.
             podeEditar={(ehVendas && abasDoComercial(perfilInstancia).includes('agenda')) || podeNivelDash('producao', 'editar')}
+            // Prontuário só para quem atende e para o admin (lib/prontuario; o servidor também trava).
+            podeProntuario={!perfilClinica || podeLerProntuario({ ...(usuarios.find((u: any) => u.email === (session?.user as any)?.email) || {}), role })}
           />
         )}
 

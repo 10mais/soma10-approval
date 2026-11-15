@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { redis, Agendamento, CrmContato } from '@/lib/redis'
+import { redis, Agendamento, CrmContato, Usuario } from '@/lib/redis'
+import { podeLerProntuario, semProntuario, temProntuarioEscrito } from '@/lib/prontuario'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { acharConflito, acharContatoPorNome, acharBloqueioConflitante, Bloqueio, statusInicialAgendamento } from '@/lib/agenda'
 import { getPerfilInstancia } from '@/lib/perfisInstancia'
@@ -63,12 +64,26 @@ async function vincularContato(ag: Agendamento, contatoIdExplicito: string | und
   ag.contatoId = contato.id
 }
 
+// PRONTUÁRIO só para quem atende e para o admin (clínica; dono, 15/11/2026 —
+// lib/prontuario). Fora da clínica o campo não é usado e nada muda. O papel vem
+// da sessão; quem atende vem do cadastro (recebeAgenda / áreaSaude).
+async function acessoProntuario(session: any): Promise<boolean> {
+  if ((await getPerfilInstancia()) !== 'clinica') return true
+  const role = session?.user?.role
+  if (role === 'admin') return true
+  const email = String(session?.user?.email || '')
+  const u = email ? await redis.get<Usuario>(`usuario:${email}`).catch(() => null) : null
+  return podeLerProntuario({ role, recebeAgenda: u?.recebeAgenda, areaSaude: u?.areaSaude })
+}
+
 // GET ?de=ISO&ate=ISO — lista agendamentos do período (padrão: semana atual).
 // GET ?contatoId=x — histórico completo do paciente (mais recentes primeiro).
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   const role = (session?.user as any)?.role
   if (!session || role === 'cliente') return NextResponse.json({ error: 'não autorizado' }, { status: 401 })
+  const pode = await acessoProntuario(session)
+  const servir = (lista: Agendamento[]) => (pode ? lista : lista.map(semProntuario))
 
   const url = new URL(req.url)
   const contatoId = url.searchParams.get('contatoId')
@@ -76,7 +91,7 @@ export async function GET(req: NextRequest) {
     const doContato = (await carregarTodos())
       .filter(a => a.contatoId === contatoId)
       .sort((a, b) => new Date(b.dataInicio).getTime() - new Date(a.dataInicio).getTime())
-    return NextResponse.json({ agendamentos: doContato })
+    return NextResponse.json({ agendamentos: servir(doContato) })
   }
 
   const de = url.searchParams.get('de')
@@ -89,7 +104,7 @@ export async function GET(req: NextRequest) {
     .sort((a, b) => new Date(a.dataInicio).getTime() - new Date(b.dataInicio).getTime())
   // Serviços já usados (datalist do form — sem cadastro burocrático de catálogo).
   const servicos = Array.from(new Set(todos.map(a => (a.servico || '').trim()).filter(Boolean))).sort()
-  return NextResponse.json({ agendamentos: lista, servicos })
+  return NextResponse.json({ agendamentos: servir(lista), servicos })
 }
 
 // POST — cria. Recusa conflito de horário do profissional (409) a menos que
@@ -160,6 +175,11 @@ export async function PUT(req: NextRequest) {
   const b = await req.json()
   const atual = await redis.get<Agendamento>(`agendamento:${b.id}`)
   if (!atual) return NextResponse.json({ error: 'não encontrado' }, { status: 404 })
+  // Quem não pode ler o prontuário também não escreve nele. O campo é IGNORADO
+  // (não recusado): o formulário dessa pessoa vem sem o texto, e aplicá-lo
+  // apagaria o que a profissional escreveu.
+  const pode = await acessoProntuario(session)
+  if (!pode) delete b.registroAtendimento
 
   const campos = ['pacienteNome', 'pacienteTelefone', 'contatoId', 'profissionalEmail', 'profissionalNome', 'servico', 'dataInicio', 'duracaoMin', 'status', 'observacoes', 'queixaPrincipal', 'registroAtendimento', 'procedimentosRealizados', 'valorInvestido']
   const atualizado: Agendamento = { ...atual }
@@ -204,7 +224,7 @@ export async function PUT(req: NextRequest) {
   }
 
   await redis.set(`agendamento:${atualizado.id}`, atualizado)
-  return NextResponse.json({ ok: true, agendamento: atualizado })
+  return NextResponse.json({ ok: true, agendamento: pode ? atualizado : semProntuario(atualizado) })
 }
 
 // DELETE { id } — remove de vez (para engano de digitação; o fluxo normal é status 'cancelado').
@@ -216,6 +236,12 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'sem permissão' }, { status: 403 })
   }
   const { id } = await req.json()
+  // Excluir atendimento com prontuário apaga o registro clínico junto: só quem
+  // pode lê-lo exclui. O caminho da equipe continua sendo o status "cancelado".
+  if (!(await acessoProntuario(session))) {
+    const alvo = await redis.get<Agendamento>(`agendamento:${id}`)
+    if (temProntuarioEscrito(alvo)) return NextResponse.json({ error: 'Este atendimento tem prontuário; só quem atende pode excluir. Use "Cancelado" se ele não aconteceu.' }, { status: 403 })
+  }
   await redis.del(`agendamento:${id}`)
   await redis.srem('agendamentos', id)
   return NextResponse.json({ ok: true })

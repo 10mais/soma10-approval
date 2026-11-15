@@ -21,6 +21,7 @@ type Ag = {
   dataInicio: string; duracaoMin: number; status: string; observacoes?: string
   queixaPrincipal?: string
   registroAtendimento?: string
+  temProntuario?: boolean // o servidor tirou o prontuário (quem olha não atende) e só avisa que existe
   procedimentosRealizados?: string[]
   valorInvestido?: number
 }
@@ -57,11 +58,14 @@ function toLocalInput(d: Date): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
-export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilClinica = false }: {
+export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilClinica = false, podeProntuario = true }: {
   usuarios: Usuario[]
   meuEmail?: string
   podeEditar?: boolean
   perfilClinica?: boolean
+  // Prontuário só para quem atende e para o admin (lib/prontuario). A trava de
+  // verdade é no servidor; aqui o campo some para não parecer que dá para escrever.
+  podeProntuario?: boolean
 }) {
   const tr = useT()
   const [ref, setRef] = useState(() => new Date())
@@ -276,7 +280,11 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
   async function excluir() {
     if (!modal?.id) return
     if (!(await confirmar(tr('ag.dlg-excluir'), { titulo: tr('ag.excluir-agendamento'), okLabel: tr('comum.excluir'), perigo: true }))) return
-    await fetch('/api/agenda', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: modal.id }) }).catch(() => {})
+    // O servidor pode recusar (atendimento com prontuário, sem permissão): a recusa
+    // aparece, e o modal fica aberto — fechar como se tivesse apagado engana.
+    const r = await fetch('/api/agenda', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: modal.id }) }).catch(() => null)
+    const d = r ? await r.json().catch(() => null) : null
+    if (!r || !r.ok) { toast(d?.error || tr('ag.falha-excluir'), 'erro'); return }
     setModal(null); carregar()
   }
 
@@ -647,11 +655,18 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
               )}
               <textarea lang="pt-BR" value={modal.observacoes || ''} onChange={e => setModal(m => ({ ...m, observacoes: e.target.value }))} placeholder={tr('ag.observacoes')} rows={2}
                 style={{ padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
-              {perfilClinica && modal.id && (modal.status === 'atendido' || !!modal.registroAtendimento) && (
+              {perfilClinica && modal.id && (modal.status === 'atendido' || !!modal.registroAtendimento || !!modal.temProntuario) && (
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>{tr('ag.registro-atendimento-evolucao')}</label>
-                  <textarea lang="pt-BR" value={modal.registroAtendimento || ''} onChange={e => setModal(m => ({ ...m, registroAtendimento: e.target.value }))} placeholder={tr('ag.que-foi-feito-orientacoes-prox')} rows={4}
-                    style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
+                  {podeProntuario ? (<>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }}>{tr('ag.registro-atendimento-evolucao')}</label>
+                    <textarea lang="pt-BR" value={modal.registroAtendimento || ''} onChange={e => setModal(m => ({ ...m, registroAtendimento: e.target.value }))} placeholder={tr('ag.que-foi-feito-orientacoes-prox')} rows={4}
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
+                  </>) : (
+                    <p style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0, padding: '8px 10px', borderRadius: 9, background: 'var(--v2-surface1)', fontSize: 12, color: 'var(--v2-ink3)' }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+                      {tr(modal.temProntuario ? 'ag.prontuario-registrado-restrito' : 'ag.prontuario-restrito')}
+                    </p>
+                  )}
                   {/* Pós-atendimento estruturado: procedimentos realizados (do catálogo) + investimento */}
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', margin: '10px 0 5px' }}>{tr('ag.procedimentos-realizados')}</label>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -675,7 +690,8 @@ export default function Agenda({ usuarios, meuEmail, podeEditar = true, perfilCl
               )}
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 16, alignItems: 'center' }}>
-              {modal.id && podeEditar && (
+              {/* Com prontuário, só quem pode lê-lo exclui (o servidor recusa os demais). */}
+              {modal.id && podeEditar && (podeProntuario || !modal.temProntuario) && (
                 <button onClick={excluir} style={{ padding: '9px 14px', background: 'var(--v2-surface)', border: '1px solid var(--v2-hot-bg)', borderRadius: 9, color: 'var(--v2-hot)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', marginRight: 'auto' }}>{tr('comum.excluir')}</button>
               )}
               <span style={{ flex: modal.id ? undefined : 1 }} />

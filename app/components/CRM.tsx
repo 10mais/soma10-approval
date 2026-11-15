@@ -1721,7 +1721,7 @@ function ContatoModalTela({ contato, prefill, onClose, onSalvo, podeExcluir = fa
     else toast(r?.error || tr('ficha.falha-salvar'), 'erro')
   }
   // Histórico de atendimentos do paciente (da Agenda — perfil clínica, só ao editar)
-  const [historico, setHistorico] = useState<{ id: string; dataInicio: string; servico?: string; status: string; profissionalNome: string; registroAtendimento?: string; procedimentosRealizados?: string[]; valorInvestido?: number }[] | null>(null)
+  const [historico, setHistorico] = useState<{ id: string; dataInicio: string; servico?: string; status: string; profissionalNome: string; registroAtendimento?: string; temProntuario?: boolean; procedimentosRealizados?: string[]; valorInvestido?: number }[] | null>(null)
   // Catálogo de Procedimentos (mesma fonte da Agenda) para sugerir no campo.
   const [procedimentos, setProcedimentos] = useState<string[]>([])
   useEffect(() => {
@@ -2160,6 +2160,13 @@ function ContatoModalTela({ contato, prefill, onClose, onSalvo, podeExcluir = fa
                           <span style={{ fontSize: 10.5, fontWeight: 800, color: (STATUS_AG[item.h.status] || STATUS_AG.agendado).cor, flexShrink: 0 }}>{tr((STATUS_AG[item.h.status] || STATUS_AG.agendado).rotulo)}</span>
                         </div>
                         {item.h.registroAtendimento && <p style={{ margin: '4px 0 0', fontSize: 11.5, color: 'var(--v2-ink2)', background: 'var(--v2-surface1)', borderRadius: 6, padding: '5px 8px', whiteSpace: 'pre-wrap' }}>{item.h.registroAtendimento}</p>}
+                        {/* Prontuário só para quem atende (lib/prontuario): o servidor manda só o aviso. */}
+                        {!item.h.registroAtendimento && item.h.temProntuario && (
+                          <p style={{ display: 'flex', alignItems: 'center', gap: 5, margin: '4px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>
+                            {tr('crm.prontuario-restrito')}
+                          </p>
+                        )}
                         {Array.isArray(item.h.procedimentosRealizados) && item.h.procedimentosRealizados.length > 0 && (
                           <p style={{ margin: '4px 0 0', fontSize: 11, fontWeight: 700, color: 'var(--v2-ok)' }}>
                             {item.h.procedimentosRealizados.join(' · ')}{item.h.valorInvestido ? ` — ${fmtBRL(item.h.valorInvestido)}` : ''}
