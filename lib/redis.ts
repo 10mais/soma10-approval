@@ -966,6 +966,10 @@ export type Tarefa = {
   ajustePedidoEm?: string // reaberta por AJUSTE pedido (cliente ou revisão interna); some ao concluir
   aguardandoMaterial?: { motivo: string; desde: string; por?: string } // FILA DE PRODUÇÃO: designer parado esperando material; some quando o status da tarefa muda (inclusive ao concluir)
   filaDesde?: string // FILA DE PRODUÇÃO: quando o cartão mudou de coluna pela última vez (lib/filaProducao)
+  // RELÓGIO DE PRODUÇÃO (limitador de demandas, F4 — lib/limiteDemandas.relogioProducao): tempo ocupando vaga e as entregas
+  emProducaoDesde?: string
+  producaoMs?: number
+  entregas?: { por: string; em: string; ms?: number }[]
   origemBriefingId?: string // briefing de campanha que originou esta tarefa (vinculo)
   documentoId?: string // documento interno vinculado à tarefa
   mapaId?: string // mapa mental vinculado à tarefa

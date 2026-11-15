@@ -7,7 +7,8 @@ import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { tarefaDaPauta } from '@/lib/producaoVinculo'
 import { tituloSubtarefa } from '@/lib/esteiraFluxo'
 import { statusAberto } from '@/lib/statusTarefa'
-import { verificarLimite, corpoDaRecusa } from '@/lib/limiteDemandasServer'
+import { checarLimite } from '@/lib/limiteDemandasServer'
+import { relogioProducao } from '@/lib/limiteDemandas'
 import { v4 as uuid } from 'uuid'
 import {
   colunaDoCriativo, desdeQuandoNaColuna, alertaDoPrazo, prontoParaEnviar, ordenarFila, podeMoverCartao,
@@ -106,9 +107,15 @@ export async function PUT(req: NextRequest) {
     atualizado.status = para === 'em_producao' ? (emAjuste ? 'em_ajuste' : 'em_andamento') : 'a_fazer'
   }
   // LIMITADOR DE DEMANDAS (lib/limiteDemandas): ir para Em produção é pescar e ocupa uma vaga.
-  const veredito = await verificarLimite(t as any, atualizado, { email: String(session.user?.email || '') })
-  if (!veredito.ok) return NextResponse.json(corpoDaRecusa(veredito), { status: 409 })
-  atualizado.atividades = [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: `Fila de produção: ${ROTULO[para]}${para === 'aguardando_material' ? ` — ${motivo.slice(0, 300)}` : ''}`, autor, criadoEm: agora }]
+  // Exceção do gestor (F4): `forcarLimite: { motivo }` passa do limite e fica no histórico.
+  const limite = await checarLimite(t as any, atualizado, { email: String(session.user?.email || ''), role, nome: autor }, corpo?.forcarLimite)
+  if (!limite.ok) return NextResponse.json(limite.recusa, { status: limite.status || 409 })
+  Object.assign(atualizado, relogioProducao(t as any, atualizado, agora))
+  atualizado.atividades = [
+    ...(t.atividades || []),
+    { id: uuid(), tipo: 'status', descricao: `Fila de produção: ${ROTULO[para]}${para === 'aguardando_material' ? ` — ${motivo.slice(0, 300)}` : ''}`, autor, criadoEm: agora },
+    ...(limite.excecao ? [{ id: uuid(), tipo: 'status', descricao: limite.excecao, autor, criadoEm: agora }] : []),
+  ]
   await redis.set(`tarefa:${t.id}`, atualizado)
   return NextResponse.json({ ok: true })
 }

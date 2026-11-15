@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getUsuariosRaw, clientesAtivosIds } from '@/lib/cache'
 import { getConfigLimite, salvarConfigLimite, tarefasAtivas } from '@/lib/limiteDemandasServer'
-import { vagasDe, filaDe, ajusteEsperandoVaga, emRiscoDeAtraso, ehDemandaCriativa, type TarefaLimite } from '@/lib/limiteDemandas'
+import { vagasDe, filaDe, ajusteEsperandoVaga, emRiscoDeAtraso, ehDemandaCriativa, metricasProducao, type TarefaLimite } from '@/lib/limiteDemandas'
 import { diaDoInstante } from '@/lib/datas'
 
 export const runtime = 'nodejs'
@@ -26,6 +26,7 @@ export async function GET() {
   // Cliente arquivado some (mesma regra das telas de produção); tarefa interna fica.
   const tarefas = todas.filter(t => !t.clienteId || ativos.has(t.clienteId)) as unknown as TarefaLimite[]
   const hoje = diaDoInstante(new Date().toISOString())
+  const agoraMs = Date.now()
 
   const minhasVagas = vagasDe(eu, tarefas, cfg)
   const minhaFila = filaDe(eu, tarefas)
@@ -36,16 +37,20 @@ export async function GET() {
   for (const t of tarefas) {
     const e = (t.responsavelEmail || '').toLowerCase()
     if (e && ehDemandaCriativa(t) && ['a_fazer', 'em_andamento', 'em_ajuste'].includes(t.status)) emails.add(e)
+    // Quem entregou peças nos últimos 30 dias também aparece (Carga da equipe, F4).
+    for (const en of t.entregas || []) if (en.por && agoraMs - new Date(en.em).getTime() <= 30 * 86400000) emails.add(en.por.toLowerCase())
   }
   const porPessoa = Array.from(emails).filter(e => nomes.has(e)).map(email => {
     const v = vagasDe(email, tarefas, cfg)
     const fila = filaDe(email, tarefas)
+    const m = metricasProducao(email, tarefas, agoraMs)
     return {
       email, nome: nomes.get(email) || email,
       ocupadas: v.ocupadas, limite: v.limite, livres: v.livres, acima: v.acima,
       naFila: fila.length, ajustesEsperando: fila.filter(ajusteEsperandoVaga).length,
       emRisco: fila.filter(t => emRiscoDeAtraso(t, hoje)).length,
       emAndamento: v.tarefas.map(resumo),
+      entregasSemana: m.entregasSemana, tempoMedioMs: m.tempoMedioMs, amostraTempo: m.amostra,
     }
   }).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
 

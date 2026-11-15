@@ -18,7 +18,7 @@ import { ehTarefaDeProducao, anexosCriativoPronto, avisoAoConcluir, avisoConclui
 import { somarAnexos } from '@/lib/vinculoTarefa'
 import { useT } from '@/app/components/Idioma'
 import { avisarTarefasMudaram } from './BarraProximasTarefas'
-import { recusouPeloLimite, useVagas, ChipVagas } from './VagasDemandas'
+import { recusouPeloLimite, tratarRecusaDoLimite, useVagas, ChipVagas } from './VagasDemandas'
 import { TEXTOS } from '@/lib/i18n'
 import { diaDoInstante, fimDoDiaBR, inicioDoDiaBR, fmtDiaDoInstante, fmtDataBR } from '@/lib/datas'
 
@@ -470,10 +470,11 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
     // Arrastou para Em revisão (entrega) sem criativo pronto: avisa que a peça não segue.
     if (status === 'em_revisao' && antes) { const av = avisoAoConcluir(antes as any); if (av) toast(av, 'erro') }
     setTarefas(ts => ts.map(t => t.id === id ? { ...t, status } : t))
-    const rMover = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) }).catch(() => null)
-    // LIMITADOR DE DEMANDAS (15/11): sem vaga, o cartão volta ao lugar e o motivo aparece.
-    // Movimento recusado não entra no Ctrl+Z.
-    if (rMover && await recusouPeloLimite(rMover)) { carregar(); return }
+    const moverPut = (extra: object = {}) => fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status, ...extra }) })
+    const rMover = await moverPut().catch(() => null)
+    // LIMITADOR DE DEMANDAS (15/11): sem vaga, o cartão volta ao lugar e o motivo aparece; o gestor
+    // pode passar do limite com motivo (F4). Movimento recusado não entra no Ctrl+Z.
+    if (rMover && !(await tratarRecusaDoLimite(rMover, forcarLimite => moverPut({ forcarLimite })))) { carregar(); return }
     if (antes) registrarDesfazer(tr('tarefa.desfazer-status', { nome: antes.titulo }), async () => {
       const r = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: antes.status }) }).catch(() => null)
       carregar()
@@ -1392,10 +1393,12 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
       // DESFAZER: guarda o valor ANTERIOR de cada campo que o formulário mexe.
       const antes: Record<string, any> = { id: tarefa.id }
       for (const k of Object.keys(body)) antes[k] = (tarefa as any)[k] ?? (Array.isArray((body as any)[k]) ? [] : '')
-      const rSalvar = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, ...body }) }).catch(() => null)
+      const salvarPut = (extra: object = {}) => fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, ...body, ...extra }) })
+      const rSalvar = await salvarPut().catch(() => null)
       // LIMITADOR (15/11): sem vaga para a mudança de status/responsável, o resto da edição é salvo
       // e o status/responsável ficam como estavam (salvar automático nunca perde o que foi escrito).
-      if (rSalvar && await recusouPeloLimite(rSalvar)) {
+      // O gestor pode passar do limite com motivo (F4).
+      if (rSalvar && !(await tratarRecusaDoLimite(rSalvar, forcarLimite => salvarPut({ forcarLimite })))) {
         await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, ...body, status: tarefa.status, responsavelEmail: tarefa.responsavelEmail || '', responsavelNome: tarefa.responsavelNome || '' }) }).catch(() => null)
       }
       registrarDesfazer(tr('tarefa.desfazer-edicao', { nome: tarefa.titulo }), async () => {
@@ -1404,7 +1407,14 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
         return !!r?.ok
       })
     } else {
-      await fetch('/api/tarefas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      const criarPost = (extra: object = {}) => fetch('/api/tarefas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, ...extra }) })
+      const rCriar = await criarPost().catch(() => null)
+      // LIMITADOR: criar já em andamento para quem está sem vaga. O gestor pode passar do limite;
+      // senão a tarefa nasce na fila (A fazer) para não perder o que foi escrito.
+      if (rCriar && !(await tratarRecusaDoLimite(rCriar, forcarLimite => criarPost({ forcarLimite })))) {
+        await criarPost({ status: 'a_fazer' }).catch(() => null)
+        toast('A tarefa foi criada na fila (A fazer), sem ocupar vaga.', 'info')
+      }
     }
     setSalvando(false)
     avisarTarefasMudaram()

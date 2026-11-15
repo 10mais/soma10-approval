@@ -31,3 +31,23 @@ export function confirmar(
     window.dispatchEvent(new CustomEvent('soma-confirm', { detail: { id, mensagem, ...opts } }))
   })
 }
+
+// Pergunta com CAMPO DE TEXTO (mesmo modal do confirmar). Devolve o texto, ou null se a pessoa
+// cancelou. `minimo` = letras mínimas para liberar o botão (ex.: motivo da exceção do limitador).
+export function pedirTexto(
+  mensagem: string,
+  opts?: { titulo?: string; okLabel?: string; cancelLabel?: string; perigo?: boolean; placeholder?: string; minimo?: number }
+): Promise<string | null> {
+  if (typeof window === 'undefined') return Promise.resolve(null)
+  return new Promise(resolve => {
+    const id = Math.random().toString(36).slice(2)
+    const handler = (e: Event) => {
+      const d = (e as CustomEvent).detail
+      if (d?.id !== id) return
+      window.removeEventListener('soma-confirm-result', handler)
+      resolve(d.ok ? String(d.texto || '').trim() : null)
+    }
+    window.addEventListener('soma-confirm-result', handler)
+    window.dispatchEvent(new CustomEvent('soma-confirm', { detail: { id, mensagem, ...opts, campo: true } }))
+  })
+}

@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation'
 import { useIdioma, useT } from '@/app/components/Idioma'
 import LimiteDeErro from '@/app/components/LimiteDeErro'
 import { avisarTarefasMudaram } from '@/app/components/BarraProximasTarefas'
-import { useVagas, ChipVagas } from '@/app/components/VagasDemandas'
+import { useVagas, ChipVagas, tratarRecusaDoLimite } from '@/app/components/VagasDemandas'
 import {
   COLUNAS_FILA, diasDesde, destinosDoCartao, destinoAoSoltar, colunaAposMover, destinoDaColuna,
   type ColunaFila, type DestinoFila, type ItemFila,
@@ -77,9 +77,14 @@ export default function FilaProducao(props: Props) {
   return <SemQuebrar><Fila {...props} /></SemQuebrar>
 }
 
-async function enviarMovimento(tarefaId: string, para: DestinoFila, motivo?: string): Promise<{ ok: boolean; erro?: string }> {
+async function enviarMovimento(tarefaId: string, para: DestinoFila, motivo?: string): Promise<{ ok: boolean; erro?: string; silencioso?: boolean }> {
   try {
-    const r = await fetch('/api/fila-producao', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tarefaId, para, motivo }) })
+    const enviar = (extra: object = {}) => fetch('/api/fila-producao', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tarefaId, para, motivo, ...extra }) })
+    const r0 = await enviar()
+    if (r0.ok) return { ok: true }
+    // LIMITADOR: o motivo da recusa aparece; o gestor pode passar do limite com motivo (F4).
+    const r = await tratarRecusaDoLimite(r0, forcarLimite => enviar({ forcarLimite }))
+    if (!r) return { ok: false, silencioso: true }
     if (r.ok) return { ok: true }
     const d = await r.json().catch(() => ({}))
     return { ok: false, erro: d.error || 'Não foi possível mudar o status.' }
@@ -210,7 +215,7 @@ function Fila({ clienteFixo, onAbrirTarefa, onAbrirPauta }: Props) {
     }))
     const r = await enviarMovimento(it.tarefaId, para, motivo)
     setMovendo(null)
-    if (!r.ok) { setItens(antes); toastErro(r.erro || 'Não foi possível mudar o status.'); carregar(); return }
+    if (!r.ok) { setItens(antes); if (!r.silencioso) toastErro(r.erro || 'Não foi possível mudar o status.'); carregar(); return }
     avisarTarefasMudaram() // a barra do topo e este quadro recarregam
     const volta = destinoDaColuna(it.coluna)
     if (volta) {

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 
 type Toast = { id: string; mensagem: string; tipo: 'sucesso' | 'erro' | 'info'; titulo?: string; saindo?: boolean }
-type Confirm = { id: string; mensagem: string; titulo?: string; okLabel?: string; cancelLabel?: string; perigo?: boolean }
+type Confirm = { id: string; mensagem: string; titulo?: string; okLabel?: string; cancelLabel?: string; perigo?: boolean; campo?: boolean; placeholder?: string; minimo?: number }
 
 const CORES = {
   sucesso: { barra: 'var(--v2-ok)', icone: 'var(--v2-ok)', fundoIcone: 'rgba(22,163,74,0.14)' },
@@ -24,6 +24,7 @@ function IconeTipo({ tipo }: { tipo: Toast['tipo'] }) {
 export default function Toaster() {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [confirm, setConfirm] = useState<Confirm | null>(null)
+  const [texto, setTexto] = useState('') // pedirTexto (lib/toast)
 
   useEffect(() => {
     const onToast = (e: Event) => {
@@ -36,7 +37,7 @@ export default function Toaster() {
       // Rede de segurança: se a aba perder o frame do animationend, remove mesmo assim.
       setTimeout(() => setToasts(ts => ts.filter(x => x.id !== id)), 4200 + 600)
     }
-    const onConfirm = (e: Event) => setConfirm((e as CustomEvent).detail)
+    const onConfirm = (e: Event) => { setTexto(''); setConfirm((e as CustomEvent).detail) }
     window.addEventListener('soma-toast', onToast)
     window.addEventListener('soma-confirm', onConfirm)
     return () => { window.removeEventListener('soma-toast', onToast); window.removeEventListener('soma-confirm', onConfirm) }
@@ -47,9 +48,18 @@ export default function Toaster() {
   function removerToast(id: string) { setToasts(ts => ts.filter(x => x.id !== id)) }
 
   function responder(ok: boolean) {
-    if (confirm) window.dispatchEvent(new CustomEvent('soma-confirm-result', { detail: { id: confirm.id, ok } }))
+    if (confirm) window.dispatchEvent(new CustomEvent('soma-confirm-result', { detail: { id: confirm.id, ok, texto } }))
     setConfirm(null)
   }
+  const textoCurto = !!confirm?.campo && texto.trim().length < (confirm.minimo || 1)
+
+  // Esc fecha (cancela) o modal: todo overlay precisa de saída.
+  useEffect(() => {
+    if (!confirm) return
+    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') responder(false) }
+    window.addEventListener('keydown', tecla)
+    return () => window.removeEventListener('keydown', tecla)
+  }) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
@@ -90,9 +100,14 @@ export default function Toaster() {
                 <p style={{ margin: 0, fontSize: 13.5, fontWeight: confirm.titulo ? 500 : 600, color: confirm.titulo ? 'var(--v2-ink2)' : 'var(--v2-ink)', lineHeight: 1.45 }}>{confirm.mensagem}</p>
               </div>
             </div>
+            {confirm.campo && (
+              <textarea autoFocus value={texto} onChange={e => setTexto(e.target.value)} placeholder={confirm.placeholder || ''} rows={3}
+                onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !textoCurto) responder(true) }}
+                style={{ width: '100%', boxSizing: 'border-box', margin: '0 0 14px', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }} />
+            )}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button onClick={() => responder(false)} style={{ padding: '9px 20px', background: 'var(--v2-surface1)', border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink2)', cursor: 'pointer' }}>{confirm.cancelLabel || 'Cancelar'}</button>
-              <button onClick={() => responder(true)} style={{ padding: '9px 20px', background: confirm.perigo ? 'var(--v2-hot)' : 'var(--v2-ink)', border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 700, color: 'var(--v2-surface)', cursor: 'pointer' }}>{confirm.okLabel || 'Confirmar'}</button>
+              <button onClick={() => responder(true)} disabled={textoCurto} style={{ padding: '9px 20px', background: confirm.perigo ? 'var(--v2-hot)' : 'var(--v2-ink)', border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 700, color: 'var(--v2-surface)', cursor: textoCurto ? 'not-allowed' : 'pointer', opacity: textoCurto ? 0.5 : 1 }}>{confirm.okLabel || 'Confirmar'}</button>
             </div>
           </div>
         </div>

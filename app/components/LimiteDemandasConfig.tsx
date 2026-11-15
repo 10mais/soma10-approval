@@ -51,6 +51,7 @@ export default function LimiteDemandasConfig() {
       <p style={{ margin: '0 0 14px', fontSize: 12.5, color: 'var(--v2-ink3)', maxWidth: 640 }}>
         Cada pessoa da produção criativa (design, vídeo e copy das pautas) trabalha em até este número de peças ao mesmo tempo.
         Ocupam vaga as tarefas Em andamento e Em ajuste; Aguardando material libera. Para pegar outra, a pessoa entrega ou devolve uma para a fila.
+        Numa urgência, o gestor de projetos do squad do cliente, o gerente e o admin podem passar do limite escrevendo o motivo, que fica no histórico da tarefa.
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-end' }}>
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: 'var(--v2-ink)', cursor: 'pointer' }}>

@@ -14,8 +14,9 @@ import { fmtDiaDoInstante, diaDoInstante, fimDoDiaBR, inicioDoDiaBR } from './da
 import { dispararEvento } from './automacoesEngine'
 import { anexosParaNovaRodada, planoDeEntregasDaPauta, somarAnexos } from './vinculoTarefa'
 import { desindexarPost, indexarPost } from './postsIndex'
-import { statusDoAjuste } from './limiteDemandas'
+import { statusDoAjuste, relogioProducao } from './limiteDemandas'
 import { getConfigLimite, tarefasAtivas } from './limiteDemandasServer'
+import { produtorDaPauta } from './responsavelPorTipo'
 
 // Etapa da Esteira -> tipo de tarefa (regra herdada do /api/esteira/relacionar).
 // 'pronto' não gera tarefa: a pauta já virou post no Planner.
@@ -116,6 +117,7 @@ export async function reabrirTarefaDaPauta(postId: string, feedback: string, aut
     atividades: [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: `${quemPediu} pediu ajuste ${doQue}${estavaConcluida ? ' — tarefa reaberta' : ''}${esperaVaga ? ' — esperando vaga na fila (limite de demandas em andamento)' : ''}`, autor, criadoEm: agora }],
     comentarios: [...(t.comentarios || []), { id: uuid(), autor, autorNome: autor, texto: `Feedback ${origem === 'cliente' ? 'do cliente' : 'da revisão interna'}: ${feedback || 'sem comentário'}`, criadoEm: agora }],
   }
+  Object.assign(atualizada, relogioProducao(t as any, atualizada as any, agora)) // Em ajuste liga o relógio (F4)
   await redis.set(`tarefa:${tarefaId}`, atualizada)
   if (t.responsavelEmail) {
     const quem = origem === 'cliente' ? 'O cliente' : 'A revisão interna'
@@ -179,8 +181,11 @@ export async function nascerTarefaDesigner(postId: string, autor: string, opts: 
       // PASSAGEM AO DESIGNER (dono, 13/11/2026): a tarefa nasceu com a pauta, com o Social
       // Media, para a copy. Copy aprovada: a MESMA tarefa passa ao designer. Uma tarefa só.
       const cliente = post.clienteId ? await redis.get<Cliente>(`cliente:${post.clienteId}`) : null
-      const designerEmail = (cliente?.squadPapeis?.designer || '').trim()
+      // Reels vão para o editor de vídeo do squad; o resto (ou sem editor), para o designer.
+      const produtor = produtorDaPauta(cliente?.squadPapeis, post.formato)
+      const designerEmail = produtor.email
       const designerNome = designerEmail ? ((await redis.get<{ nome?: string }>(`usuario:${designerEmail}`).catch(() => null))?.nome || '') : ''
+      const quemProduz = produtor.papel === 'editor_video' ? 'o editor de vídeo' : 'o designer'
       const hoje = diaDoInstante(agora)
       const prazoCriativo = prazoDoCriativo(post.dataAgendada, hoje)
       const passada: Tarefa = {
@@ -201,7 +206,7 @@ export async function nascerTarefaDesigner(postId: string, autor: string, opts: 
         filaDesde: agora,
         concluidoEm: undefined,
         atualizadoEm: agora,
-        atividades: [...(t.atividades || []), { id: uuid(), tipo: 'responsavel', descricao: `Copy aprovada — a tarefa passou para o designer${designerNome ? ` (${designerNome})` : ' (o squad do cliente não tem designer)'}`, autor, criadoEm: agora }],
+        atividades: [...(t.atividades || []), { id: uuid(), tipo: 'responsavel', descricao: `Copy aprovada — a tarefa passou para ${quemProduz}${designerNome ? ` (${designerNome})` : ' (o squad do cliente não tem designer)'}`, autor, criadoEm: agora }],
       }
       await redis.set(`tarefa:${t.id}`, passada)
       if (designerEmail) await avisarPautaNova(designerEmail, post.clienteId || '', post.clienteNome, passada, t.tarefaPaiId || null).catch(() => {})
@@ -235,7 +240,7 @@ export async function nascerTarefaDesigner(postId: string, autor: string, opts: 
   }
 
   const cliente = post.clienteId ? await redis.get<Cliente>(`cliente:${post.clienteId}`) : null
-  const designerEmail = (cliente?.squadPapeis?.designer || '').trim()
+  const designerEmail = produtorDaPauta(cliente?.squadPapeis, post.formato).email // Reels: editor de vídeo
   let designerNome = ''
   if (designerEmail) {
     const u = await redis.get<{ nome?: string }>(`usuario:${designerEmail}`).catch(() => null)
@@ -467,6 +472,7 @@ export async function entregarCopyDaPauta(postId: string, autor: string): Promis
       atualizadoEm: agora,
       atividades: [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: 'Copy enviada ao cliente — tarefa em revisão (a vaga fica livre até o cliente responder)', autor, criadoEm: agora }],
     }
+    Object.assign(entregue, relogioProducao(t as any, entregue as any, agora)) // entrega da copy conta para o Social Media (F4)
     await redis.set(`tarefa:${t.id}`, entregue)
     return true
   } catch { return false }

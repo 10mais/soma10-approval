@@ -15,7 +15,8 @@ import { dispararEvento } from '@/lib/automacoesEngine'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
 import { clientesAtivosIds } from '@/lib/cache'
-import { verificarLimite, corpoDaRecusa } from '@/lib/limiteDemandasServer'
+import { checarLimite } from '@/lib/limiteDemandasServer'
+import { relogioProducao } from '@/lib/limiteDemandas'
 
 function extrairMencoes(texto: string): string[] {
   const regex = /@([a-zA-ZÀ-ÿ\s]+?)(?=\s@|\s*$|[.,!?;:\])])/g
@@ -110,8 +111,12 @@ export async function POST(req: NextRequest) {
     comentarios: [],
   }
   // LIMITADOR DE DEMANDAS (lib/limiteDemandas): criar já em andamento é pescar.
-  const vereditoNova = await verificarLimite(null, tarefa as any, { email: (session.user as any).email })
-  if (!vereditoNova.ok) return NextResponse.json(corpoDaRecusa(vereditoNova), { status: 409 })
+  // Exceção do gestor (F4): `forcarLimite: { motivo }` passa do limite e fica no histórico.
+  const quemPede = { email: (session.user as any).email, role: (session.user as any).role, nome: session.user?.name || '' }
+  const limiteNova = await checarLimite(null, tarefa as any, quemPede, body.forcarLimite)
+  if (!limiteNova.ok) return NextResponse.json(limiteNova.recusa, { status: limiteNova.status || 409 })
+  if (limiteNova.excecao) tarefa.atividades = [...(tarefa.atividades || []), { id: uuid(), tipo: 'status', descricao: limiteNova.excecao, autor: quemPede.nome, criadoEm: agora }]
+  Object.assign(tarefa, relogioProducao(null, tarefa as any, agora))
   await redis.set(`tarefa:${tarefa.id}`, tarefa)
   await redis.sadd('tarefas', tarefa.id)
   // Pauta vinculada (origemPostId): fecha o vínculo bidirecional — a pauta passa
@@ -295,8 +300,20 @@ export async function PUT(req: NextRequest) {
   if (updates.status && updates.status !== tarefa.status) { delete atualizado.aguardandoMaterial; atualizado.filaDesde = agora }
   // LIMITADOR DE DEMANDAS (dono, 15/11): passar a ocupar uma vaga (pescar, voltar do "Aguardando
   // material", receber uma peça em andamento) só com vaga livre. Recusa antes de gravar qualquer coisa.
-  const veredito = await verificarLimite(tarefa as any, atualizado, { email: (session.user as any).email })
-  if (!veredito.ok) return NextResponse.json(corpoDaRecusa(veredito), { status: 409 })
+  // Exceção do gestor (F4): `forcarLimite: { motivo }` de quem pode passa e fica no histórico.
+  const quemPede = { email: (session.user as any).email, role: (session.user as any).role, nome: autor }
+  const limite = await checarLimite(tarefa as any, atualizado, quemPede, updates.forcarLimite)
+  if (!limite.ok) return NextResponse.json(limite.recusa, { status: limite.status || 409 })
+  if (limite.excecao) {
+    novasAtividades.push({ id: uuid(), tipo: 'status', descricao: limite.excecao, autor, criadoEm: agora })
+    const resp = String(atualizado.responsavelEmail || '').trim().toLowerCase()
+    if (resp && resp !== String(quemPede.email || '').toLowerCase()) {
+      await notificar(resp, 'geral', 'Peça acima do seu limite', `${autor} passou do seu limite de vagas para "${atualizado.titulo}": ${String(updates.forcarLimite?.motivo || '').trim().slice(0, 200)}`, undefined, id).catch(() => {})
+    }
+  }
+  // RELÓGIO DE PRODUÇÃO (F4, Carga da equipe): tempo ocupando vaga e a marca da entrega.
+  Object.assign(atualizado, relogioProducao(tarefa as any, atualizado, agora))
+  delete (atualizado as any).forcarLimite
 
   // PAUTA ↔ TAREFA: o vínculo fecha nos dois lados (post.tarefaId) e os anexos da
   // tarefa ficam espelhados na pauta (post.anexosTarefa) — o Studio/Planner mostram

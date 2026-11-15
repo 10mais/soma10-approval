@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useT, useArea, useIdioma } from '@/app/components/Idioma'
 import { TEXTOS } from '@/lib/i18n'
+import { BlocoSuasVagas } from '@/app/components/VagasDemandas'
 
 // HOME NOVA (Soma10 Noturno) — perfil agência.
 //
@@ -345,6 +346,9 @@ export default function DashboardHomeV2({ tema, meuEmail, onIr, onVerCliente }: 
               </div>
               </div>
             </section>
+
+            {/* SUAS VAGAS (limitador de demandas, F4): só para a própria pessoa, nunca no "ver como". */}
+            {!dados.vendoComo && <div className="v2-a d4" style={{ marginBottom: 16 }}><BlocoSuasVagas onAbrir={() => onIr('tarefas')} onMudou={() => carregar()} /></div>}
 
             <div className="v2-duas v2-a d4">
               <section id="v2-fila" className="v2-card" style={{ margin: 0 }}>

@@ -11,7 +11,9 @@ import type { PapelSquad, SquadPapeis } from './squadPapeis'
 
 export const PAPEL_POR_TIPO: Record<string, PapelSquad> = {
   // produção de arte / conteúdo
-  criativo: 'designer', carrossel: 'designer', reel: 'designer', story: 'designer', post: 'designer', video: 'designer', landing_page: 'designer',
+  criativo: 'designer', carrossel: 'designer', story: 'designer', post: 'designer', landing_page: 'designer',
+  // vídeo: editor de vídeo (papel novo, 15/11/2026); vago cai no designer
+  reel: 'editor_video', video: 'editor_video',
   // mídia paga
   campanha: 'gestor_trafego', ecommerce: 'gestor_trafego',
   // texto: quem escreve as copies (papel novo, 20/10/2026); vago cai no gestor de projetos
@@ -27,10 +29,19 @@ export function papelDoTipo(tipo?: string): PapelSquad {
 export function responsavelPorTipo(papeis: SquadPapeis | undefined | null, tipo?: string): string {
   if (!papeis) return ''
   const principal = papelDoTipo(tipo)
-  const cadeia: PapelSquad[] = [principal, 'gestor_projetos', 'gestor_operacao']
+  const cadeia: PapelSquad[] = [principal, ...(principal === 'editor_video' ? ['designer' as PapelSquad] : []), 'gestor_projetos', 'gestor_operacao']
   for (const p of cadeia) {
     const e = (papeis[p] || '').trim()
     if (e) return e
   }
   return ''
+}
+
+// QUEM PRODUZ A PEÇA DA PAUTA quando a copy é aprovada (lib/tarefasDaPauta): Reels vão para o
+// editor de vídeo; sem editor no squad (ou outro formato), para o designer. Sem nenhum dos dois,
+// vazio (a pauta fica sem responsável e o Estúdio avisa), como sempre foi com o designer.
+export function produtorDaPauta(papeis: SquadPapeis | undefined | null, formato?: string): { email: string; papel: PapelSquad } {
+  const editor = (papeis?.editor_video || '').trim()
+  if (formato === 'reel' && editor) return { email: editor, papel: 'editor_video' }
+  return { email: (papeis?.designer || '').trim(), papel: 'designer' }
 }

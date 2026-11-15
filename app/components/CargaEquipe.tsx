@@ -1,5 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import { useVagas, PontosVagas, type VagasPessoa } from '@/app/components/VagasDemandas'
+import { fmtDuracao } from '@/lib/limiteDemandas'
 
 type Usuario = { email: string; nome: string; role?: string; foto?: string }
 
@@ -9,6 +11,9 @@ function diaISO(d: Date) { return d.toISOString().slice(0, 10) }
 export default function CargaEquipe({ usuarios }: { usuarios: Usuario[] }) {
   const [tarefas, setTarefas] = useState<any[]>([])
   const [carregando, setCarregando] = useState(true)
+  // VAGAS E MÉTRICAS DE PRODUÇÃO (limitador de demandas, F4): de /api/limite-demandas.
+  const { dados: vagas } = useVagas()
+  const vagasPor = useMemo(() => new Map<string, VagasPessoa>((vagas?.porPessoa || []).map(p => [p.email.toLowerCase(), p])), [vagas])
   useEffect(() => { fetch('/api/tarefas').then(r => r.json()).then(d => { setTarefas(Array.isArray(d) ? d : []); setCarregando(false) }).catch(() => setCarregando(false)) }, [])
 
   const equipe = usuarios.filter(u => u.role !== 'cliente')
@@ -34,14 +39,15 @@ export default function CargaEquipe({ usuarios }: { usuarios: Usuario[] }) {
   return (
     <div style={{ maxWidth: 820 }}>
       <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>Carga da equipe</h2>
-      <p style={{ margin: '4px 0 18px', fontSize: 13, color: 'var(--v2-ink3)' }}>Tarefas abertas, atrasadas e horas dos últimos 7 dias por pessoa. Quem está sobrecarregado aparece destacado.</p>
+      <p style={{ margin: '4px 0 18px', fontSize: 13, color: 'var(--v2-ink3)' }}>Tarefas abertas, atrasadas e horas dos últimos 7 dias por pessoa. Quem está sobrecarregado aparece destacado.{vagas?.ligado ? ' Na produção criativa: as vagas em uso, as peças entregues nos últimos 7 dias e o tempo médio em produção (tempo corrido ocupando vaga, nas entregas dos últimos 30 dias, contado desde 15/11/2026).' : ''}</p>
 
       {carregando ? <p style={{ color: 'var(--v2-ink3)' }}>Carregando...</p> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {linhas.map(l => {
             const alerta = sobrecarregado(l)
+            const vp = vagas?.ligado ? vagasPor.get(l.u.email.toLowerCase()) : undefined
             return (
-              <div key={l.u.email} style={{ ...card, display: 'flex', alignItems: 'center', gap: 14, border: alerta ? '1.5px solid var(--v2-hot-bg)' : '1px solid transparent' }}>
+              <div key={l.u.email} style={{ ...card, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14, border: alerta ? '1.5px solid var(--v2-hot-bg)' : '1px solid transparent' }}>
                 <div style={{ width: 38, height: 38, borderRadius: '50%', overflow: 'hidden', background: 'var(--v2-surface2)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: 'var(--v2-ink3)' }}>
                   {l.u.foto ? <img src={l.u.foto} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (l.u.nome?.[0]?.toUpperCase() || '?')}
                 </div>
@@ -53,11 +59,23 @@ export default function CargaEquipe({ usuarios }: { usuarios: Usuario[] }) {
                   <div style={{ height: 6, borderRadius: 999, background: 'var(--v2-surface2)', overflow: 'hidden', margin: '6px 0 0', maxWidth: 320 }}>
                     <div style={{ width: `${Math.round((l.abertas / maxAbertas) * 100)}%`, height: '100%', background: alerta ? 'var(--v2-hot)' : 'var(--v2-info)', borderRadius: 999 }} />
                   </div>
+                  {vp && (
+                    <div title={vp.emAndamento.map(t => t.titulo).filter(Boolean).join(' · ') || undefined}
+                      style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 7, fontSize: 11.5, color: vp.acima || vp.livres === 0 ? 'var(--v2-hot)' : 'var(--v2-ink2)', fontWeight: 600 }}>
+                      <PontosVagas ocupadas={vp.ocupadas} limite={vp.limite} />
+                      <span>{vp.ocupadas} de {vp.limite} vagas</span>
+                      <span style={{ color: 'var(--v2-ink3)', fontWeight: 500 }}>
+                        {[`${vp.naFila} na fila`, vp.ajustesEsperando ? `${vp.ajustesEsperando} ajuste${vp.ajustesEsperando > 1 ? 's' : ''} esperando vaga` : '', vp.emRisco ? `${vp.emRisco} em risco de atraso` : ''].filter(Boolean).join(' · ')}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', gap: 18, flexShrink: 0, textAlign: 'center' }}>
                   <div><p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--v2-ink)' }}>{l.abertas}</p><p style={{ margin: 0, fontSize: 10.5, color: 'var(--v2-ink3)' }}>abertas</p></div>
                   <div><p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: l.atrasadas > 0 ? 'var(--v2-hot)' : 'var(--v2-ink)' }}>{l.atrasadas}</p><p style={{ margin: 0, fontSize: 10.5, color: 'var(--v2-ink3)' }}>atrasadas</p></div>
                   <div><p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--v2-ink)' }}>{fmtH(l.minSemana)}</p><p style={{ margin: 0, fontSize: 10.5, color: 'var(--v2-ink3)' }}>na semana</p></div>
+                  {vp && <div><p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--v2-ink)' }}>{vp.entregasSemana || 0}</p><p style={{ margin: 0, fontSize: 10.5, color: 'var(--v2-ink3)' }}>entregas 7 dias</p></div>}
+                  {vp && <div title={vp.amostraTempo ? `Média de ${vp.amostraTempo} entrega${vp.amostraTempo > 1 ? 's' : ''}` : 'Ainda sem entregas medidas'}><p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: 'var(--v2-ink)' }}>{fmtDuracao(vp.tempoMedioMs)}</p><p style={{ margin: 0, fontSize: 10.5, color: 'var(--v2-ink3)' }}>tempo médio</p></div>}
                 </div>
               </div>
             )

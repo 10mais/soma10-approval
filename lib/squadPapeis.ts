@@ -10,7 +10,7 @@
 // automaticamente ao salvar — estar no papel É estar no squad. Quem não ocupa
 // papel nenhum pode continuar na lista à mão.
 
-export type PapelSquad = 'designer' | 'gestor_projetos' | 'gestor_operacao' | 'social_media' | 'gestor_trafego'
+export type PapelSquad = 'designer' | 'editor_video' | 'gestor_projetos' | 'gestor_operacao' | 'social_media' | 'gestor_trafego'
 
 export const PAPEIS_SQUAD: { chave: PapelSquad; label: string; descricao: string }[] = [
   { chave: 'gestor_projetos', label: 'Gestor de projetos', descricao: 'Conduz o projeto e responde pelos prazos.' },
@@ -18,6 +18,8 @@ export const PAPEIS_SQUAD: { chave: PapelSquad; label: string; descricao: string
   // Dono, 20/10/2026: a tarefa do plano do mês (Estúdio) fica com quem escreve as copies.
   { chave: 'social_media', label: 'Social Media / Copywriter', descricao: 'Escreve as copies e conduz o plano de conteúdo do mês.' },
   { chave: 'designer', label: 'Designer', descricao: 'Produz criativos e peças da marca.' },
+  // Dono, 15/11/2026 (limitador de demandas): Reels e vídeos vão para o editor; vago, cai no designer.
+  { chave: 'editor_video', label: 'Editor de vídeo', descricao: 'Edita Reels e vídeos. Vago, os vídeos vão para o Designer.' },
   { chave: 'gestor_trafego', label: 'Gestor de tráfego', descricao: 'Cuida das campanhas pagas.' },
 ]
 
