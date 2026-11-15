@@ -7,6 +7,7 @@ import { ABAS_PERM, ACOES_PERM, podeAbaGranular, podeAcaoGranular } from '@/lib/
 // Abas escondidas de TODOS os papéis conforme o perfil da instância (nav + guarda).
 // A regra vive em lib/perfisInstanciaCatalogo.ts, com testes.
 import { abasOcultasDoPerfil as abasOcultas, PERFIS as PERFIS_INSTANCIA } from '@/lib/perfisInstanciaCatalogo'
+import { abasDoComercial, comercialVoltaAoCrm } from '@/lib/abasComercial'
 import { MODULOS, MODULOS_PAGOS, totalMensalModulos } from '@/lib/modulos'
 import { apareceNoPlanner, ordenarPorPostagem, estadoNaFila } from '@/lib/plannerFiltro'
 import FilaProgramacao from '@/app/components/FilaProgramacao'
@@ -590,6 +591,9 @@ function Dashboard() {
   const [permGranular, setPermGranular] = useState<any>({})
   // Perfil da instância (clinica/gestao/null=agência) — adapta home, CRM e Agenda
   const [perfilInstancia, setPerfilInstancia] = useState<string | null>(null)
+  // `null` acima vale tanto "agência" quanto "ainda não chegou": quem precisa
+  // separar os dois (a Agenda do Comercial, lib/abasComercial) olha este.
+  const [perfilLido, setPerfilLido] = useState(false)
   const perfilClinica = perfilInstancia === 'clinica'
   const perfilTurismo = perfilInstancia === 'turismo'
   const perfilCidadania = perfilInstancia === 'cidadania'
@@ -725,7 +729,7 @@ function Dashboard() {
       fetches.push(fetch('/api/permissoes-granular').then(r => r.json()).then(d => { if (d && !d.error) setPermGranular(d) }).catch(() => {}))
     }
     if (role !== 'cliente') {
-      fetches.push(fetch('/api/perfil-instancia').then(r => r.json()).then(d => { if (d && !d.error) setPerfilInstancia(d.perfil || null) }).catch(() => {}))
+      fetches.push(fetch('/api/perfil-instancia').then(r => r.json()).then(d => { if (d && !d.error) setPerfilInstancia(d.perfil || null) }).catch(() => {}).finally(() => setPerfilLido(true)))
     }
     if (role === 'admin') {
       fetches.push(fetch('/api/config').then(r => r.json()).then(setConfigAgencia))
@@ -884,11 +888,12 @@ function Dashboard() {
 
   // Vendas: papel isolado da operacao. So acessa CRM, Meu dia, Personal list,
   // Mensagens (direct) e a propria conta. Qualquer outra aba cai no CRM.
+  // Na CLINICA o Comercial tambem marca consulta: a Agenda entra (dono, 15/11).
+  // A regra mora em lib/abasComercial, com teste.
   const ehVendas = role === 'vendas'
-  const ABAS_VENDAS = ['crm', 'metas', 'conversao', 'lista-pessoal', 'mensagens', 'minha-conta']
   useEffect(() => {
-    if (ehVendas && !ABAS_VENDAS.includes(aba)) setAba('crm')
-  }, [ehVendas, aba])
+    if (ehVendas && comercialVoltaAoCrm(aba, perfilInstancia, perfilLido)) setAba('crm')
+  }, [ehVendas, aba, perfilInstancia, perfilLido])
 
   // Preview de papel (só admin): a NAV e as permissões passam a refletir o papel
   // escolhido; as capacidades reais do admin continuam (é só uma prévia visual).
@@ -993,14 +998,18 @@ function Dashboard() {
   // Mapa aba -> grupo (esconde e protege o acesso direto via sessionStorage)
   const ABA_GRUPO: Record<string, string> = { tarefas: 'producao', esteira: 'producao', studio: 'producao', fila: 'producao', agenda: 'producao', planner: 'producao', carga: 'producao', playbook: 'estrategia', campanhas: 'estrategia', modelos: 'estrategia', automacoes: 'estrategia', crm: 'crm', metas: 'crm', conversao: 'crm', frota: 'crm', viagens: 'crm', 'calendario-viagens': 'crm', reservas: 'crm', procedimentos: 'crm', processos: 'crm', rentabilidade: 'financeiro', clientes: 'clientes' }
   useEffect(() => {
-    // Modo clínica bloqueia o acesso direto às telas ocultas para qualquer papel
-    if (ocultas.includes(aba)) { setAba('home'); return }
+    // Modo clínica bloqueia o acesso direto às telas ocultas para qualquer papel.
+    // Espera o perfil chegar (perfilLido): antes dele, `ocultas` é a lista da
+    // agência, que esconde a Agenda — recarregar a página com a Agenda aberta na
+    // clínica jogava todo mundo para o Início (e a Comercial, de lá, para o CRM).
+    // O papel cliente não busca o perfil, então segue checando na hora, como antes.
+    if ((perfilLido || role === 'cliente') && ocultas.includes(aba)) { setAba('home'); return }
     if (role !== 'gerente' && role !== 'usuario') return
     const g = ABA_GRUPO[aba]
     if (g && !podeGrupo(g)) { setAba('home'); return }
     // Camada granular: aba desligada para o papel/usuário também bloqueia o acesso direto
     if (ABAS_PERM.some(a => a.key === aba) && !podeAbaDash(aba)) setAba('home')
-  }, [role, aba, permPapel, permGranular, perfilInstancia])
+  }, [role, aba, permPapel, permGranular, perfilInstancia, perfilLido])
   // Config por papel (matriz na tela Colaboradores): salva o nível alterado
   function setPermPapelNivel(papel: 'gerente' | 'usuario', novoPerm: any) {
     setPermPapel(p => ({ ...p, [papel]: novoPerm }))
@@ -2206,6 +2215,7 @@ function Dashboard() {
             <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {!recolhida && <span style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 6px', padding: '0 4px' }}>{tr('dash.vendas')}</span>}
               <NavBtn chave="crm" label="CRM" />
+              {abasDoComercial(perfilInstancia).includes('agenda') && <NavBtn chave="agenda" label={tr('nav.agenda')} />}
               {perfilClinica && <NavBtn chave="metas" label="Metas" />}
               <NavBtn chave="conversao" label="Conversão & Retenção" />
               <NavBtn chave="meu-card" label="Meu perfil" onClick={() => router.push('/equipe/me')} />
@@ -3612,7 +3622,9 @@ function Dashboard() {
             usuarios={usuarios.filter((u: any) => u.role !== 'cliente').map((u: any) => ({ nome: u.nome, email: u.email, areaSaude: u.areaSaude, corAgenda: u.corAgenda, recebeAgenda: u.recebeAgenda, role: u.role }))}
             meuEmail={(session?.user as any)?.email || ''}
             perfilClinica={perfilClinica}
-            podeEditar={podeNivelDash('producao', 'editar')}
+            // Comercial da clínica marca, remarca e cancela consulta (lib/abasComercial).
+            // O papel dele não passa pela matriz de módulos, por isso a exceção aqui.
+            podeEditar={(ehVendas && abasDoComercial(perfilInstancia).includes('agenda')) || podeNivelDash('producao', 'editar')}
           />
         )}
 

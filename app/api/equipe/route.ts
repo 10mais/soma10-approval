@@ -32,6 +32,12 @@ export async function GET(req: NextRequest) {
   // clientes sob responsabilidade. Continua sem salário, custo, senha e permissões.
   const equipe = usuarios.map(u => ({
     id: u.id, nome: u.nome, email: u.email, role: u.role, cargo: u.cargo || '', funcaoVendas: u.funcaoVendas, lojaId: u.lojaId, foto: u.foto || '',
+    // Agenda da clínica: quem ATENDE e a cor de cada profissional. O Comercial
+    // (que recebe este roster, não /api/usuarios) marca consulta desde 15/11 e,
+    // sem estes campos, a Agenda dele listava a equipe inteira como profissional.
+    ...(u.areaSaude ? { areaSaude: u.areaSaude } : {}),
+    ...(u.corAgenda ? { corAgenda: u.corAgenda } : {}),
+    ...(typeof u.recebeAgenda === 'boolean' ? { recebeAgenda: u.recebeAgenda } : {}),
     telefone: u.telefone || '', bio: u.bio || '',
     atribuicoes: Array.isArray(u.atribuicoes) ? u.atribuicoes : [],
     responsabilidades: Array.isArray(u.responsabilidades) ? u.responsabilidades : [],
