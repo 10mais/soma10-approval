@@ -549,3 +549,22 @@ export function removerPiso(layout: LayoutVeiculo, pisoId: string): LayoutVeicul
   if (piso.assentos.length) return null // teria poltrona para descartar
   return { ...layout, pisos: layout.pisos.filter(p => p.id !== pisoId) }
 }
+
+// ORDEM DAS POLTRONAS — "01" antes de "10", e "10A" logo depois de "10".
+//
+// O número é TEXTO, copiado do croqui de fábrica: tem zero à esquerda ("01") e
+// pode ter letra ("10A" num leito, "L1" no piso de cima). A ordenação do
+// manifesto fazia `Number(poltrona)` cru, e "10A" virava NaN — o passageiro
+// caía em posição imprevisível na lista que vai para o DAER.
+//
+// Regra: compara o NÚMERO primeiro, depois o que vier depois dele, em ordem
+// alfabética. Poltrona sem dígito nenhum vai para o fim, ordenada por texto.
+export function compararPoltrona(a: string, b: string): number {
+  const parte = (v: string) => {
+    const m = String(v || '').trim().match(/^(\d*)(.*)$/)
+    return { num: m && m[1] ? parseInt(m[1], 10) : Number.POSITIVE_INFINITY, resto: (m ? m[2] : '').toLowerCase() }
+  }
+  const x = parte(a), y = parte(b)
+  if (x.num !== y.num) return x.num - y.num
+  return x.resto.localeCompare(y.resto, 'pt')
+}

@@ -8,8 +8,7 @@ import {
   adicionarElemento, limparCelula, alternarCorredor, definirColunas, adicionarPiso, removerPiso,
   normalizarLayout, ehLayoutAntigo,
   deslocarPoltrona, zerarDesloc, deslocPoltrona, DESLOC_MAX,
-  type LayoutVeiculo,
-} from '@/lib/layoutVeiculo'
+  type LayoutVeiculo, compararPoltrona } from '@/lib/layoutVeiculo'
 
 // O croqui é a base das reservas (assento nominal). Número duplicado ou poltrona
 // inexistente quebra a unicidade de poltrona. E o croqui é DOCUMENTO: a numeração
@@ -425,5 +424,24 @@ describe('rotuloPoltrona e elementoInfo', () => {
     expect(elementoInfo({ tipo: undefined }).tipo).toBe('amenidade')
     expect(ESTRUTURA_PALETA.map(e => e.tipo)).toContain('bar')
     expect(ESTRUTURA_PALETA.map(e => e.tipo)).toContain('banheiro')
+  })
+})
+
+describe('ordem das poltronas na lista oficial', () => {
+  it('"01" vem antes de "10" — zero à esquerda não manda', () => {
+    expect(['10', '01', '02'].sort(compararPoltrona)).toEqual(['01', '02', '10'])
+  })
+
+  it('"10A" fica logo depois de "10", sem virar NaN', () => {
+    expect(['10A', '09', '10', '10B'].sort(compararPoltrona)).toEqual(['09', '10', '10A', '10B'])
+  })
+
+  it('poltrona do leito de cima ("L1") vai para o fim, em ordem de texto', () => {
+    expect(['L2', '03', 'L1'].sort(compararPoltrona)).toEqual(['03', 'L1', 'L2'])
+  })
+
+  it('espaço sobrando e caixa da letra não mudam a ordem', () => {
+    expect(compararPoltrona(' 07 ', '07')).toBe(0)
+    expect(compararPoltrona('10a', '10A')).toBe(0)
   })
 })

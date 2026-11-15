@@ -60,10 +60,13 @@ export function periodos(viagens: ViagemCal[]): Periodo[] {
 }
 
 // ── Grade do mês ─────────────────────────────────────────────────────────────
-// Semana começa na SEGUNDA (padrão brasileiro de operação; a Agenda já faz assim).
+// Semana começa no DOMINGO (pedido do dono, 15/11: "dia no calendário começa no
+// domingo"). A operadora vende fim de semana: sábado e domingo da mesma saída
+// precisam aparecer juntos, e com a semana começando na segunda eles caíam em
+// linhas diferentes da grade. A Agenda da clínica segue com a semana dela.
 export function inicioDaSemana(ymd: string): string {
   const d = paraDate(ymd)
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  d.setDate(d.getDate() - d.getDay()) // getDay(): 0 = domingo
   return paraYmd(d)
 }
 

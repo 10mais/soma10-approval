@@ -32,10 +32,10 @@ describe('periodoDaViagem', () => {
 })
 
 describe('semanas', () => {
-  it('a semana começa na SEGUNDA', () => {
-    expect(inicioDaSemana('2026-07-29')).toBe('2026-07-27') // quarta → segunda
-    expect(inicioDaSemana('2026-07-27')).toBe('2026-07-27') // segunda → ela mesma
-    expect(inicioDaSemana('2026-08-02')).toBe('2026-07-27') // domingo → segunda anterior
+  it('a semana começa no DOMINGO', () => {
+    expect(inicioDaSemana('2026-07-29')).toBe('2026-07-26') // quarta → domingo
+    expect(inicioDaSemana('2026-07-26')).toBe('2026-07-26') // domingo → ele mesmo
+    expect(inicioDaSemana('2026-07-27')).toBe('2026-07-26') // segunda → domingo anterior
   })
 
   it('semanasDoMes cobre o mês inteiro, com 7 dias por linha', () => {
@@ -47,45 +47,46 @@ describe('semanas', () => {
 
   it('inclui os dias vizinhos que completam a primeira e a última semana', () => {
     const s = semanasDoMes(2026, 6) // 01/07/2026 é quarta
-    expect(s[0][0]).toBe('2026-06-29') // segunda de junho
-    expect(s[s.length - 1]).toContain('2026-08-02') // domingo de agosto
+    expect(s[0][0]).toBe('2026-06-28') // domingo de junho
+    expect(s[s.length - 1]).toContain('2026-08-01') // sábado de agosto
   })
 
-  it('mês que começa na segunda não ganha semana fantasma antes', () => {
-    const s = semanasDoMes(2026, 5) // junho/2026 começa numa segunda
-    expect(s[0][0]).toBe('2026-06-01')
+  it('mês que começa no domingo não ganha semana fantasma antes', () => {
+    const s = semanasDoMes(2026, 1) // fevereiro/2026 começa num domingo
+    expect(s[0][0]).toBe('2026-02-01')
   })
 })
 
 describe('segmentosDoMes — a barra que atravessa', () => {
   it('viagem de uma semana só vira UM segmento', () => {
+    // 28/07 (ter) a 30/07 (qui), na semana 26/07–01/08: terça é a coluna 2.
     const s = segmentosDoMes([v('1', '2026-07-28', '2026-07-30')], 2026, 6)
     expect(s).toHaveLength(1)
-    expect(s[0]).toMatchObject({ col: 1, span: 3, comecaAqui: true, terminaAqui: true })
+    expect(s[0]).toMatchObject({ col: 2, span: 3, comecaAqui: true, terminaAqui: true })
   })
 
   it('viagem que CRUZA a virada de semana vira DOIS segmentos', () => {
-    // 15/07 (qua) a 21/07 (ter): semana 13-19 e semana 20-26
+    // 15/07 (qua) a 21/07 (ter): semana 12-18 e semana 19-25
     const s = segmentosDoMes([v('1', '2026-07-15', '2026-07-21')], 2026, 6)
     expect(s).toHaveLength(2)
-    expect(s[0]).toMatchObject({ col: 2, span: 5, comecaAqui: true, terminaAqui: false })
-    expect(s[1]).toMatchObject({ col: 0, span: 2, comecaAqui: false, terminaAqui: true })
-    // 27/07 (seg) a 02/08 (dom) = a semana inteira, um segmento só
-    expect(segmentosDoMes([v('1', '2026-07-27', '2026-08-02')], 2026, 6)).toHaveLength(1)
+    expect(s[0]).toMatchObject({ col: 3, span: 4, comecaAqui: true, terminaAqui: false })
+    expect(s[1]).toMatchObject({ col: 0, span: 3, comecaAqui: false, terminaAqui: true })
+    // 26/07 (dom) a 01/08 (sáb) = a semana inteira, um segmento só
+    expect(segmentosDoMes([v('1', '2026-07-26', '2026-08-01')], 2026, 6)).toHaveLength(1)
   })
 
   it('a grade do mês para na última semana dele — o resto é problema de agosto', () => {
-    // 30/07 (qui) a 04/08 (ter). A grade de julho vai até 02/08 (dom); a semana de
-    // 03/08 pertence a agosto. Julho mostra o pedaço até 02/08, sem "terminaAqui".
+    // 30/07 (qui) a 04/08 (ter). A grade de julho vai até 01/08 (sáb); a semana de
+    // 02/08 pertence a agosto. Julho mostra o pedaço até 01/08, sem "terminaAqui".
     const s = segmentosDoMes([v('1', '2026-07-30', '2026-08-04')], 2026, 6)
     expect(s).toHaveLength(1)
-    expect(s[0]).toMatchObject({ col: 3, span: 4, comecaAqui: true, terminaAqui: false })
+    expect(s[0]).toMatchObject({ col: 4, span: 3, comecaAqui: true, terminaAqui: false })
   })
 
   it('viagem do mês ANTERIOR aparece recortada, sem "comecaAqui"', () => {
-    // 28/06 (dom) a 02/07: a grade de julho começa na segunda 29/06, então o
+    // 25/06 (qui) a 02/07: a grade de julho começa no domingo 28/06, então o
     // começo real fica fora — a barra entra pela coluna 0, cortada.
-    const s = segmentosDoMes([v('1', '2026-06-28', '2026-07-02')], 2026, 6)
+    const s = segmentosDoMes([v('1', '2026-06-25', '2026-07-02')], 2026, 6)
     expect(s).toHaveLength(1)
     expect(s[0]).toMatchObject({ col: 0, comecaAqui: false, terminaAqui: true })
   })

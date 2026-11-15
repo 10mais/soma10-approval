@@ -18,7 +18,8 @@ import { hojeYmd, fmtDataBR, fmtDiaMes, somarDias, diasEntre } from '@/lib/datas
 type Viagem = ViagemCal & { veiculoId?: string; valorPacote?: number; valorFechado?: number; contratante?: string }
 
 const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
-const DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+// Ordem casada com lib/calendarioViagens (semana começa no domingo).
+const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
 // Mesmas cores de status da tela de Viagens — o dono lê o mesmo significado nas duas.
 const STATUS: Record<string, { label: string; cor: string; bg: string; borda: string }> = {

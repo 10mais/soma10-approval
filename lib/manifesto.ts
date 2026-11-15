@@ -8,6 +8,8 @@
 // Nacional  → nome completo + nascimento + um documento (CPF ou RG).
 // Internacional → o de cima + passaporte com validade + nacionalidade.
 
+import { compararPoltrona } from './layoutVeiculo'
+
 export type PassageiroLite = {
   nome?: string
   cpf?: string
@@ -115,7 +117,7 @@ export function linhasManifesto(viagem: ViagemManifesto, reservas: ReservaLite[]
     }
   }
   return linhas.sort((a, b) => {
-    if (a.poltrona && b.poltrona) return Number(a.poltrona) - Number(b.poltrona) || a.nome.localeCompare(b.nome, 'pt')
+    if (a.poltrona && b.poltrona) return compararPoltrona(a.poltrona, b.poltrona) || a.nome.localeCompare(b.nome, 'pt')
     if (a.poltrona) return -1
     if (b.poltrona) return 1
     return a.nome.localeCompare(b.nome, 'pt')
