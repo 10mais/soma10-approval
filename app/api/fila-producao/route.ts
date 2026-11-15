@@ -6,6 +6,8 @@ import { getClientesRaw } from '@/lib/cache'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { tarefaDaPauta } from '@/lib/producaoVinculo'
 import { tituloSubtarefa } from '@/lib/esteiraFluxo'
+import { statusAberto } from '@/lib/statusTarefa'
+import { verificarLimite, corpoDaRecusa } from '@/lib/limiteDemandasServer'
 import { v4 as uuid } from 'uuid'
 import {
   colunaDoCriativo, desdeQuandoNaColuna, alertaDoPrazo, prontoParaEnviar, ordenarFila, podeMoverCartao,
@@ -51,7 +53,8 @@ export async function GET() {
     const miniatura = (p as any).thumbnail || imagens.find(ehImagem) || (imagens[0] ? (p as any).capasVideo?.[imagens[0]] : undefined)
     // Só se mexe com a tarefa do designer aberta e numa coluna que é dele (o ajuste pedido
     // também é: ele começa a refazer). O resto anda sozinho pelo estado da pauta.
-    const aberta = !!t && ['a_fazer', 'em_andamento'].includes(t.status)
+    // Em ajuste (13/11) também é peça do designer; Em revisão já foi entregue.
+    const aberta = !!t && ['a_fazer', 'em_andamento', 'em_ajuste'].includes(t.status)
     const colunaDoDesigner = !!COLUNAS_FILA.find(c => c.chave === coluna)?.doDesigner || coluna === 'ajuste_pedido'
     const alerta = alertaDoPrazo(coluna, t?.prazo, agora)
     itens.push({
@@ -84,7 +87,7 @@ export async function PUT(req: NextRequest) {
   const t = await redis.get<Tarefa>(`tarefa:${String(corpo?.tarefaId || '')}`)
   if (!t || (t as any).excluidoEm) return NextResponse.json({ error: 'Tarefa não encontrada.' }, { status: 404 })
   if (!t.origemPostId) return NextResponse.json({ error: 'Esta tarefa não é de uma pauta do Estúdio.' }, { status: 400 })
-  if (!['a_fazer', 'em_andamento'].includes(t.status)) return NextResponse.json({ error: 'Esta peça já foi entregue. Para mexer de novo, peça um ajuste na revisão.' }, { status: 400 })
+  if (!statusAberto(t.status) || t.status === 'em_revisao') return NextResponse.json({ error: 'Esta peça já foi entregue. Para mexer de novo, peça um ajuste na revisão.' }, { status: 400 })
   const cliente = t.clienteId ? await redis.get<Cliente>(`cliente:${t.clienteId}`) : null
   if (!podeMoverCartao({ email: String(session.user?.email || ''), role }, t.responsavelEmail, gestoresDo(cliente))) {
     return NextResponse.json({ error: 'Só o designer da peça, os gestores do squad, gerente e admin mudam o status.' }, { status: 403 })
@@ -94,12 +97,17 @@ export async function PUT(req: NextRequest) {
   const agora = new Date().toISOString()
   const autor = session.user?.name || session.user?.email || ''
   const atualizado: any = { ...t, atualizadoEm: agora, filaDesde: agora }
+  // Peça em ajuste (13/11) continua Em ajuste ao voltar à produção; na fila, espera vaga.
+  const emAjuste = t.status === 'em_ajuste' || !!t.ajustePedidoEm
   if (para === 'aguardando_material') {
     atualizado.aguardandoMaterial = { motivo: motivo.slice(0, 300), desde: agora, por: autor }
   } else {
     delete atualizado.aguardandoMaterial
-    atualizado.status = para === 'em_producao' ? 'em_andamento' : 'a_fazer'
+    atualizado.status = para === 'em_producao' ? (emAjuste ? 'em_ajuste' : 'em_andamento') : 'a_fazer'
   }
+  // LIMITADOR DE DEMANDAS (lib/limiteDemandas): ir para Em produção é pescar e ocupa uma vaga.
+  const veredito = await verificarLimite(t as any, atualizado, { email: String(session.user?.email || '') })
+  if (!veredito.ok) return NextResponse.json(corpoDaRecusa(veredito), { status: 409 })
   atualizado.atividades = [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: `Fila de produção: ${ROTULO[para]}${para === 'aguardando_material' ? ` — ${motivo.slice(0, 300)}` : ''}`, autor, criadoEm: agora }]
   await redis.set(`tarefa:${t.id}`, atualizado)
   return NextResponse.json({ ok: true })

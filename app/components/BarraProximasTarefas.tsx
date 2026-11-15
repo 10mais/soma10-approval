@@ -16,6 +16,7 @@ import { useT } from '@/app/components/Idioma'
 import { fmtDiaDoInstante } from '@/lib/datas'
 import { abrirTarefa } from '@/lib/abrirTarefa'
 import type { ItemProximo, ProximasDaPessoa } from '@/lib/proximasTarefas'
+import { useVagas, pescarTarefa, PontosVagas, type ItemVaga } from '@/app/components/VagasDemandas'
 
 const CHAVE_RECOLHIDA = 'soma10-barra-tarefas-recolhida'
 const EVENTO_MUDOU = 'soma-tarefas-mudaram'
@@ -60,6 +61,9 @@ function Barra({ onAbrir, tema, estilo, compacta }: Props) {
   const [painel, setPainel] = useState<{ top: number; left: number; width: number } | null>(null)
   const caixa = useRef<HTMLDivElement>(null)
   const pilula = useRef<HTMLDivElement>(null)
+  // LIMITADOR DE DEMANDAS (15/11): as vagas da pessoa ao lado das próximas tarefas, e o "Pescar".
+  const { dados: vagas } = useVagas(daEquipe)
+  const [pescando, setPescando] = useState('')
 
   useEffect(() => { try { setRecolhida(localStorage.getItem(CHAVE_RECOLHIDA) === '1') } catch { /* sem storage: aberta */ } }, [])
 
@@ -102,6 +106,14 @@ function Barra({ onAbrir, tema, estilo, compacta }: Props) {
   }, [aberto])
 
   if (!daEquipe || !dados) return null
+  const minhas = vagas?.ligado ? vagas.minhas : null
+  const mostrarVagas = !!minhas && (minhas.ocupadas > 0 || minhas.fila.length > 0)
+  async function pescar(t: ItemVaga) {
+    if (!minhas || pescando) return
+    setPescando(t.id)
+    await pescarTarefa(t, minhas.fila)
+    setPescando('')
+  }
 
   const escopo = tema ? { className: 'soma10-v2 soma10-no-invert', 'data-theme': tema === 'escuro' ? 'dark' : 'light' } : {}
   const vazia = dados.total === 0
@@ -149,6 +161,12 @@ function Barra({ onAbrir, tema, estilo, compacta }: Props) {
         }}>
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={dados.atrasadas ? 'var(--v2-hot)' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flexShrink: 0 }}><path d={ICONE} /></svg>
         {comRotulo && <span style={{ fontSize: 12.5, fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0 }}>{tr('barra.proximas')}</span>}
+        {mostrarVagas && minhas && (
+          <span title={`Suas vagas: ${minhas.ocupadas} de ${minhas.limite} demandas em andamento`} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0, padding: '3px 8px', borderRadius: 999, background: minhas.livres === 0 ? 'var(--v2-hot-bg)' : 'var(--v2-surface2)' }}>
+            <PontosVagas ocupadas={minhas.ocupadas} limite={minhas.limite} tamanho={7} />
+            {largura >= 420 && <span style={{ fontSize: 11, fontWeight: 800, color: minhas.livres === 0 ? 'var(--v2-hot)' : 'var(--v2-ink2)' }}>{minhas.ocupadas}/{minhas.limite}</span>}
+          </span>
+        )}
         {vazia && <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--v2-ink3)', whiteSpace: 'nowrap' }}>{tr('barra.nada')}</span>}
         {dados.itens.slice(0, nChips).map(i => (
           <button key={i.id} type="button" onClick={e => { e.stopPropagation(); abrir(i.id) }} title={[i.ajuste ? tr('barra.ajuste') : '', i.titulo, contexto(i)].filter(Boolean).join(' — ')}
@@ -183,6 +201,32 @@ function Barra({ onAbrir, tema, estilo, compacta }: Props) {
               <span style={{ fontSize: 14, fontWeight: 800 }}>{tr('barra.proximas')}</span>
               {!vazia && <span style={{ fontSize: 11.5, color: 'var(--v2-ink3)', fontWeight: 600 }}>{tr('barra.de-total', { n: dados.itens.length, total: dados.total })}</span>}
             </div>
+            {mostrarVagas && minhas && (
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--v2-rule)', background: 'var(--v2-surface1, var(--v2-surface))' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 800 }}>
+                  <span>Suas vagas</span>
+                  <PontosVagas ocupadas={minhas.ocupadas} limite={minhas.limite} />
+                  <span style={{ fontWeight: 600, color: 'var(--v2-ink3)' }}>{minhas.ocupadas} de {minhas.limite} em andamento</span>
+                </div>
+                {minhas.fila.length > 0 && (minhas.livres > 0
+                  ? <div style={{ marginTop: 8, display: 'grid', gap: 6 }}>
+                      {minhas.fila.slice(0, 3).map((t, n) => (
+                        <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {t.ajuste && <strong style={{ color: 'var(--v2-hot)' }}>Ajuste · </strong>}{t.titulo}{t.clienteNome ? <span style={{ color: 'var(--v2-ink3)' }}> · {t.clienteNome}</span> : null}
+                          </span>
+                          <button type="button" onClick={() => pescar(t)} disabled={!!pescando} title={n === 0 ? 'Sugerida: a primeira da sua fila' : 'Pescar esta peça'}
+                            style={{ flexShrink: 0, padding: '5px 11px', borderRadius: 999, border: n === 0 ? 'none' : '1px solid var(--v2-rule)', background: n === 0 ? 'var(--v2-amber-on)' : 'var(--v2-surface)', color: n === 0 ? '#17150E' : 'var(--v2-ink)', fontSize: 11.5, fontWeight: 800, cursor: pescando ? 'wait' : 'pointer', fontFamily: 'inherit' }}>
+                            {pescando === t.id ? 'Pescando...' : 'Pescar'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  : <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>
+                      {minhas.fila.length} na sua fila. Entregue, devolva ou marque "Aguardando material" em uma das que estão em andamento para pescar a próxima.
+                    </p>)}
+              </div>
+            )}
             {vazia
               ? <p style={{ margin: 0, padding: '26px 16px', textAlign: 'center', fontSize: 13, color: 'var(--v2-ink3)' }}>{tr('barra.nada')}</p>
               : dados.itens.map(i => (

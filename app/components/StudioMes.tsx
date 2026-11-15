@@ -19,6 +19,9 @@ import ProducaoBoard from './ProducaoBoard'
 import { fecharFora } from '@/lib/fecharModal'
 import { useCountUp } from '@/lib/useCountUp'
 import { useT, useArea } from '@/app/components/Idioma'
+import { useSession } from 'next-auth/react'
+import { useVagas, pescarTarefa } from '@/app/components/VagasDemandas'
+import { filaDe, naFila as naFilaDeProducao } from '@/lib/limiteDemandas'
 
 // ===== Studio (Fase 1) — tabela viva do mês por cliente =====
 // Substitui o kanban de 6 colunas por uma linha por pauta, editável inline.
@@ -522,6 +525,36 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
   const carregarTarefasVinc = () => fetch('/api/tarefas').then(r => r.ok ? r.json() : []).then(d => setTarefasVinc(Array.isArray(d) ? d : [])).catch(() => {})
   // Recarrega ao trocar de plano: a tarefa do plano nasce junto com ele (servidor).
   useEffect(() => { carregarTarefasVinc() }, [planoSel])
+  // LIMITADOR DE DEMANDAS (15/11): o Estúdio não empurra trabalho. Cada pauta diz em que pé está a
+  // tarefa dela ("Na fila de Lucas · 4º", "Em produção com Lucas", "Esperando vaga (Lucas 3/3)") e,
+  // para quem é a peça, "Pescar e começar".
+  const { data: sessaoStudio } = useSession()
+  const meuEmailStudio = String(sessaoStudio?.user?.email || '').toLowerCase()
+  const { dados: vagasTime } = useVagas()
+  const [pescandoPauta, setPescandoPauta] = useState('')
+  function situacaoNaFila(t: any): { texto: string; podePescar: boolean } | null {
+    if (!vagasTime?.ligado || !t?.responsavelEmail) return null
+    const email = String(t.responsavelEmail).toLowerCase()
+    const nome = String(t.responsavelNome || email.split('@')[0]).split(' ')[0]
+    if (t.status === 'em_andamento' || t.status === 'em_ajuste') return t.aguardandoMaterial ? null : { texto: `Em produção com ${nome}`, podePescar: false }
+    if (!naFilaDeProducao(t)) return null
+    const pessoa = vagasTime.porPessoa.find(x => x.email.toLowerCase() === email)
+    const souEu = email === meuEmailStudio
+    const livres = souEu ? vagasTime.minhas.livres : pessoa ? pessoa.livres : 1
+    if (livres === 0) {
+      const v = souEu ? vagasTime.minhas : pessoa
+      return { texto: `Esperando vaga (${nome} ${v?.ocupadas ?? 0}/${v?.limite ?? 0})`, podePescar: false }
+    }
+    const pos = filaDe(email, tarefasVinc as any).findIndex(x => x.id === t.id) + 1
+    return { texto: `Na fila de ${nome}${pos > 0 ? ` · ${pos}º` : ''}`, podePescar: souEu }
+  }
+  async function pescarDaPauta(t: any) {
+    if (pescandoPauta) return
+    setPescandoPauta(t.id)
+    const ok = await pescarTarefa({ id: t.id, titulo: t.titulo, status: t.status, prioridade: t.prioridade, ajuste: !!t.ajustePedidoEm }, (vagasTime?.minhas.fila || []))
+    setPescandoPauta('')
+    if (ok) carregarTarefasVinc()
+  }
   const [criandoTarefaPlano, setCriandoTarefaPlano] = useState(false)
   const [trazendoTarefas, setTrazendoTarefas] = useState(false)
   async function trazerTarefasParaOPlano(maeTitulo: string, soltas: any[]) {
@@ -1702,11 +1735,17 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                         {/* A TAREFA DA PAUTA (dono, 13/11/2026): toda pauta nasce com a sua tarefa; aqui se vê
                             com quem está e em que fase, e um clique abre a tarefa. "Criar tarefa desta
                             pauta" deixou de existir. */}
-                        {(() => { const t = tarefaDaPauta(p as any, tarefasVinc); if (!t) return null; const aberta = tarefaAberta(t); const fase = (t as any).fasePauta === 'copy' ? ' (copy)' : (t as any).fasePauta === 'criativo' ? ' (criativo)' : ''; return (
+                        {(() => { const t = tarefaDaPauta(p as any, tarefasVinc); if (!t) return null; const aberta = tarefaAberta(t); const fase = (t as any).fasePauta === 'copy' ? ' (copy)' : (t as any).fasePauta === 'criativo' ? ' (criativo)' : ''; const sit = situacaoNaFila(t); return (<>
                           <button type="button" className="st-btn" onClick={() => abrirTarefa(t.id, u => router.push(u))} title={`Abrir a tarefa: ${t.titulo || ''}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', background: aberta ? 'var(--v2-amber-bg)' : 'var(--v2-ok-bg)', color: aberta ? 'var(--v2-amber)' : 'var(--v2-ok)' }}>
-                            <span style={{ width: 6, height: 6, borderRadius: 999, background: 'currentColor' }} />Tarefa{fase} · {STATUS_TAREFA_LABEL[t.status || ''] || t.status}{t.responsavelNome ? ` · ${t.responsavelNome}` : ''} · Abrir
+                            <span style={{ width: 6, height: 6, borderRadius: 999, background: 'currentColor' }} />Tarefa{fase} · {sit ? sit.texto : `${STATUS_TAREFA_LABEL[t.status || ''] || t.status}${t.responsavelNome ? ` · ${t.responsavelNome}` : ''}`} · Abrir
                           </button>
-                        ) })()}
+                          {sit?.podePescar && (
+                            <button type="button" className="st-btn" onClick={() => pescarDaPauta(t)} disabled={!!pescandoPauta} title="Pescar: a tarefa vai para Em andamento com você e ocupa uma das suas vagas"
+                              style={{ padding: '6px 12px', borderRadius: 999, fontSize: 11, fontWeight: 800, border: 'none', cursor: pescandoPauta ? 'wait' : 'pointer', fontFamily: 'inherit', background: 'var(--v2-amber-on)', color: '#17150E' }}>
+                              {pescandoPauta === t.id ? 'Pescando...' : 'Pescar e começar'}
+                            </button>
+                          )}
+                        </>) })()}
                         {/* RODADA DE AJUSTE: versão nova do designer esperando a revisão da equipe. O cliente
                             ainda vê a anterior; aprovar aqui troca a arte e reenvia (lib/rodadaAjuste). */}
                         {(p as any).versaoNova && emRodadaDeAjuste(p) && (() => {

@@ -211,6 +211,8 @@ async function decidir(req: NextRequest): Promise<NextResponse> {
     ;(post as any).etapaDesde = agoraCopy; (post as any).aguardandoDesde = undefined
     ;(post as any).atualizadoEm = agoraCopy
     await redis.set(`post:${id}`, post)
+    // Limitador (15/11): a tarefa da copy (entregue ao enviar) volta ao Social Media.
+    try { const { reabrirTarefaDaPauta } = await import('@/lib/tarefasDaPauta'); await reabrirTarefaDaPauta(id, rejectReason || '', clienteNomeCopy) } catch { /* segue */ }
     await notificarDono((post as any).criadoPor, 'geral', `${type === 'rejected' ? 'Copy recusada' : 'Ajuste de copy'} — ${clienteNomeCopy}`, `${clienteNomeCopy} ${type === 'rejected' ? 'recusou a copy' : 'pediu ajuste na copy'}: "${rejectReason || 'sem comentário'}".`, id)
     return NextResponse.json({ ok: true })
   }

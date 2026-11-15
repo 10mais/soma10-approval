@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { toast } from '@/lib/toast'
 import { useT } from '@/app/components/Idioma'
+import LimiteDemandasConfig from '@/app/components/LimiteDemandasConfig'
 
 type Op = { slaAprovacaoHoras: number; lixeiraDias: number; saudeDias: number; prioridadePadrao: 'baixa' | 'media' | 'alta' }
 const PADRAO: Op = { slaAprovacaoHoras: 24, lixeiraDias: 30, saudeDias: 60, prioridadePadrao: 'media' }
@@ -50,6 +51,7 @@ export default function OperacionalConfig() {
         </div>
       </div>
       <button onClick={salvar} disabled={salvando} style={{ marginTop: 16, padding: '10px 20px', background: 'var(--v2-amber-on)', color: '#17150E', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{salvando ? 'Salvando...' : 'Salvar operacional'}</button>
+      <LimiteDemandasConfig />
     </div>
   )
 }

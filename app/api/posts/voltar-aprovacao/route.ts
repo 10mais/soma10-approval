@@ -45,6 +45,10 @@ export async function POST(req: NextRequest) {
   else if (etapa === 'aprovacao_criativo') { atualizado.etapa = 'criativo'; atualizado.etapaDesde = agora }
   await redis.set(`post:${id}`, atualizado)
   await redis.srem('agendados', id) // segurança: garante fora da fila de publicação
+  // Limitador (15/11): a copy voltou para edição, então a tarefa dela (entregue ao enviar) também volta.
+  if (etapa === 'aprovacao_copy') {
+    try { const { reabrirTarefaDaPauta } = await import('@/lib/tarefasDaPauta'); await reabrirTarefaDaPauta(id, 'Copy puxada de volta para edição antes da resposta do cliente', session?.user?.name || 'Equipe', 'equipe') } catch { /* segue */ }
+  }
 
   return NextResponse.json({ ok: true, etapa: atualizado.etapa || null })
 }

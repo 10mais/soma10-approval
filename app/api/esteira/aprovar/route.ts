@@ -109,6 +109,8 @@ export async function POST(req: NextRequest) {
     post.status = 'corrigir'
     post.etapaDesde = agora; post.aguardandoDesde = undefined
     await redis.set(`post:${postId}`, post)
+    // Limitador (15/11): a tarefa da copy (entregue ao enviar) volta ao Social Media.
+    try { const { reabrirTarefaDaPauta } = await import('@/lib/tarefasDaPauta'); await reabrirTarefaDaPauta(postId, comentario || '', quem) } catch { /* segue */ }
     await notificarDono(post.criadoPor, 'geral', `Ajuste de copy — ${nome}`, `${quem} pediu ajuste na copy: "${comentario || 'sem comentário'}".`, postId)
     return NextResponse.json({ ok: true, etapa: post.etapa })
   }

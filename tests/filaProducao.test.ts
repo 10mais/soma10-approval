@@ -107,8 +107,10 @@ describe('colunaDoCriativo — fluxo de 13/11 (entrega vira rascunho na Fila de 
   it('entregue e esperando a revisão na Fila de programação: Revisão interna (e não Aprovado)', () => {
     expect(colunaDoCriativo(pauta({ etapa: 'pronto', status: 'rascunho', filaProgramacaoDesde: '2026-10-26T12:00:00Z' }), tarefa({ status: 'em_revisao' }), AGORA)).toBe('revisao_interna')
   })
-  it('tarefa Em ajuste: Ajuste pedido (ou Aguardando material)', () => {
-    expect(colunaDoCriativo(pauta({ etapa: 'aprovacao_criativo', status: 'corrigir' }), tarefa({ status: 'em_ajuste' }), AGORA)).toBe('ajuste_pedido')
+  it('tarefa Em ajuste ocupa vaga: Em produção (ou Aguardando material); esperando vaga: Ajuste pedido', () => {
+    expect(colunaDoCriativo(pauta({ etapa: 'aprovacao_criativo', status: 'corrigir' }), tarefa({ status: 'em_ajuste' }), AGORA)).toBe('em_producao')
+    // Limitador (15/11): ajuste esperando vaga = A fazer com a marca do ajuste.
+    expect(colunaDoCriativo(pauta({ etapa: 'aprovacao_criativo', status: 'corrigir' }), tarefa({ status: 'a_fazer', ajustePedidoEm: '2026-11-15T12:00:00.000Z' }), AGORA)).toBe('ajuste_pedido')
     expect(colunaDoCriativo(pauta({ etapa: 'aprovacao_criativo', status: 'corrigir' }), tarefa({ status: 'em_ajuste', aguardandoMaterial: { motivo: 'foto', desde: 'x' } }), AGORA)).toBe('aguardando_material')
   })
   it('com o cliente enquanto a tarefa segue Em revisão: Com o cliente', () => {

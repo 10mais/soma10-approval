@@ -15,6 +15,7 @@ import { dispararEvento } from '@/lib/automacoesEngine'
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { bloqueiaAcao } from '@/lib/permissoesGranularServer'
 import { clientesAtivosIds } from '@/lib/cache'
+import { verificarLimite, corpoDaRecusa } from '@/lib/limiteDemandasServer'
 
 function extrairMencoes(texto: string): string[] {
   const regex = /@([a-zA-ZÀ-ÿ\s]+?)(?=\s@|\s*$|[.,!?;:\])])/g
@@ -108,6 +109,9 @@ export async function POST(req: NextRequest) {
     atividades: [{ id: uuid(), tipo: 'criacao', descricao: 'Tarefa criada', autor: session.user?.name || '', criadoEm: agora }],
     comentarios: [],
   }
+  // LIMITADOR DE DEMANDAS (lib/limiteDemandas): criar já em andamento é pescar.
+  const vereditoNova = await verificarLimite(null, tarefa as any, { email: (session.user as any).email })
+  if (!vereditoNova.ok) return NextResponse.json(corpoDaRecusa(vereditoNova), { status: 409 })
   await redis.set(`tarefa:${tarefa.id}`, tarefa)
   await redis.sadd('tarefas', tarefa.id)
   // Pauta vinculada (origemPostId): fecha o vínculo bidirecional — a pauta passa
@@ -289,6 +293,10 @@ export async function PUT(req: NextRequest) {
   // FILA DE PRODUÇÃO (lib/filaProducao): mudar o status pelo quadro de Tarefas também move o
   // cartão — "Aguardando material" acaba e o "há X dias" recomeça.
   if (updates.status && updates.status !== tarefa.status) { delete atualizado.aguardandoMaterial; atualizado.filaDesde = agora }
+  // LIMITADOR DE DEMANDAS (dono, 15/11): passar a ocupar uma vaga (pescar, voltar do "Aguardando
+  // material", receber uma peça em andamento) só com vaga livre. Recusa antes de gravar qualquer coisa.
+  const veredito = await verificarLimite(tarefa as any, atualizado, { email: (session.user as any).email })
+  if (!veredito.ok) return NextResponse.json(corpoDaRecusa(veredito), { status: 409 })
 
   // PAUTA ↔ TAREFA: o vínculo fecha nos dois lados (post.tarefaId) e os anexos da
   // tarefa ficam espelhados na pauta (post.anexosTarefa) — o Studio/Planner mostram

@@ -12,7 +12,8 @@ import { revisaoInternaDoCriativo } from './esteiraFluxo'
 
 export type ColunaFila = 'ajuste_pedido' | 'na_fila' | 'em_producao' | 'aguardando_material' | 'revisao_interna' | 'com_cliente' | 'aprovado'
 
-/** Ordem na tela. Ajuste pedido primeiro: o cliente está esperando a nova versão. */
+/** Ordem na tela. Ajuste pedido primeiro: o cliente está esperando a nova versão (e, com o
+ *  limitador de 15/11, são ajustes esperando vaga: o designer pesca daqui). */
 export const COLUNAS_FILA: { chave: ColunaFila; rotulo: string; doDesigner: boolean }[] = [
   { chave: 'ajuste_pedido', rotulo: 'Ajuste pedido', doDesigner: false },
   { chave: 'na_fila', rotulo: 'Na fila', doDesigner: true },
@@ -104,7 +105,9 @@ export function colunaDoCriativo(p: PostFila, t: TarefaFila | undefined, agora: 
     return desde === undefined || agora - desde > APROVADO_SAI_EM_DIAS * DIA ? null : 'aprovado'
   }
   // Tarefa EM AJUSTE (dono, 13/11): cliente ou revisão interna pediu ajuste e o designer refaz.
-  if (t && t.status === 'em_ajuste') return t.aguardandoMaterial ? 'aguardando_material' : 'ajuste_pedido'
+  // Com o LIMITADOR (15/11), Em ajuste ocupa vaga = está em produção (o cartão leva a marca do
+  // ajuste). "Ajuste pedido" passa a ser o ajuste esperando vaga: A fazer + ajustePedidoEm.
+  if (t && t.status === 'em_ajuste') return t.aguardandoMaterial ? 'aguardando_material' : 'em_producao'
   // Designer com a tarefa aberta (inclusive refazendo um ajuste).
   if (t && ABERTA.includes(t.status)) {
     if (t.aguardandoMaterial) return 'aguardando_material'

@@ -107,11 +107,45 @@ async function rodarAlertas(): Promise<NextResponse> {
     renovacoes++
   }
 
+  // ---- 3) RISCO DE ATRASO na produção (limitador de demandas, dono 15/11) ----
+  // Peça ainda na fila (ninguém pescou) com o prazo a 2 dias úteis ou menos: o gestor de projetos
+  // do squad é avisado 1x por dia para reordenar, trocar o responsável ou marcar Prioridade.
+  let riscos = 0
+  try { riscos = await avisarRiscosDeAtraso(clientes) } catch (e) { await capturarErro('cron/alertas:risco', e) }
+
   // ---- 4) FECHAMENTO DO MES (lib/fechamentoMes) ----
   // Mes que terminou vira historia: o faturamento dele fica gravado e nao muda mais,
   // nem se o contrato do cliente subir depois. Idempotente: mes ja fechado nao reescreve.
   let mesesFechados: string[] = []
   try { mesesFechados = await fecharMesesPendentes(clientes as any) } catch (e) { await capturarErro('cron/alertas:fechamento', e) }
 
-  return NextResponse.json({ ok: true, aprovacoes, entregas, renovacoes, mesesFechados, postsVerificados: emAprovacao.length, clientesVerificados: clientes.length })
+  return NextResponse.json({ ok: true, aprovacoes, entregas, renovacoes, riscos, mesesFechados, postsVerificados: emAprovacao.length, clientesVerificados: clientes.length })
+}
+
+async function avisarRiscosDeAtraso(clientes: Cliente[]): Promise<number> {
+  const { getConfigLimite, tarefasAtivas } = await import('@/lib/limiteDemandasServer')
+  const { emRiscoDeAtraso, vagasDe } = await import('@/lib/limiteDemandas')
+  const { diaDoInstante, fmtDiaDoInstante } = await import('@/lib/datas')
+  const cfg = await getConfigLimite()
+  if (!cfg.ligado) return 0
+  const tarefas = await tarefasAtivas()
+  const porCliente = new Map(clientes.filter(c => !(c as any).arquivado).map(c => [c.id, c]))
+  const hoje = diaDoInstante(new Date().toISOString())
+  let n = 0
+  for (const t of tarefas) {
+    if (!t.clienteId || !porCliente.has(t.clienteId) || !emRiscoDeAtraso(t as any, hoje)) continue
+    const chave = `risco_atraso:${t.id}:${hoje}`
+    if (await redis.get(chave)) continue
+    const c = porCliente.get(t.clienteId)!
+    const gestor = c.squadPapeis?.gestor_projetos || c.squadPapeis?.gestor_operacao
+    const v = vagasDe(t.responsavelEmail, tarefas as any, cfg)
+    const quem = t.responsavelNome || t.responsavelEmail || 'sem responsável'
+    const situacao = t.responsavelEmail ? `${quem} está com ${v.ocupadas} de ${v.limite} em andamento` : 'a peça está sem responsável'
+    const msg = `"${t.titulo}" (${c.nome}) vence ${fmtDiaDoInstante(t.prazo, false)} e ainda está na fila: ${situacao}. Reordene, troque o responsável ou marque Prioridade.`
+    if (gestor) await notificar(gestor, 'tarefa_alterada', 'Peça em risco de atraso', msg, undefined, t.id).catch(() => {})
+    else await notificarAdmins('tarefa_alterada' as any, 'Peça em risco de atraso', msg).catch(() => {})
+    await redis.set(chave, '1', { ex: 2 * 86400 })
+    n++
+  }
+  return n
 }

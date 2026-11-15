@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation'
 import { useIdioma, useT } from '@/app/components/Idioma'
 import LimiteDeErro from '@/app/components/LimiteDeErro'
 import { avisarTarefasMudaram } from '@/app/components/BarraProximasTarefas'
+import { useVagas, ChipVagas } from '@/app/components/VagasDemandas'
 import {
   COLUNAS_FILA, diasDesde, destinosDoCartao, destinoAoSoltar, colunaAposMover, destinoDaColuna,
   type ColunaFila, type DestinoFila, type ItemFila,
@@ -153,6 +154,8 @@ function Fila({ clienteFixo, onAbrirTarefa, onAbrirPauta }: Props) {
     return novo
   })
 
+  // LIMITADOR DE DEMANDAS (15/11): as vagas de quem produz, acima do quadro. Clicar filtra a pessoa.
+  const { dados: vagas } = useVagas()
   const designers = useMemo(() => {
     const m = new Map<string, string>()
     for (const i of itens || []) if (i.designerEmail) m.set(i.designerEmail.toLowerCase(), i.designerNome || i.designerEmail.split('@')[0])
@@ -269,6 +272,29 @@ function Fila({ clienteFixo, onAbrirTarefa, onAbrirPauta }: Props) {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" /></svg>
         </button>
       </div>
+
+      {vagas?.ligado && (() => {
+        const naFila = new Set(designers.map(([e]) => e))
+        const pessoas = vagas.porPessoa.filter(p => naFila.has(p.email.toLowerCase()) || p.ocupadas > 0)
+        if (!pessoas.length) return null
+        return (
+          <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center', margin: '-4px 0 14px' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)' }}>Vagas:</span>
+            {pessoas.map(p => {
+              const e = p.email.toLowerCase()
+              const ativo = f.designer === e || (f.designer === 'eu' && e === meuEmail)
+              const extra = [p.naFila ? `${p.naFila} na fila` : '', p.ajustesEsperando ? `${p.ajustesEsperando} ajuste(s) esperando vaga` : '', p.emRisco ? `${p.emRisco} em risco de atraso` : ''].filter(Boolean).join(' · ')
+              return (
+                <button key={e} type="button" onClick={() => mudarFiltro({ designer: ativo ? '' : e })} aria-pressed={ativo}
+                  style={{ border: 0, padding: 0, background: 'none', cursor: 'pointer', borderRadius: 999, outline: ativo ? '2px solid var(--v2-ink)' : 'none', outlineOffset: 1 }}>
+                  <ChipVagas ocupadas={p.ocupadas} limite={p.limite} rotulo={p.nome.split(' ')[0]}
+                    titulo={`${p.nome}: ${p.ocupadas} de ${p.limite} em andamento${extra ? ` · ${extra}` : ''}`} />
+                </button>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {erro && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 14px', borderRadius: 10, background: 'var(--v2-hot-bg)', color: 'var(--v2-hot)', fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
@@ -438,6 +464,12 @@ function Cartao({ it, idioma, celular, ocupado, arrastandoEste, onAbrir, onMover
               <option value="">{ocupado ? 'Salvando…' : 'Mover para…'}</option>
               {destinos.map(d => <option key={d} value={d}>{rotulo(colunaAposMover(d, it.ajuste))}</option>)}
             </select>
+          )}
+          {(it.coluna === 'na_fila' || it.coluna === 'ajuste_pedido') && destinos.includes('em_producao') && (
+            <button onClick={() => onMover('em_producao')} disabled={ocupado} title="Pescar: começar a produzir (ocupa uma das suas vagas)"
+              style={{ flexShrink: 0, padding: '6px 11px', borderRadius: 8, border: 0, background: 'var(--v2-amber-on)', color: '#17150E', fontSize: 11.5, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Pescar
+            </button>
           )}
           {podeEntregar && (
             <button onClick={onEntregar} disabled={ocupado}

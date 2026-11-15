@@ -14,6 +14,8 @@ import { fmtDiaDoInstante, diaDoInstante, fimDoDiaBR, inicioDoDiaBR } from './da
 import { dispararEvento } from './automacoesEngine'
 import { anexosParaNovaRodada, planoDeEntregasDaPauta, somarAnexos } from './vinculoTarefa'
 import { desindexarPost, indexarPost } from './postsIndex'
+import { statusDoAjuste } from './limiteDemandas'
+import { getConfigLimite, tarefasAtivas } from './limiteDemandasServer'
 
 // Etapa da Esteira -> tipo de tarefa (regra herdada do /api/esteira/relacionar).
 // 'pronto' não gera tarefa: a pauta já virou post no Planner.
@@ -90,21 +92,35 @@ export async function reabrirTarefaDaPauta(postId: string, feedback: string, aut
   if (!t) return false
   const agora = new Date().toISOString()
   const estavaConcluida = t.status === 'concluido'
+  const doQue = t.fasePauta === 'copy' ? 'na copy' : 'no criativo'
   // Dono, 13/11/2026: "Quando o cliente pedir ajuste, volta a tarefa com o status EM AJUSTE".
   // Vale também para o ajuste pedido pela revisão interna. Descartada não ressuscita.
-  const novoStatus = statusAoPedirAjuste(t.status) as Tarefa['status']
+  // LIMITADOR (dono, 15/11: "Ajuste espera vaga"): Em ajuste ocupa vaga; se a pessoa está no
+  // limite, o ajuste espera no topo da fila dela (A fazer + ajustePedidoEm) e vira Em ajuste ao pescar.
+  let novoStatus = statusAoPedirAjuste(t.status) as Tarefa['status']
+  if (novoStatus === 'em_ajuste') {
+    try {
+      const [cfg, tarefas] = await Promise.all([getConfigLimite(), tarefasAtivas()])
+      if (cfg.ligado) novoStatus = statusDoAjuste(t as any, tarefas as any, cfg)
+    } catch { /* sem a leitura do limite, segue Em ajuste */ }
+  }
+  const esperaVaga = novoStatus === 'a_fazer'
   const atualizada: Tarefa = {
     ...t,
     status: novoStatus,
     ...(estavaConcluida ? { concluidoEm: undefined } : {}),
     ajustePedidoEm: agora, // "Ajuste pedido" na página da pessoa e na barra do topo; some ao concluir
+    aguardandoMaterial: undefined,
+    filaDesde: agora,
     atualizadoEm: agora,
-    atividades: [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: estavaConcluida ? `${quemPediu} pediu ajuste no criativo — tarefa reaberta` : `${quemPediu} pediu ajuste no criativo`, autor, criadoEm: agora }],
+    atividades: [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: `${quemPediu} pediu ajuste ${doQue}${estavaConcluida ? ' — tarefa reaberta' : ''}${esperaVaga ? ' — esperando vaga na fila (limite de demandas em andamento)' : ''}`, autor, criadoEm: agora }],
     comentarios: [...(t.comentarios || []), { id: uuid(), autor, autorNome: autor, texto: `Feedback ${origem === 'cliente' ? 'do cliente' : 'da revisão interna'}: ${feedback || 'sem comentário'}`, criadoEm: agora }],
   }
   await redis.set(`tarefa:${tarefaId}`, atualizada)
   if (t.responsavelEmail) {
-    await notificar(t.responsavelEmail, 'tarefa_alterada', `Ajuste no criativo — ${post.clienteNome || 'Cliente'}`, `${origem === 'cliente' ? 'O cliente' : 'A revisão interna'} pediu ajuste no criativo da tarefa "${t.titulo}": ${(feedback || 'sem comentário').slice(0, 140)}`, undefined, tarefaId).catch(() => {})
+    const quem = origem === 'cliente' ? 'O cliente' : 'A revisão interna'
+    const fim = esperaVaga ? ' Ele está no topo da sua fila: pesque quando liberar uma vaga.' : ''
+    await notificar(t.responsavelEmail, 'tarefa_alterada', `Ajuste ${doQue} — ${post.clienteNome || 'Cliente'}`, `${quem} pediu ajuste ${doQue} da tarefa "${t.titulo}": ${(feedback || 'sem comentário').slice(0, 140)}${fim}`, undefined, tarefaId).catch(() => {})
   }
   return true
 }
@@ -179,6 +195,11 @@ export async function nascerTarefaDesigner(postId: string, autor: string, opts: 
         dataInicio: inicioDoDiaBR(hoje),
         prazo: prazoCriativo ? fimDoDiaBR(prazoCriativo) : '',
         prazoManual: false,
+        // O ajuste da copy foi atendido: o designer recebe a peça limpa, na fila dele.
+        ajustePedidoEm: undefined,
+        aguardandoMaterial: undefined,
+        filaDesde: agora,
+        concluidoEm: undefined,
         atualizadoEm: agora,
         atividades: [...(t.atividades || []), { id: uuid(), tipo: 'responsavel', descricao: `Copy aprovada — a tarefa passou para o designer${designerNome ? ` (${designerNome})` : ' (o squad do cliente não tem designer)'}`, autor, criadoEm: agora }],
       }
@@ -422,4 +443,31 @@ export async function pautaDaTarefaParaLixeira(t: Tarefa, autor: string, restaur
     if (post.planoId) await redis.srem(`plano:${post.planoId}:pautas`, post.id)
     await redis.sadd('posts_excluidos', post.id)
   } catch { /* nunca bloqueia */ }
+}
+
+// COPY ENVIADA AO CLIENTE = tarefa da copy ENTREGUE (limitador de demandas, dono 15/11/2026).
+// A tarefa que nasceu com a pauta (fasePauta 'copy', com o Social Media) vai para Em revisão e
+// libera a vaga dele enquanto o cliente avalia. Ajuste na copy reabre (reabrirTarefaDaPauta: Em
+// ajuste com vaga, topo da fila sem vaga); copy aprovada passa a mesma tarefa ao designer
+// (nascerTarefaDesigner). Nunca lança.
+export async function entregarCopyDaPauta(postId: string, autor: string): Promise<boolean> {
+  try {
+    const post = await redis.get<Post>(`post:${postId}`)
+    if (!post?.tarefaId) return false
+    const t = await redis.get<Tarefa>(`tarefa:${post.tarefaId}`)
+    if (!t || (t as any).excluidoEm || t.fasePauta !== 'copy') return false
+    if (!['a_fazer', 'em_andamento', 'em_ajuste'].includes(t.status)) return false
+    const agora = new Date().toISOString()
+    const entregue: Tarefa = {
+      ...t,
+      status: 'em_revisao',
+      ajustePedidoEm: undefined,
+      aguardandoMaterial: undefined,
+      filaDesde: agora,
+      atualizadoEm: agora,
+      atividades: [...(t.atividades || []), { id: uuid(), tipo: 'status', descricao: 'Copy enviada ao cliente — tarefa em revisão (a vaga fica livre até o cliente responder)', autor, criadoEm: agora }],
+    }
+    await redis.set(`tarefa:${t.id}`, entregue)
+    return true
+  } catch { return false }
 }

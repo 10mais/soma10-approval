@@ -279,6 +279,13 @@ export async function PUT(req: NextRequest) {
     if (post.planoId) await redis.srem(`plano:${post.planoId}:pautas`, id)
     if (updates.planoId) await redis.sadd(`plano:${updates.planoId}:pautas`, id)
   }
+  // COPY ENVIADA AO CLIENTE (limitador, 15/11): a tarefa da copy vai para Em revisão e libera a
+  // vaga do Social Media. Vale no primeiro envio e no reenvio depois de um ajuste.
+  const copyEnviada = atualizado.etapa === 'aprovacao_copy' && (post.etapa !== 'aprovacao_copy'
+    || (atualizado.status === 'aguardando_aprovacao' && post.status !== 'aguardando_aprovacao'))
+  if (post.tarefaId && copyEnviada) {
+    try { const { entregarCopyDaPauta } = await import('@/lib/tarefasDaPauta'); await entregarCopyDaPauta(id, session.user?.name || '') } catch { /* segue */ }
+  }
   // A pauta mudou de data, formato ou plano: a tarefa da unidade acompanha (13/11).
   if (post.tarefaId && ['dataAgendada', 'formato', 'planoId'].some(k => k in updates)) {
     try { const { sincronizarTarefaComPauta } = await import('@/lib/tarefasDaPauta'); await sincronizarTarefaComPauta(post, atualizado, session.user?.name || '') } catch { /* segue */ }

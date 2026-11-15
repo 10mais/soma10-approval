@@ -18,6 +18,7 @@ import { ehTarefaDeProducao, anexosCriativoPronto, avisoAoConcluir, avisoConclui
 import { somarAnexos } from '@/lib/vinculoTarefa'
 import { useT } from '@/app/components/Idioma'
 import { avisarTarefasMudaram } from './BarraProximasTarefas'
+import { recusouPeloLimite, useVagas, ChipVagas } from './VagasDemandas'
 import { TEXTOS } from '@/lib/i18n'
 import { diaDoInstante, fimDoDiaBR, inicioDoDiaBR, fmtDiaDoInstante, fmtDataBR } from '@/lib/datas'
 
@@ -368,6 +369,8 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
   // responsavelFixo: card do colaborador — filtro preso à pessoa, seletor escondido.
   const [filtroResponsavel, setFiltroResponsavel] = useState(responsavelFixo || '')
   const [filtroTipo, setFiltroTipo] = useState('')
+  // LIMITADOR DE DEMANDAS (15/11): vagas de quem está filtrado (ou as minhas) no cabeçalho.
+  const { dados: vagas } = useVagas()
   const [filtroPrioridade, setFiltroPrioridade] = useState('')
   const [busca, setBusca] = useState('')
   const [quickSubId, setQuickSubId] = useState<string | null>(null)
@@ -467,7 +470,10 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
     // Arrastou para Em revisão (entrega) sem criativo pronto: avisa que a peça não segue.
     if (status === 'em_revisao' && antes) { const av = avisoAoConcluir(antes as any); if (av) toast(av, 'erro') }
     setTarefas(ts => ts.map(t => t.id === id ? { ...t, status } : t))
-    await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) }).catch(() => {})
+    const rMover = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status }) }).catch(() => null)
+    // LIMITADOR DE DEMANDAS (15/11): sem vaga, o cartão volta ao lugar e o motivo aparece.
+    // Movimento recusado não entra no Ctrl+Z.
+    if (rMover && await recusouPeloLimite(rMover)) { carregar(); return }
     if (antes) registrarDesfazer(tr('tarefa.desfazer-status', { nome: antes.titulo }), async () => {
       const r = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: antes.status }) }).catch(() => null)
       carregar()
@@ -524,12 +530,16 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
     const ids = [...alvo]
     // Otimista: a tela responde na hora; a lista e ressincronizada no fim.
     setTarefas(ts => ts.map(t => ids.includes(t.id) ? { ...t, ...campos } as any : t))
-    const res = await Promise.all(ids.map(id =>
+    const respostas = await Promise.all(ids.map(id =>
       fetch('/api/tarefas', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, ...campos }),
-      }).then(r => r.ok).catch(() => false)
+      }).catch(() => null)
     ))
+    const res = respostas.map(r => !!r?.ok)
+    // Limitador: as que passariam do limite da pessoa ficam como estavam; o motivo aparece uma vez.
+    const recusada = respostas.find(r => r?.status === 409)
+    if (recusada) await recusouPeloLimite(recusada)
     const falhas = res.filter(ok => !ok).length
     setAplicandoMassa(false)
     carregar()
@@ -648,6 +658,15 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
           </>
         )}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+          {vagas?.ligado && !mostrarLixeira && (() => {
+            const alvo = filtroResponsavel ? vagas.porPessoa.find(p => p.email.toLowerCase() === filtroResponsavel.toLowerCase()) : null
+            if (filtroResponsavel && !alvo) return null
+            const v = alvo || vagas.minhas
+            if (!alvo && v.ocupadas === 0 && vagas.minhas.fila.length === 0) return null
+            const primeiro = alvo ? alvo.nome.split(' ')[0] : ''
+            return <ChipVagas ocupadas={v.ocupadas} limite={v.limite} rotulo={alvo ? `Vagas de ${primeiro}` : 'Minhas vagas'}
+              titulo={`${v.ocupadas} de ${v.limite} demandas em andamento (Em andamento e Em ajuste). Para pescar outra da fila, entregue ou devolva uma.`} />
+          })()}
           <button onClick={() => setMostrarLixeira(!mostrarLixeira)} style={{
             padding: '9px 14px', background: mostrarLixeira ? 'var(--v2-hot-bg)' : 'var(--v2-surface1)', border: mostrarLixeira ? '1px solid var(--v2-hot-bg)' : '1px solid var(--v2-rule)',
             borderRadius: 10, fontSize: 12, fontWeight: 600, color: mostrarLixeira ? 'var(--v2-hot)' : 'var(--v2-ink2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
@@ -1373,7 +1392,12 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
       // DESFAZER: guarda o valor ANTERIOR de cada campo que o formulário mexe.
       const antes: Record<string, any> = { id: tarefa.id }
       for (const k of Object.keys(body)) antes[k] = (tarefa as any)[k] ?? (Array.isArray((body as any)[k]) ? [] : '')
-      await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, ...body }) })
+      const rSalvar = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, ...body }) }).catch(() => null)
+      // LIMITADOR (15/11): sem vaga para a mudança de status/responsável, o resto da edição é salvo
+      // e o status/responsável ficam como estavam (salvar automático nunca perde o que foi escrito).
+      if (rSalvar && await recusouPeloLimite(rSalvar)) {
+        await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: tarefa.id, ...body, status: tarefa.status, responsavelEmail: tarefa.responsavelEmail || '', responsavelNome: tarefa.responsavelNome || '' }) }).catch(() => null)
+      }
       registrarDesfazer(tr('tarefa.desfazer-edicao', { nome: tarefa.titulo }), async () => {
         const r = await fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(antes) }).catch(() => null)
         onSalvo() // recarrega a lista de trás (o modal já fechou quando o Ctrl+Z acontece)
