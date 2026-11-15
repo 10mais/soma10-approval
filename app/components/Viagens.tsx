@@ -6,6 +6,8 @@ import { LayoutVeiculo, capacidadeLayout } from '@/lib/layoutVeiculo'
 import { copiarPacoteParaViagem, dataVoltaSugerida, type PacoteLite } from '@/lib/pacoteViagem'
 import { conflitosDeVeiculo } from '@/lib/conflitoVeiculo'
 import { breakEvenPorPassageiro, resultadoPrevisto } from '@/lib/precificacaoViagem'
+import { fechamento as fechamentoDespesas, semComprovante, TIPOS_DESPESA } from '@/lib/despesaViagem'
+import { hojeYmd } from '@/lib/datas'
 import RoteiroViagem, { type Parada } from './RoteiroViagem'
 import PacotesViagem from './PacotesViagem'
 import { v4 as uuid } from 'uuid'
@@ -24,9 +26,11 @@ type TipoViagem = 'pacote' | 'fretamento'
 type Veiculo = { id: string; nome: string; layout: LayoutVeiculo; condicao?: string }
 type Motorista = { nome: string; cpf?: string; cnh?: string; email?: string }
 type MotoristaCad = { id: string; nome: string; cnh?: string; email: string }
-type Despesa = { id: string; descricao: string; valor: number }
+// `valor` é o ORÇADO; `valorReal` e companhia são o gasto que aconteceu na
+// estrada. A regra de somar os dois lados vive em lib/despesaViagem.
+type Despesa = { id: string; descricao: string; valor: number; tipo?: string; valorReal?: number; data?: string; responsavel?: string; comprovante?: string; extra?: boolean }
 // No formulário o valor fica como TEXTO (deixa digitar "1200,5" pela metade).
-type DespesaForm = { id: string; descricao: string; valor: string }
+type DespesaForm = { id: string; descricao: string; valor: string; tipo?: string; valorReal: string; data?: string; responsavel?: string; comprovante?: string; extra?: boolean }
 type Viagem = {
   id: string; titulo: string; tipo?: TipoViagem; pacoteId?: string
   roteiro?: string; internacional?: boolean; dataIda: string; dataVolta?: string
@@ -56,7 +60,11 @@ const fmtData = (s?: string) => s ? new Date(s + 'T00:00').toLocaleDateString('p
 
 const vazio = (): Form => ({ titulo: '', tipo: 'pacote', pacoteId: '', roteiro: '', internacional: false, dataIda: '', dataVolta: '', horaSaida: '', horaRetorno: '', veiculoId: '', motoristas: [], valorPacote: '', valorFechado: '', contratante: '', descontoPadrao: '', inclusos: [], despesas: [], status: 'aberta', observacoes: '' })
 
-const despesasParaForm = (arr?: Despesa[]): DespesaForm[] => (arr || []).map(d => ({ id: d.id, descricao: d.descricao, valor: d.valor ? String(d.valor) : '' }))
+const despesasParaForm = (arr?: Despesa[]): DespesaForm[] => (arr || []).map(d => ({
+  id: d.id, descricao: d.descricao, valor: d.valor ? String(d.valor) : '',
+  tipo: d.tipo || '', valorReal: d.valorReal ? String(d.valorReal) : '',
+  data: d.data || '', responsavel: d.responsavel || '', comprovante: d.comprovante || '', extra: !!d.extra,
+}))
 
 export default function Viagens({ podeEditar = true, podeExcluir = false }: { podeEditar?: boolean; podeExcluir?: boolean }) {
   const tr = useT()
@@ -145,12 +153,35 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
   // No fretamento a conta é direta: valor fechado − custo.
   const financeiro = useMemo(() => {
     if (!form) return null
+    // O break-even continua sendo feito com o ORÇADO: é a conta de ANTES de abrir
+    // a venda, e trocá-la pelo realizado faria o preço sugerido mudar no meio da
+    // viagem. O realizado tem o próprio quadro (`gasto`, logo abaixo).
     const despesas = form.despesas.map(d => ({ valor: Number(d.valor) || 0 }))
     const lugares = vagasDe(form.veiculoId)
     if (form.tipo === 'fretamento') return { lugares, be: undefined as number | undefined, ...resultadoPrevisto(despesas, 1, Number(form.valorFechado) || 0) }
     return { lugares, be: breakEvenPorPassageiro(despesas, lugares), ...resultadoPrevisto(despesas, lugares, Number(form.valorPacote) || 0) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form, veiculos])
+
+  // Orçado × gasto da viagem (lib/despesaViagem). Só aparece quando alguém já
+  // lançou gasto — numa viagem que ainda nem saiu, mostrar "gasto R$ 0,00"
+  // seria ruído em cima do break-even, que é a conta daquele momento.
+  const gasto = useMemo(() => {
+    if (!form) return null
+    const f = fechamentoDespesas(form.despesas.map(d => ({
+      valor: Number(d.valor) || 0, valorReal: Number(d.valorReal) || 0, extra: d.extra, comprovante: d.comprovante,
+    })))
+    if (f.lancadas === 0) return null
+    const semNota = semComprovante(form.despesas.map(d => ({ valorReal: Number(d.valorReal) || 0, comprovante: d.comprovante }))).length
+    return { ...f, semNota }
+  }, [form])
+
+  // Quem gastou costuma ser o motorista ou o guia da própria viagem — a lista
+  // sugere esses nomes sem travar: dá para digitar outro.
+  const quemGastou = useMemo(
+    () => (form?.motoristas || []).map(m => m.nome).filter(Boolean),
+    [form?.motoristas],
+  )
 
   // Lista oficial de passageiros (DAER/ANTT ou internacional). Confere as
   // pendências ANTES de baixar: entregar lista incompleta ao órgão é retrabalho na
@@ -193,7 +224,10 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
   const addIncluso = () => setForm(f => f && ({ ...f, inclusos: [...(f.inclusos || []), ''] }))
   const setIncluso = (i: number, v: string) => setForm(f => f && ({ ...f, inclusos: (f.inclusos || []).map((x, j) => j === i ? v : x) }))
   const rmIncluso = (i: number) => setForm(f => f && ({ ...f, inclusos: (f.inclusos || []).filter((_, j) => j !== i) }))
-  const addDespesa = () => setForm(f => f && ({ ...f, despesas: [...f.despesas, { id: uuid(), descricao: '', valor: '' }] }))
+  const addDespesa = () => setForm(f => f && ({ ...f, despesas: [...f.despesas, { id: uuid(), descricao: '', valor: '', tipo: '', valorReal: '', data: '', responsavel: '', comprovante: '' }] }))
+  // Despesa que apareceu na estrada: entra já marcada como extra e com o dia de
+  // hoje, porque é esse o momento em que alguém lança.
+  const addDespesaExtra = () => setForm(f => f && ({ ...f, despesas: [...f.despesas, { id: uuid(), descricao: '', valor: '', tipo: '', valorReal: '', data: hojeYmd(), responsavel: '', comprovante: '', extra: true }] }))
   const setDespesa = (id: string, patch: Partial<DespesaForm>) => setForm(f => f && ({ ...f, despesas: f.despesas.map(d => d.id === id ? { ...d, ...patch } : d) }))
   const rmDespesa = (id: string) => setForm(f => f && ({ ...f, despesas: f.despesas.filter(d => d.id !== id) }))
 
@@ -208,7 +242,17 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
     const corpo = {
       ...form,
       inclusos: (form.inclusos || []).map(s => s.trim()).filter(Boolean),
-      despesas: form.despesas.map(d => ({ id: d.id, descricao: d.descricao.trim(), valor: Number(d.valor) || 0 })).filter(d => d.descricao || d.valor > 0),
+      despesas: form.despesas.map(d => ({
+        id: d.id, descricao: d.descricao.trim(), valor: Number(d.valor) || 0,
+        ...(d.tipo ? { tipo: d.tipo } : {}),
+        ...(Number(d.valorReal) > 0 ? { valorReal: Number(d.valorReal) } : {}),
+        ...((d.data || '').trim() ? { data: (d.data || '').trim() } : {}),
+        ...((d.responsavel || '').trim() ? { responsavel: (d.responsavel || '').trim() } : {}),
+        ...((d.comprovante || '').trim() ? { comprovante: (d.comprovante || '').trim() } : {}),
+        ...(d.extra ? { extra: true } : {}),
+      // Linha só com o gasto (extra que não estava no orçamento) também é
+      // despesa de verdade — não se exige descrição nem valor orçado para gravar.
+      })).filter(d => d.descricao || d.valor > 0 || (d.valorReal || 0) > 0),
       // O servidor também zera/limpa o campo do outro tipo, mas mandar coerente
       // evita gravar valor de pacote num fretamento por engano.
       valorPacote: form.tipo === 'fretamento' ? 0 : Number(form.valorPacote) || 0,
@@ -231,6 +275,9 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
 
   const inputStyle: React.CSSProperties = { padding: '10px 12px', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit' }
   const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 5 }
+  // Campo estreito com o rótulo em cima, para as duas colunas de dinheiro da despesa.
+  const miniCampo: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }
+  const miniRotulo: React.CSSProperties = { fontSize: 9.5, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.06em', paddingLeft: 2 }
 
   return (
     <div>
@@ -449,15 +496,66 @@ export default function Viagens({ podeEditar = true, podeExcluir = false }: { po
                   <label style={{ ...labelStyle, marginBottom: 0 }}>{tr('via.despesas-viagem')}</label>
                   <span style={{ flex: 1 }} />
                   <button type="button" onClick={addDespesa} style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>{tr('via.despesa')}</button>
+                  <button type="button" onClick={addDespesaExtra} title="Gasto que não estava no orçamento e apareceu durante a viagem" style={{ background: 'none', border: 'none', color: 'var(--v2-info)', fontSize: 12, fontWeight: 700, cursor: 'pointer', padding: 0 }}>+ gasto extra</button>
                 </div>
                 {form.despesas.length === 0 && <p style={{ margin: 0, fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('via.opcional-lance-combustivel-ped')}</p>}
-                {form.despesas.map(d => (
-                  <div key={d.id} style={{ display: 'flex', gap: 6, marginBottom: 6, alignItems: 'center' }}>
-                    <input value={d.descricao} onChange={e => setDespesa(d.id, { descricao: e.target.value })} placeholder={tr('via.ex-combustivel')} style={{ ...inputStyle, flex: 1, minWidth: 120 }} />
-                    <input type="number" min={0} step="0.01" value={d.valor} onChange={e => setDespesa(d.id, { valor: e.target.value })} placeholder="R$ 0,00" style={{ ...inputStyle, width: 110 }} />
-                    <button type="button" onClick={() => rmDespesa(d.id)} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 18 }}>×</button>
+                {form.despesas.map(d => {
+                  const temGasto = Number(d.valorReal) > 0
+                  return (
+                  <div key={d.id} style={{ marginBottom: 6, ...(d.extra ? { borderLeft: '2px solid var(--v2-amber)', paddingLeft: 8, marginLeft: -10 } : {}) }}>
+                    {/* Quebra em vez de estourar: o modal tem 540px e no celular
+                        cinco campos não cabem em uma linha. O rótulo vive no
+                        placeholder de cada campo, então a leitura sobrevive à quebra
+                        (um cabeçalho de colunas sairia do lugar). */}
+                    {/* flex-end porque as duas colunas de dinheiro têm rótulo em cima
+                        e ficam mais altas: alinhar pelo rodapé deixa os campos na
+                        mesma linha de base. */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'flex-end' }}>
+                      <input value={d.descricao} onChange={e => setDespesa(d.id, { descricao: e.target.value })} placeholder={tr('via.ex-combustivel')} style={{ ...inputStyle, flex: '1 1 120px', minWidth: 0 }} />
+                      <select value={d.tipo || ''} onChange={e => setDespesa(d.id, { tipo: e.target.value })} style={{ ...inputStyle, flex: '1 1 110px', minWidth: 0 }}>
+                        <option value="">Tipo…</option>
+                        {TIPOS_DESPESA.map(t => <option key={t.tipo} value={t.tipo}>{t.rotulo}</option>)}
+                      </select>
+                      {/* O rótulo fica PRESO ao campo, não num cabeçalho de colunas:
+                          placeholder some quando o campo tem número, e aí "4000 | 4200"
+                          não diz qual é o orçado e qual é o que saiu do caixa. */}
+                      <label style={{ ...miniCampo, flex: '0 1 92px' }}>
+                        <span style={miniRotulo}>Orçado</span>
+                        <input type="number" min={0} step="0.01" value={d.valor} onChange={e => setDespesa(d.id, { valor: e.target.value })} placeholder="R$ 0,00" title="Quanto você estimou — é este campo que calcula o break-even" style={{ ...inputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box' }} />
+                      </label>
+                      <label style={{ ...miniCampo, flex: '0 1 92px' }}>
+                        <span style={{ ...miniRotulo, ...(temGasto ? { color: 'var(--v2-ok)' } : {}) }}>Gasto</span>
+                        <input type="number" min={0} step="0.01" value={d.valorReal} onChange={e => setDespesa(d.id, { valorReal: e.target.value })} placeholder="R$ 0,00" title="Quanto saiu do caixa de verdade" style={{ ...inputStyle, width: '100%', minWidth: 0, boxSizing: 'border-box', ...(temGasto ? { borderColor: 'var(--v2-ok)' } : {}) }} />
+                      </label>
+                      <button type="button" onClick={() => rmDespesa(d.id)} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', cursor: 'pointer', fontSize: 18, padding: '8px 2px' }}>×</button>
+                    </div>
+                    {/* Dia, dono e nota só importam depois que o dinheiro saiu —
+                        antes disso seriam três campos vazios em cada linha. */}
+                    {temGasto && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', marginTop: 4, paddingLeft: 2 }}>
+                        <input type="date" value={d.data || ''} onChange={e => setDespesa(d.id, { data: e.target.value })} title="Dia do gasto" style={{ ...inputStyle, flex: '0 1 135px', minWidth: 0, fontSize: 12 }} />
+                        <input value={d.responsavel || ''} onChange={e => setDespesa(d.id, { responsavel: e.target.value })} list={`quemgastou-${d.id}`} placeholder="Quem gastou" style={{ ...inputStyle, flex: '1 1 130px', minWidth: 0, fontSize: 12 }} />
+                        <datalist id={`quemgastou-${d.id}`}>{quemGastou.map(n => <option key={n} value={n} />)}</datalist>
+                        <input value={d.comprovante || ''} onChange={e => setDespesa(d.id, { comprovante: e.target.value })} placeholder="Link da nota (opcional)" style={{ ...inputStyle, flex: '1 1 140px', minWidth: 0, fontSize: 12 }} />
+                        {!String(d.comprovante || '').trim() && <span title="Gasto sem nota" style={{ fontSize: 11, fontWeight: 700, color: 'var(--v2-amber)', whiteSpace: 'nowrap' }}>sem nota</span>}
+                      </div>
+                    )}
                   </div>
-                ))}
+                )})}
+                {gasto && (
+                  <div style={{ marginTop: 8, padding: 10, background: 'var(--v2-surface1)', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 12, color: 'var(--v2-ink2)', lineHeight: 1.6 }}>
+                    Orçado <strong>{fmtBRL(gasto.previsto)}</strong> · gasto <strong>{fmtBRL(gasto.realizado)}</strong>
+                    {gasto.aPagar > 0 && <> · ainda a pagar <strong>{fmtBRL(gasto.aPagar)}</strong></>}
+                    <br />
+                    {gasto.diferenca > 0
+                      ? <span style={{ color: 'var(--v2-hot)', fontWeight: 700 }}>Estourou {fmtBRL(gasto.diferenca)} do orçamento</span>
+                      : gasto.diferenca < 0
+                        ? <span style={{ color: 'var(--v2-ok)', fontWeight: 700 }}>Economizou {fmtBRL(-gasto.diferenca)}</span>
+                        : <span>No orçamento</span>}
+                    {gasto.extras > 0 && <> · {fmtBRL(gasto.extras)} em gastos não previstos</>}
+                    {gasto.semNota > 0 && <> · <span style={{ color: 'var(--v2-amber)', fontWeight: 700 }}>{gasto.semNota} {gasto.semNota === 1 ? 'gasto sem nota' : 'gastos sem nota'}</span></>}
+                  </div>
+                )}
                 {financeiro && financeiro.custo > 0 && (
                   <div style={{ marginTop: 6, padding: 10, background: 'var(--v2-surface1)', borderRadius: 10, border: '1px solid var(--v2-rule)', fontSize: 12, color: 'var(--v2-ink2)' }}>
                     Custo total: <strong>{fmtBRL(financeiro.custo)}</strong>

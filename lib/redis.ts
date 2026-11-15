@@ -500,10 +500,21 @@ export type FormaPagamento = 'pix' | 'cartao' | 'boleto' | 'dinheiro' | 'transfe
 // OPCIONAL de propósito — serve para o break-even (lib/precificacaoViagem), não
 // é contabilidade. Compartilhada entre PacoteViagem (planejamento) e Viagem
 // (a saída real, que copia e ajusta).
+// `descricao` + `valor` são o ORÇADO e continuam alimentando o break-even sem
+// mudar de significado. O resto é o GASTO que nasce na estrada (o motorista
+// abasteceu, apareceu pedágio que ninguém contou) — todos opcionais, então
+// despesa já cadastrada segue valendo como previsão e a conta antiga continua
+// batendo. Quem lê e soma: lib/despesaViagem.
 export type DespesaViagem = {
   id: string
   descricao: string
   valor: number
+  tipo?: string        // categoria (lib/despesaViagem: TIPOS_DESPESA)
+  valorReal?: number   // quanto saiu do caixa de verdade
+  data?: string        // YYYY-MM-DD — o dia do gasto
+  responsavel?: string // quem gastou (e-mail do colaborador)
+  comprovante?: string // URL da nota no Blob
+  extra?: boolean      // não estava no orçamento
 }
 
 // TABELA de preço do produto: o valor FECHADO por faixa (adulto/criança/meia) +

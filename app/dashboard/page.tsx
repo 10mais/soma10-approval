@@ -2254,7 +2254,11 @@ function Dashboard() {
                   <NavBtn chave="viagens" label="Viagens" />
                   <NavBtn chave="calendario-viagens" label="Calendário" />
                   <NavBtn chave="reservas" label="Reservas" />
-                  <NavBtn chave="frota" label="Frota" />
+                  {/* Frota é CADASTRO, não trabalho do dia: o lugar dela é o hub de
+                      Configurações (pedido do dono, 15/11). Fica aqui para quem NÃO
+                      entra em Configurações — a aba é só de admin, e tirar o item
+                      daqui para todos arrancaria a Frota do gerente. */}
+                  {role !== 'admin' && <NavBtn chave="frota" label="Frota" />}
                 </nav>
               )}
               {/* Clínica — catálogo de procedimentos e métodos (brick do perfil clínica) */}
@@ -5113,7 +5117,9 @@ function Dashboard() {
                 <button key={k} onClick={() => setAbaConfig(k)} style={{ padding: '9px 16px', border: 'none', borderBottom: abaConfig === k ? '2px solid var(--v2-amber-on)' : '2px solid transparent', background: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, color: abaConfig === k ? 'var(--v2-ink)' : 'var(--v2-ink3)', marginBottom: -1 }}>{l}</button>
               ))}
               <span style={{ width: 1, height: 20, background: 'var(--v2-rule)', margin: '0 6px' }} />
-              {([['clientes', tr('dash.clientes')], ['usuarios', tr('dash.colaboradores')], ['automacoes', tr('nav.automacoes')]] as [string, string][]).map(([k, l]) => (
+              {/* Atalhos para telas cheias. A Frota entra aqui no perfil turismo: é
+                  cadastro de veículo e croqui, não trabalho do dia (pedido do dono). */}
+              {([['clientes', tr('dash.clientes')], ['usuarios', tr('dash.colaboradores')], ['automacoes', tr('nav.automacoes')], ...(perfilTurismo ? [['frota', 'Frota'] as [string, string]] : [])] as [string, string][]).map(([k, l]) => (
                 <button key={k} onClick={() => setAba(k as any)} title={tr('dash.abrir-tela', { tela: l })} style={{ padding: '9px 12px', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13, color: 'var(--v2-ink3)', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: -1 }}>
                   {l} <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--v2-ink3)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17 17 7M9 7h8v8" /></svg>
                 </button>

@@ -5,6 +5,7 @@ import { redis, Viagem, MotoristaViagem, ParadaRoteiro, TipoViagem, PacoteViagem
 import { bloqueiaPapel } from '@/lib/permissoesPapel'
 import { copiarPacoteParaViagem } from '@/lib/pacoteViagem'
 import { conflitosDeVeiculo } from '@/lib/conflitoVeiculo'
+import { sanitizarDespesas } from '@/lib/despesaViagem'
 import { fmtDataBR } from '@/lib/datas'
 import { normalizarLayout, poltronaExiste, LayoutVeiculo } from '@/lib/layoutVeiculo'
 import { Reserva, poltronasOcupadas } from '@/lib/reservas'
@@ -67,14 +68,9 @@ const horaOk = (s: string) => /^\d{2}:\d{2}$/.test(s)
 
 // Despesas previstas → break-even da viagem (lib/precificacaoViagem). Linha sem
 // descrição E sem valor é lixo de formulário — cai fora.
-function limparDespesas(arr: any): DespesaViagem[] {
-  if (!Array.isArray(arr)) return []
-  return arr.map((d: any) => ({
-    id: String(d?.id || uuid()),
-    descricao: String(d?.descricao || '').trim().slice(0, 120),
-    valor: Math.max(0, Number(d?.valor) || 0),
-  })).filter((d: DespesaViagem) => d.descricao || d.valor > 0).slice(0, 60)
-}
+// WHITELIST do que chega no Redis: a regra (e o teste dela) vive em
+// lib/despesaViagem, porque campo que não estiver na lista some calado no salvar.
+const limparDespesas = (arr: any): DespesaViagem[] => sanitizarDespesas(arr, uuid)
 
 // O MESMO ônibus não sai em duas viagens ao mesmo tempo. A trava de verdade é
 // esta (a tela só desliga a opção no seletor — dá para contornar). Devolve a
