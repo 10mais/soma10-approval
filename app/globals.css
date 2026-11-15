@@ -109,6 +109,43 @@ aside,
    containing block, entao qualquer modal aberto fica intacto. */
 .anim-aba { animation: soma-fade-in 180ms ease-out both; }
 
+/* A IA ESTA PENSANDO — varredura de luz no proprio texto do rotulo.
+   O keyframe soma-shimmer existia desde 23/07 e nao era usado por ninguem; esta
+   e a classe que faltava. Usada enquanto o modelo escreve (documento de marca,
+   briefing, plano do mes): o rotulo "Escrevendo..." fica VIVO em vez de parado.
+   background-clip:text pinta o gradiente DENTRO da letra, entao a cor do texto
+   vira transparente — por isso a classe exige uma cor de base via --shimmer-cor
+   (padrao: o cinza de apoio), senao o texto sumiria em tela clara.
+   So background-position anima: nada de filter (regra 2, tema escuro usa
+   invert na raiz) e nada de transform (regra 1, nao cria containing block). */
+.anim-shimmer {
+  background: linear-gradient(90deg,
+    var(--shimmer-cor, var(--v2-ink3, #8a8a80)) 0%,
+    var(--shimmer-cor, var(--v2-ink3, #8a8a80)) 35%,
+    var(--shimmer-brilho, var(--v2-ink, #1a1a18)) 50%,
+    var(--shimmer-cor, var(--v2-ink3, #8a8a80)) 65%,
+    var(--shimmer-cor, var(--v2-ink3, #8a8a80)) 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: soma-shimmer 2.2s linear infinite;
+}
+/* O cursor que pisca no fim do texto que esta chegando. Um bloquinho, como o
+   do terminal: diz "ainda vem mais" sem ocupar linha nem empurrar o conteudo. */
+@keyframes soma-cursor { 0%, 45% { opacity: 1 } 50%, 95% { opacity: .15 } 100% { opacity: 1 } }
+.anim-cursor-texto::after {
+  content: '';
+  display: inline-block;
+  width: .5em;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -.12em;
+  background: currentColor;
+  border-radius: 1px;
+  animation: soma-cursor 1.1s steps(1, end) infinite;
+}
+
 /* Botao de APROVAR (app/components/aprovacao/BotaoAprovar.tsx) — dono, 17/10: o cliente
    clicava e "nada acontecia" ate o cartao sumir. Afunda no toque, da um leve repique ao
    comecar a carregar, pulsa ao confirmar e treme no erro. A barra que enche e a troca de
@@ -141,6 +178,15 @@ aside,
     transition-duration: .01ms !important;
     scroll-behavior: auto !important;
   }
+  /* Shimmer parado ficaria com a letra pintada por um gradiente congelado.
+     Sem movimento, volta a ser texto normal — legivel e sem efeito nenhum. */
+  .anim-shimmer {
+    background: none !important;
+    -webkit-background-clip: border-box !important;
+    background-clip: border-box !important;
+    color: var(--shimmer-cor, var(--v2-ink3, #8a8a80)) !important;
+  }
+  .anim-cursor-texto::after { display: none !important; }
 }
 
 /* ============================================================

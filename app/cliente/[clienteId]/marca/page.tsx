@@ -10,6 +10,8 @@ import ProdutosServicos from '../../../components/ProdutosServicos'
 import BenchmarksMarca from '../../../components/BenchmarksMarca'
 import { useArea } from '@/app/components/Idioma'
 import { ehEquipeDoHub } from '@/lib/permissoesHub'
+import TextoChegando from '@/app/components/TextoChegando'
+import { lerStreamDeTexto } from '@/lib/streamTexto'
 
 const CAMPOS: { key: string; label: string; placeholder: string; area?: boolean }[] = [
   { key: 'segmento', label: 'Segmento / Nicho', placeholder: 'Ex.: Clínica de fisioterapia' },
@@ -35,18 +37,31 @@ export default function MarcaPage() {
   const [salvando, setSalvando] = useState(false)
   const [msg, setMsg] = useState<{ texto: string; erro: boolean } | null>(null)
   const [gerandoDoc, setGerandoDoc] = useState(false)
+  // O documento como esta sendo escrito pela IA, antes de virar o salvo.
+  const [previaDoc, setPreviaDoc] = useState('')
 
   async function gerarDocumento() {
     const tem = (cliente?.segmento || '').trim() || (cliente?.palavrasChave || '').trim()
     if (!tem) { setMsg({ texto: 'Preencha ao menos Segmento/Nicho e palavras-chave antes de gerar o documento.', erro: true }); return }
     if (cliente?.documentoMarca && !(await confirmar('Já existe um documento. Regenerar vai consumir créditos de IA e substituir o atual. Continuar?', { titulo: 'Regenerar documento', okLabel: 'Continuar' }))) return
     setGerandoDoc(true); setMsg(null)
-    const r = await fetch('/api/brand/gerar-documento', {
+    setPreviaDoc('')
+    // O documento chega escrito aos poucos (lib/streamTexto) e aparece na hora.
+    const resp = await fetch('/api/brand/gerar-documento', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clienteId }),
-    }).then(x => x.json()).catch(() => null)
-    setGerandoDoc(false)
-    if (!r || r.error) { setMsg({ texto: r?.error ? `Erro: ${r.error}` : 'Não foi possível gerar o documento.', erro: true }); return }
+    }).catch(() => null)
+    if (!resp || !resp.ok) {
+      const e = resp ? (await resp.json().catch(() => null))?.error : null
+      setGerandoDoc(false); setPreviaDoc('')
+      setMsg({ texto: e ? `Erro: ${e}` : 'Não foi possível gerar o documento.', erro: true })
+      return
+    }
+    const { dados: r } = await lerStreamDeTexto<{ erro?: string; documentoMarca?: string; documentoMarcaGeradoEm?: string }>(
+      resp.body, t => setPreviaDoc(t),
+    )
+    setGerandoDoc(false); setPreviaDoc('')
+    if (!r || r.erro) { setMsg({ texto: r?.erro ? `Erro: ${r.erro}` : 'Não foi possível gerar o documento.', erro: true }); return }
     setCliente((c: any) => ({ ...c, documentoMarca: r.documentoMarca, documentoMarcaGeradoEm: r.documentoMarcaGeradoEm }))
     setMsg({ texto: 'Documento de marca gerado pela IA!', erro: false })
     setTimeout(() => setMsg(null), 5000)
@@ -161,6 +176,14 @@ export default function MarcaPage() {
                 {gerandoDoc ? 'Gerando documento com IA... (pode levar 1-2 min)' : 'Criar documento com IA'}
               </button>
               <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>A IA pesquisa o nicho e gera uma referência editorial completa a partir do Brand Board.</p>
+            </div>
+          )}
+
+          {/* O documento nascendo. Fica fora dos dois blocos acima porque vale
+              tanto para o primeiro documento quanto para o "Regenerar". */}
+          {gerandoDoc && (
+            <div style={{ borderTop: '1px solid var(--v2-rule)', paddingTop: 14 }}>
+              <TextoChegando texto={previaDoc} rotulo="Pesquisando o nicho e escrevendo…" />
             </div>
           )}
 

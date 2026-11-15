@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { confirmar } from '@/lib/toast'
 import AvatarCliente from './AvatarCliente'
 import { fecharFora } from '@/lib/fecharModal'
+import TextoChegando from './TextoChegando'
+import { lerStreamDeTexto } from '@/lib/streamTexto'
 
 type Cliente = { id: string; nome: string; logo?: string; corPrimaria?: string; segmento?: string; palavrasChave?: string }
 type Briefing = {
@@ -29,6 +31,8 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
   const [clienteId, setClienteId] = useState('')
   const [form, setForm] = useState<typeof vazio>({ ...vazio })
   const [gerando, setGerando] = useState(false)
+  // O briefing como esta sendo escrito pela IA.
+  const [previa, setPrevia] = useState('')
   const [salvando, setSalvando] = useState(false)
   const [refino, setRefino] = useState('')
   const [erro, setErro] = useState('')
@@ -60,18 +64,27 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
 
   async function gerar(comRefino = false) {
     if (!clienteId) { setErro('Selecione um cliente.'); return }
-    setErro(''); setGerando(true)
-    const r = await fetch('/api/briefings/gerar', {
+    setErro(''); setGerando(true); setPrevia('')
+    // O briefing chega escrito aos poucos (lib/streamTexto): dá para ler o
+    // começo enquanto o resto ainda está sendo escrito.
+    const resp = await fetch('/api/briefings/gerar', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         clienteId, objetivo: form.objetivo, plataformas: form.plataformas, verba: form.verba,
         periodo: form.periodo, publico: form.publico, oferta: form.oferta, observacoes: form.observacoes,
         ...(comRefino ? { refino, conteudoAtual: form.conteudo } : {}),
       }),
-    }).then(x => x.json()).catch(() => ({ error: 'falha de conexão' }))
-    setGerando(false)
-    if (r?.error) { setErro(r.error); return }
-    setForm(f => ({ ...f, conteudo: r.conteudo }))
+    }).catch(() => null)
+    if (!resp || !resp.ok) {
+      const e = resp ? (await resp.json().catch(() => null))?.error : null
+      setGerando(false); setPrevia('')
+      setErro(e || 'falha de conexão')
+      return
+    }
+    const { dados: r } = await lerStreamDeTexto<{ erro?: string; conteudo?: string }>(resp.body, t => setPrevia(t))
+    setGerando(false); setPrevia('')
+    if (!r || r.erro) { setErro(r?.erro || 'falha de conexão'); return }
+    setForm(f => ({ ...f, conteudo: r.conteudo || '' }))
     setRefino('')
   }
 
@@ -231,9 +244,16 @@ export default function Briefings({ clientes }: { clientes: Cliente[] }) {
 
         {/* Coluna do conteudo */}
         <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: 18, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 12, minHeight: 400 }}>
-          <label style={label}>Briefing {gerando && <span style={{ color: '#7c3aed' }}>{tr('bri.gerando')}</span>}</label>
-          <textarea lang="pt-BR" value={form.conteudo} onChange={e => setForm(f => ({ ...f, conteudo: e.target.value }))} placeholder={tr('bri.briefing-gerado-pela-ia-aparec')}
-            style={{ width: '100%', flex: 1, minHeight: 360, padding: '14px 16px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, lineHeight: 1.6, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+          <label style={label}>Briefing {gerando && <span className="anim-shimmer" style={{ ['--shimmer-cor' as any]: '#7c3aed', ['--shimmer-brilho' as any]: '#c4b5fd' }}>{tr('bri.gerando')}</span>}</label>
+          {/* Enquanto a IA escreve, o texto aparece NO LUGAR do campo — chega
+              onde vai ficar. Quando termina, o campo volta já preenchido e
+              editável. Trocar os dois evita a tela pular de tamanho. */}
+          {gerando ? (
+            <TextoChegando texto={previa} rotulo={tr('bri.gerando')} altura={360} />
+          ) : (
+            <textarea lang="pt-BR" value={form.conteudo} onChange={e => setForm(f => ({ ...f, conteudo: e.target.value }))} placeholder={tr('bri.briefing-gerado-pela-ia-aparec')}
+              style={{ width: '100%', flex: 1, minHeight: 360, padding: '14px 16px', borderRadius: 10, border: '1.5px solid var(--v2-rule)', fontSize: 13, lineHeight: 1.6, fontFamily: 'inherit', boxSizing: 'border-box', resize: 'vertical' }} />
+          )}
 
           {form.conteudo && (
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

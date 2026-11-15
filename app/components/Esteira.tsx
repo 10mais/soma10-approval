@@ -228,7 +228,12 @@ export default function Esteira({ clientes, clienteFixo, onAbrirComposer, podeEd
         {planoSel && podeEditar && <>
           <button onClick={() => { setFormPauta({ briefing: '', sugestaoImagem: '', textoImagem: '', sugestaoLegenda: '', formato: 'feed', refImagemUrl: '' }); setNovaPautaModal(true) }} style={{ padding: '9px 16px', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{tr('est2.nova-pauta')}</button>
           <button onClick={gerarPlanoIA} disabled={gerandoIA} style={{ padding: '9px 16px', background: 'var(--v2-ink)', color: 'var(--v2-amber-on)', border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
-            {gerandoIA ? tr('dash.gerando') : tr('est2.gerar-plano-ia')}
+            {/* O plano vem em JSON (12 pautas de uma vez), então não há texto para
+                mostrar chegando como no briefing. O shimmer no rótulo é o sinal de
+                que a IA está trabalhando numa espera que passa de meio minuto. */}
+            {gerandoIA
+              ? <span className="anim-shimmer" style={{ ['--shimmer-cor' as any]: 'var(--v2-amber-on)', ['--shimmer-brilho' as any]: 'var(--v2-surface)' }}>{tr('dash.gerando')}</span>
+              : tr('est2.gerar-plano-ia')}
           </button>
         </>}
       </div>

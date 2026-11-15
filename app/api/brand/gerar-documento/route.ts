@@ -6,6 +6,7 @@ import { revalidateTag } from 'next/cache'
 import { registrarGasto, custoEstimado } from '@/lib/anthropicSaldo'
 import Anthropic from '@anthropic-ai/sdk'
 import { textoMarcaExtras } from '@/lib/marcaExtras'
+import { SENTINELA, LIMPAR } from '@/lib/streamTexto'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300 // Vercel Pro: até 5 min para a pesquisa + geração
@@ -74,49 +75,77 @@ Estruture o documento em Markdown com as seções:
 
 Entregue apenas o documento final em Markdown, sem preâmbulos.`
 
-  try {
-    const client = new Anthropic({ apiKey: KEY })
+  // A resposta vai SAINDO enquanto o modelo escreve (protocolo em lib/streamTexto):
+  // texto puro, ␜ quando o turno recomeça, ␞ + JSON no fim com o que foi salvo.
+  // Antes a rota segurava tudo e a tela ficava dezenas de segundos parada.
+  const encoder = new TextEncoder()
+  const fluxo = new ReadableStream({
+    async start(controller) {
+      const enviar = (s: string) => controller.enqueue(encoder.encode(s))
+      try {
+        const client = new Anthropic({ apiKey: KEY })
 
-    let messages: Anthropic.MessageParam[] = [{ role: 'user', content: prompt }]
-    const tools: Anthropic.Tool[] = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 5 } as any]
+        let messages: Anthropic.MessageParam[] = [{ role: 'user', content: prompt }]
+        const tools: Anthropic.Tool[] = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 5 } as any]
 
-    let documento = ''
-    let custoTotal = 0
-    // Loop para lidar com pause_turn quando a busca na web ultrapassa o limite de iterações
-    for (let i = 0; i < 5; i++) {
-      const stream = client.messages.stream({
-        model: 'claude-opus-4-8',
-        max_tokens: 8000,
-        thinking: { type: 'adaptive' },
-        output_config: { effort: 'medium' } as any,
-        tools,
-        messages,
-      } as any)
-      const msg = await stream.finalMessage()
-      custoTotal += custoEstimado(msg.usage)
+        let documento = ''
+        let custoTotal = 0
+        // Loop para lidar com pause_turn quando a busca na web ultrapassa o limite de iterações
+        for (let i = 0; i < 5; i++) {
+          // Cada volta REESCREVE o documento (não acumula), então avisa a tela
+          // para descartar o que mostrou até aqui — senão sai duplicado.
+          if (i > 0) enviar(LIMPAR)
 
-      documento = msg.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n')
+          const stream = client.messages.stream({
+            model: 'claude-opus-4-8',
+            max_tokens: 8000,
+            thinking: { type: 'adaptive' },
+            output_config: { effort: 'medium' } as any,
+            tools,
+            messages,
+          } as any)
+          stream.on('text', (delta: string) => enviar(delta))
 
-      if (msg.stop_reason !== 'pause_turn') break
-      messages = [...messages, { role: 'assistant', content: msg.content }]
-    }
+          const msg = await stream.finalMessage()
+          custoTotal += custoEstimado(msg.usage)
 
-    // Desconta o custo estimado do saldo e alerta os admins se estiver acabando
-    await registrarGasto(custoTotal).catch(() => {})
+          documento = msg.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n')
 
-    if (!documento.trim()) {
-      return NextResponse.json({ error: 'A IA não retornou conteúdo. Tente novamente.' }, { status: 502 })
-    }
+          if (msg.stop_reason !== 'pause_turn') break
+          messages = [...messages, { role: 'assistant', content: msg.content }]
+        }
 
-    const geradoEm = new Date().toISOString()
-    const atualizado: Cliente = { ...cliente, documentoMarca: documento, documentoMarcaGeradoEm: geradoEm }
-    await redis.set(`cliente:${clienteId}`, atualizado)
-    revalidateTag('clientes')
+        // Desconta o custo estimado do saldo e alerta os admins se estiver acabando
+        await registrarGasto(custoTotal).catch(() => {})
 
-    return NextResponse.json({ ok: true, documentoMarca: documento, documentoMarcaGeradoEm: geradoEm })
-  } catch (err: any) {
-    const msg = err?.message || 'Erro desconhecido ao gerar o documento.'
-    console.error('[brand/gerar-documento] erro:', msg)
-    return NextResponse.json({ error: `Erro ao gerar documento: ${msg}` }, { status: 500 })
-  }
+        if (!documento.trim()) {
+          enviar(SENTINELA + JSON.stringify({ erro: 'A IA não retornou conteúdo. Tente novamente.' }))
+          return
+        }
+
+        const geradoEm = new Date().toISOString()
+        const atualizado: Cliente = { ...cliente, documentoMarca: documento, documentoMarcaGeradoEm: geradoEm }
+        await redis.set(`cliente:${clienteId}`, atualizado)
+        revalidateTag('clientes')
+
+        enviar(SENTINELA + JSON.stringify({ ok: true, documentoMarca: documento, documentoMarcaGeradoEm: geradoEm }))
+      } catch (err: any) {
+        // O status HTTP já foi 200 quando o fluxo abriu: o erro viaja pela
+        // sentinela, que é por onde a tela sabe ler.
+        const msg = err?.message || 'Erro desconhecido ao gerar o documento.'
+        console.error('[brand/gerar-documento] erro:', msg)
+        enviar(SENTINELA + JSON.stringify({ erro: `Erro ao gerar documento: ${msg}` }))
+      } finally {
+        controller.close()
+      }
+    },
+  })
+
+  return new Response(fluxo, {
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Accel-Buffering': 'no', // sem isso um proxy segura os pedaços e o efeito some
+    },
+  })
 }

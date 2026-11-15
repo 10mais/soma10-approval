@@ -19,6 +19,8 @@ import { localeDe } from '@/lib/i18n'
 import { statusAoSalvarEdicao } from '@/lib/composerPendencias'
 import { camposYouTube } from '@/lib/youtubePost'
 import SuspensaoPost from '@/app/components/SuspensaoPost'
+import TextoChegando from '@/app/components/TextoChegando'
+import { lerStreamDeTexto } from '@/lib/streamTexto'
 import CartaoCriativo from '@/app/components/aprovacao/CartaoCriativo'
 import TabelaCopies from '@/app/components/aprovacao/TabelaCopies'
 import { postarDecisao, paraCartaoAprovacao, type CorpoDecisao } from '@/app/components/aprovacao/comum'
@@ -481,6 +483,8 @@ function Dashboard() {
   const [enviandoDoc, setEnviandoDoc] = useState(false)
   const [gerandoDocIA, setGerandoDocIA] = useState(false)
   const [docIAMsg, setDocIAMsg] = useState('')
+  // O documento como está sendo escrito pela IA, antes de virar o salvo.
+  const [docIAPreview, setDocIAPreview] = useState('')
   const [brandModo, setBrandModo] = useState<'card' | 'editar' | 'ver'>('editar')
   const [editandoUsuario, setEditandoUsuario] = useState<string | null>(null)
   const [edicaoUsuario, setEdicaoUsuario] = useState<{ nome: string; role: string; novaSenha: string; cargo: string; foto: string; custoHora?: number; salarioFixo?: number; valorPorProjeto?: number; qtdProjetos?: number }>({ nome: '', role: 'gerente', novaSenha: '', cargo: '', foto: '' })
@@ -1808,9 +1812,16 @@ function Dashboard() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ clienteId: verComoClienteId }),
       })
-      const data = await r.json()
-      if (!r.ok) { setDocIAMsg(data?.error || tr('dash.falha-gerar-doc')); return }
-      setBrandForm((b: any) => ({ ...b, documentoMarca: data.documentoMarca, documentoMarcaGeradoEm: data.documentoMarcaGeradoEm }))
+      // Erro antes de começar (sem permissão, sem chave) ainda vem como JSON.
+      if (!r.ok) { setDocIAMsg((await r.json().catch(() => null))?.error || tr('dash.falha-gerar-doc')); return }
+      // Daqui em diante o documento CHEGA ESCRITO AOS POUCOS: mostra na tela
+      // enquanto a IA escreve, em vez de deixar a pessoa minutos no escuro.
+      const { dados } = await lerStreamDeTexto<{ ok?: boolean; erro?: string; documentoMarca?: string; documentoMarcaGeradoEm?: string }>(
+        r.body, t => setDocIAPreview(t),
+      )
+      setDocIAPreview('')
+      if (!dados || dados.erro) { setDocIAMsg(dados?.erro || tr('dash.falha-gerar-doc')); return }
+      const data = dados
       await fetch('/api/clientes').then(res => res.json()).then(setClientes)
       setDocIAMsg(tr('dash.doc-gerado'))
       setTimeout(() => setDocIAMsg(''), 5000)
@@ -3099,6 +3110,7 @@ function Dashboard() {
                     </button>
                   </div>
                   {docIAMsg && <p style={{ fontSize: 13, color: docIAMsg.toLowerCase().includes('erro') || docIAMsg.toLowerCase().includes('falha') ? 'var(--v2-hot)' : 'var(--v2-ok)', fontWeight: 600, margin: '0 0 8px' }}>{docIAMsg}</p>}
+                  {gerandoDocIA && <TextoChegando texto={docIAPreview} rotulo={tr('dash.pesquisando-nicho')} />}
                   {brandForm.documentoMarca ? (
                     <div>
                       {brandForm.documentoMarcaGeradoEm && <p style={{ fontSize: 12, color: 'var(--v2-ink3)', margin: '0 0 8px' }}>{tr('dash.gerado-em', { quando: new Date(brandForm.documentoMarcaGeradoEm).toLocaleString(localeDe(idioma)) })}</p>}
@@ -3214,6 +3226,7 @@ function Dashboard() {
                   </button>
                 </div>
                 {docIAMsg && <p style={{ fontSize: 13, color: docIAMsg.toLowerCase().includes('erro') || docIAMsg.toLowerCase().includes('falha') ? 'var(--v2-hot)' : 'var(--v2-ok)', fontWeight: 600, margin: '0 0 10px' }}>{docIAMsg}</p>}
+                {gerandoDocIA && <TextoChegando texto={docIAPreview} rotulo={tr('dash.pesquisando-nicho')} />}
                 {brandForm.documentoMarca && (
                   <div>
                     {brandForm.documentoMarcaGeradoEm && (

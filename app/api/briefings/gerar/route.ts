@@ -5,6 +5,7 @@ import { redis, Cliente } from '@/lib/redis'
 import { registrarGasto, custoEstimado } from '@/lib/anthropicSaldo'
 import Anthropic from '@anthropic-ai/sdk'
 import { textoMarcaExtras } from '@/lib/marcaExtras'
+import { SENTINELA, LIMPAR } from '@/lib/streamTexto'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
@@ -88,36 +89,62 @@ Estruture em Markdown com as seções:
 
 Entregue apenas o briefing final em Markdown, sem preâmbulos.`
 
-  try {
-    const client = new Anthropic({ apiKey: KEY })
-    let messages: Anthropic.MessageParam[] = [{ role: 'user', content: prompt }]
-    const tools: Anthropic.Tool[] = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 4 } as any]
+  // Mesma conversa do documento de marca: o briefing aparece enquanto é escrito
+  // (protocolo em lib/streamTexto). ␜ quando o turno recomeça, ␞ + JSON no fim.
+  const encoder = new TextEncoder()
+  const fluxo = new ReadableStream({
+    async start(controller) {
+      const enviar = (s: string) => controller.enqueue(encoder.encode(s))
+      try {
+        const client = new Anthropic({ apiKey: KEY })
+        let messages: Anthropic.MessageParam[] = [{ role: 'user', content: prompt }]
+        const tools: Anthropic.Tool[] = [{ type: 'web_search_20260209', name: 'web_search', max_uses: 4 } as any]
 
-    let conteudo = ''
-    let custoTotal = 0
-    for (let i = 0; i < 5; i++) {
-      const stream = client.messages.stream({
-        model: 'claude-opus-4-8',
-        max_tokens: 8000,
-        thinking: { type: 'adaptive' },
-        output_config: { effort: 'medium' } as any,
-        tools,
-        messages,
-      } as any)
-      const msg = await stream.finalMessage()
-      custoTotal += custoEstimado(msg.usage)
-      conteudo = msg.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n')
-      if (msg.stop_reason !== 'pause_turn') break
-      messages = [...messages, { role: 'assistant', content: msg.content }]
-    }
+        let conteudo = ''
+        let custoTotal = 0
+        for (let i = 0; i < 5; i++) {
+          // A volta seguinte reescreve o briefing do zero — descarta o anterior.
+          if (i > 0) enviar(LIMPAR)
 
-    await registrarGasto(custoTotal).catch(() => {})
+          const stream = client.messages.stream({
+            model: 'claude-opus-4-8',
+            max_tokens: 8000,
+            thinking: { type: 'adaptive' },
+            output_config: { effort: 'medium' } as any,
+            tools,
+            messages,
+          } as any)
+          stream.on('text', (delta: string) => enviar(delta))
 
-    if (!conteudo.trim()) return NextResponse.json({ error: 'A IA não retornou conteúdo. Tente novamente.' }, { status: 502 })
-    return NextResponse.json({ ok: true, conteudo })
-  } catch (err: any) {
-    const msg = err?.message || 'Erro desconhecido ao gerar o briefing.'
-    console.error('[briefings/gerar] erro:', msg)
-    return NextResponse.json({ error: `Erro ao gerar briefing: ${msg}` }, { status: 500 })
-  }
+          const msg = await stream.finalMessage()
+          custoTotal += custoEstimado(msg.usage)
+          conteudo = msg.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n')
+          if (msg.stop_reason !== 'pause_turn') break
+          messages = [...messages, { role: 'assistant', content: msg.content }]
+        }
+
+        await registrarGasto(custoTotal).catch(() => {})
+
+        if (!conteudo.trim()) {
+          enviar(SENTINELA + JSON.stringify({ erro: 'A IA não retornou conteúdo. Tente novamente.' }))
+          return
+        }
+        enviar(SENTINELA + JSON.stringify({ ok: true, conteudo }))
+      } catch (err: any) {
+        const msg = err?.message || 'Erro desconhecido ao gerar o briefing.'
+        console.error('[briefings/gerar] erro:', msg)
+        enviar(SENTINELA + JSON.stringify({ erro: `Erro ao gerar briefing: ${msg}` }))
+      } finally {
+        controller.close()
+      }
+    },
+  })
+
+  return new Response(fluxo, {
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Accel-Buffering': 'no',
+    },
+  })
 }

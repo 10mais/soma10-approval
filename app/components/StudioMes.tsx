@@ -1207,7 +1207,11 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
           <button className="st-btn st-cta" onClick={novaLinha} disabled={criandoLinha} style={{ padding: '10px 16px', background: '#ffcb3a', color: '#3d3000', border: 'none', borderRadius: 11, fontWeight: 600, fontSize: 13, cursor: criandoLinha ? 'wait' : 'pointer' }}>{tr('est.add-linha')}</button>
           {podeGerarIA && <button className="st-btn" onClick={() => setPlanoModal(true)} disabled={gerandoIA} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', background: 'var(--v2-surface)', color: '#7a6a2e', border: '1px solid #ece6d3', borderRadius: 11, fontWeight: 500, fontSize: 13, cursor: gerandoIA ? 'not-allowed' : 'pointer', opacity: gerandoIA ? 0.6 : 1 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="#b8901f"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61z" /></svg>
-            {tr(gerandoIA ? 'est.gerando' : 'est.gerar-plano')}
+            {/* Espera longa (o modelo escreve as 12 pautas de uma vez): o rótulo
+                fica vivo em vez de parado. Ver .anim-shimmer em globals.css. */}
+            {gerandoIA
+              ? <span className="anim-shimmer" style={{ ['--shimmer-cor' as any]: '#7a6a2e', ['--shimmer-brilho' as any]: '#d8c47a' }}>{tr('est.gerando')}</span>
+              : tr('est.gerar-plano')}
           </button>}
         </>}
       </div>
