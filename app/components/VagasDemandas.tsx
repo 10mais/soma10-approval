@@ -71,10 +71,32 @@ export async function tratarRecusaDoLimite(r: Response, refazer: (forcarLimite: 
 }
 
 /**
+ * O que foi recusado TREME (dono 15/11: "o sistema ganha vida"): o botão de Pescar que não
+ * conseguiu, o cartão da fila que voltou. Classe .anim-tremer do globals.css, então quem pediu
+ * menos movimento não vê; tirada no fim para poder tremer de novo no próximo clique.
+ */
+export function tremer(el?: EventTarget | null) {
+  if (typeof HTMLElement === 'undefined' || !(el instanceof HTMLElement)) return
+  el.classList.remove('anim-tremer')
+  void el.offsetWidth // reinicia a animação
+  el.classList.add('anim-tremer')
+  const tirar = () => el.classList.remove('anim-tremer')
+  el.addEventListener('animationend', tirar, { once: true })
+  setTimeout(tirar, 600)
+}
+
+/**
  * PESCAR: a pessoa assume uma peça da própria fila (Em andamento; ajuste esperando vaga vira Em
  * ajuste). O servidor confere a vaga. `fila` (opcional) liga o aviso de Prioridade pulada.
+ * `origem` (opcional) = o botão clicado: treme se a peça não foi pescada.
  */
-export async function pescarTarefa(t: ItemVaga, fila: ItemVaga[] = []): Promise<boolean> {
+export async function pescarTarefa(t: ItemVaga, fila: ItemVaga[] = [], origem?: EventTarget | null): Promise<boolean> {
+  const ok = await pescarSemTremer(t, fila)
+  if (!ok) tremer(origem)
+  return ok
+}
+
+async function pescarSemTremer(t: ItemVaga, fila: ItemVaga[]): Promise<boolean> {
   const corpo = { id: t.id, status: t.ajuste ? 'em_ajuste' : 'em_andamento' }
   const enviar = (extra: object = {}) => fetch('/api/tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...corpo, ...extra }) })
   const r0 = await enviar().catch(() => null)
@@ -89,7 +111,11 @@ export async function pescarTarefa(t: ItemVaga, fila: ItemVaga[] = []): Promise<
   return true
 }
 
-/** ●●○ — as vagas desenhadas. Acima do limite, as que passam ficam em vermelho. */
+/**
+ * ●●○ — as vagas desenhadas. Acima do limite, as que passam ficam em vermelho.
+ * Bolinha que ENCHE dá um repique (.anim-vaga): a chave muda quando ela enche, então a animação
+ * roda ao aparecer (uma a uma) e quando alguém pesca; esvaziar só troca a cor.
+ */
 export function PontosVagas({ ocupadas, limite, tamanho = 8 }: { ocupadas: number; limite: number; tamanho?: number }) {
   const total = Math.max(limite, ocupadas)
   return (
@@ -97,8 +123,8 @@ export function PontosVagas({ ocupadas, limite, tamanho = 8 }: { ocupadas: numbe
       {Array.from({ length: Math.min(total, 10) }).map((_, i) => {
         const cheia = i < ocupadas
         const passou = i >= limite
-        return <span key={i} style={{
-          width: tamanho, height: tamanho, borderRadius: '50%', boxSizing: 'border-box',
+        return <span key={`${i}-${cheia ? 1 : 0}`} className={cheia ? 'anim-vaga' : undefined} style={{
+          ['--i' as any]: i, width: tamanho, height: tamanho, borderRadius: '50%', boxSizing: 'border-box',
           background: cheia ? (passou ? 'var(--v2-hot)' : 'var(--v2-amber-on, var(--v2-amber))') : 'transparent',
           border: `1.5px solid ${cheia ? (passou ? 'var(--v2-hot)' : 'var(--v2-amber-on, var(--v2-amber))') : 'var(--v2-ink3)'}`,
           transition: 'background 220ms ease, border-color 220ms ease',
@@ -136,10 +162,11 @@ export function BlocoSuasVagas({ onAbrir, onMudou }: { onAbrir: () => void; onMu
   const m = dados.minhas
   if (!m.emAndamento.length && !m.fila.length) return null
   const proxima = m.fila[0]
-  const pescar = async () => {
+  const pescar = async (e: React.MouseEvent<HTMLButtonElement>) => {
     if (!proxima || pescando) return
+    const botao = e.currentTarget
     setPescando(proxima.id)
-    const ok = await pescarTarefa(proxima, m.fila)
+    const ok = await pescarTarefa(proxima, m.fila, botao)
     setPescando('')
     if (ok) { recarregar(); onMudou?.() }
   }
@@ -150,8 +177,8 @@ export function BlocoSuasVagas({ onAbrir, onMudou }: { onAbrir: () => void; onMu
         Suas vagas
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}><PontosVagas ocupadas={m.ocupadas} limite={m.limite} />{m.ocupadas} de {m.limite} em andamento</span>
       </h3>
-      {m.emAndamento.map(t => (
-        <div key={t.id} style={linha} role="button" tabIndex={0} onClick={onAbrir} onKeyDown={e => { if (e.key === 'Enter') onAbrir() }}>
+      {m.emAndamento.map((t, i) => (
+        <div key={t.id} className="anim-item" style={{ ...linha, ['--i' as any]: i }} role="button" tabIndex={0} onClick={onAbrir} onKeyDown={e => { if (e.key === 'Enter') onAbrir() }}>
           <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--v2-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.titulo || 'Peça'}</p>
             <small style={{ fontSize: 11.5, color: 'var(--v2-ink3)' }}>{[t.clienteNome, t.status === 'em_ajuste' ? 'Em ajuste' : 'Em andamento'].filter(Boolean).join(' · ')}</small>

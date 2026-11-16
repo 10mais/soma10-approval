@@ -108,10 +108,10 @@ function Barra({ onAbrir, tema, estilo, compacta }: Props) {
   if (!daEquipe || !dados) return null
   const minhas = vagas?.ligado ? vagas.minhas : null
   const mostrarVagas = !!minhas && (minhas.ocupadas > 0 || minhas.fila.length > 0)
-  async function pescar(t: ItemVaga) {
+  async function pescar(t: ItemVaga, botao?: HTMLButtonElement) {
     if (!minhas || pescando) return
     setPescando(t.id)
-    await pescarTarefa(t, minhas.fila)
+    await pescarTarefa(t, minhas.fila, botao)
     setPescando('')
   }
 
@@ -215,7 +215,7 @@ function Barra({ onAbrir, tema, estilo, compacta }: Props) {
                           <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {t.ajuste && <strong style={{ color: 'var(--v2-hot)' }}>Ajuste · </strong>}{t.titulo}{t.clienteNome ? <span style={{ color: 'var(--v2-ink3)' }}> · {t.clienteNome}</span> : null}
                           </span>
-                          <button type="button" onClick={() => pescar(t)} disabled={!!pescando} title={n === 0 ? 'Sugerida: a primeira da sua fila' : 'Pescar esta peça'}
+                          <button type="button" onClick={e => pescar(t, e.currentTarget)} disabled={!!pescando} title={n === 0 ? 'Sugerida: a primeira da sua fila' : 'Pescar esta peça'}
                             style={{ flexShrink: 0, padding: '5px 11px', borderRadius: 999, border: n === 0 ? 'none' : '1px solid var(--v2-rule)', background: n === 0 ? 'var(--v2-amber-on)' : 'var(--v2-surface)', color: n === 0 ? '#17150E' : 'var(--v2-ink)', fontSize: 11.5, fontWeight: 800, cursor: pescando ? 'wait' : 'pointer', fontFamily: 'inherit' }}>
                             {pescando === t.id ? 'Pescando...' : 'Pescar'}
                           </button>

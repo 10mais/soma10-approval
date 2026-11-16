@@ -169,6 +169,16 @@ aside,
 .botao-aprovar-check path { stroke-dasharray: 1; stroke-dashoffset: 1; }
 .botao-aprovar.fase-aprovado .botao-aprovar-check path { animation: soma-desenhar 360ms 140ms var(--ease-out) forwards; }
 
+/* PRODUCAO DO TIME (limitador de demandas, dono 15/11: "o sistema ganha vida").
+   Bolinha de vaga que enche com um repique; barra que cresce da esquerda; o que foi
+   recusado treme. Atraso escalonado por --i. So transform/opacity, em elementos sem
+   filho fixed (bolinha, barra, botao, cartao da fila): regras 1 e 2 acima. */
+@keyframes soma-vaga-enche  { 0% { transform: scale(.3); opacity: .4 } 60% { transform: scale(1.3); opacity: 1 } 100% { transform: none; opacity: 1 } }
+@keyframes soma-barra-cresce { from { transform: scaleX(0) } to { transform: none } }
+.anim-vaga  { animation: soma-vaga-enche 420ms var(--ease-spring) both; animation-delay: min(calc(var(--i, 0) * 70ms), 420ms); }
+.anim-barra { transform-origin: left center; animation: soma-barra-cresce 700ms var(--ease-out) both; animation-delay: min(calc(var(--i, 0) * 50ms), 400ms); transition: width 600ms var(--ease-out); }
+.anim-tremer { animation: soma-tremer 380ms ease-in-out; }
+
 /* Acessibilidade: respeita quem pediu menos movimento no sistema. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

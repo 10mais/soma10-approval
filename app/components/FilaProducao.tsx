@@ -108,6 +108,7 @@ function Fila({ clienteFixo, onAbrirTarefa, onAbrirPauta }: Props) {
   const [sobre, setSobre] = useState<ColunaFila | null>(null)
   const [pedindoMotivo, setPedindoMotivo] = useState<ItemFila | null>(null)
   const [movendo, setMovendo] = useState<string | null>(null) // postId gravando
+  const [tremendo, setTremendo] = useState<string | null>(null) // postId recusado: treme ao voltar
   const [celular, setCelular] = useState(false)
   const raiz = useRef<HTMLDivElement>(null)
   const arrastandoRef = useRef<ItemFila | null>(null)
@@ -215,7 +216,12 @@ function Fila({ clienteFixo, onAbrirTarefa, onAbrirPauta }: Props) {
     }))
     const r = await enviarMovimento(it.tarefaId, para, motivo)
     setMovendo(null)
-    if (!r.ok) { setItens(antes); if (!r.silencioso) toastErro(r.erro || 'Não foi possível mudar o status.'); carregar(); return }
+    if (!r.ok) {
+      setItens(antes); if (!r.silencioso) toastErro(r.erro || 'Não foi possível mudar o status.')
+      // o cartão volta para a coluna de onde saiu e TREME: não andou (dono 15/11, movimento)
+      setTremendo(it.postId); setTimeout(() => setTremendo(t => (t === it.postId ? null : t)), 450)
+      carregar(); return
+    }
     avisarTarefasMudaram() // a barra do topo e este quadro recarregam
     const volta = destinoDaColuna(it.coluna)
     if (volta) {
@@ -354,7 +360,7 @@ function Fila({ clienteFixo, onAbrirTarefa, onAbrirPauta }: Props) {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 40 }}>
                     {lista.map(it => (
                       <Cartao key={it.postId} it={it} idioma={idioma} celular={celular}
-                        ocupado={movendo === it.postId} arrastandoEste={arrastando?.postId === it.postId}
+                        ocupado={movendo === it.postId} tremendo={tremendo === it.postId} arrastandoEste={arrastando?.postId === it.postId}
                         onAbrir={() => abrir(it)} onMover={d => mover(it, d)} onEntregar={() => entregar(it)}
                         onDragStart={() => { arrastandoRef.current = it; setArrastando(it) }} onDragEnd={fimDoArrasto} />
                     ))}
@@ -381,8 +387,8 @@ function Fila({ clienteFixo, onAbrirTarefa, onAbrirPauta }: Props) {
   )
 }
 
-function Cartao({ it, idioma, celular, ocupado, arrastandoEste, onAbrir, onMover, onEntregar, onDragStart, onDragEnd }: {
-  it: ItemFila; idioma: Idioma; celular: boolean; ocupado: boolean; arrastandoEste: boolean
+function Cartao({ it, idioma, celular, ocupado, tremendo, arrastandoEste, onAbrir, onMover, onEntregar, onDragStart, onDragEnd }: {
+  it: ItemFila; idioma: Idioma; celular: boolean; ocupado: boolean; tremendo?: boolean; arrastandoEste: boolean
   onAbrir: () => void; onMover: (d: DestinoFila) => void; onEntregar: () => void
   onDragStart: () => void; onDragEnd: () => void
 }) {
@@ -402,7 +408,7 @@ function Cartao({ it, idioma, celular, ocupado, arrastandoEste, onAbrir, onMover
   const parar = (e: React.SyntheticEvent) => e.stopPropagation()
 
   return (
-    <div role="button" tabIndex={0} aria-label={`${it.titulo} — ${it.clienteNome}`}
+    <div role="button" tabIndex={0} aria-label={`${it.titulo} — ${it.clienteNome}`} className={tremendo ? 'anim-tremer' : undefined}
       onClick={onAbrir} onKeyDown={e => { if (e.key === 'Enter' && e.target === e.currentTarget) onAbrir() }}
       draggable={arrastavel}
       onDragStart={e => { if (!arrastavel) return; e.dataTransfer.setData('text/plain', it.postId); e.dataTransfer.effectAllowed = 'move'; onDragStart() }}

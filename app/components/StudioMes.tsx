@@ -548,10 +548,10 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
     const pos = filaDe(email, tarefasVinc as any).findIndex(x => x.id === t.id) + 1
     return { texto: `Na fila de ${nome}${pos > 0 ? ` · ${pos}º` : ''}`, podePescar: souEu }
   }
-  async function pescarDaPauta(t: any) {
+  async function pescarDaPauta(t: any, botao?: HTMLButtonElement) {
     if (pescandoPauta) return
     setPescandoPauta(t.id)
-    const ok = await pescarTarefa({ id: t.id, titulo: t.titulo, status: t.status, prioridade: t.prioridade, ajuste: !!t.ajustePedidoEm }, (vagasTime?.minhas.fila || []))
+    const ok = await pescarTarefa({ id: t.id, titulo: t.titulo, status: t.status, prioridade: t.prioridade, ajuste: !!t.ajustePedidoEm }, (vagasTime?.minhas.fila || []), botao)
     setPescandoPauta('')
     if (ok) carregarTarefasVinc()
   }
@@ -1744,7 +1744,7 @@ export default function StudioMes({ clientes, clienteFixo, onAbrirComposer, pode
                             <span style={{ width: 6, height: 6, borderRadius: 999, background: 'currentColor' }} />Tarefa{fase} · {sit ? sit.texto : `${STATUS_TAREFA_LABEL[t.status || ''] || t.status}${t.responsavelNome ? ` · ${t.responsavelNome}` : ''}`} · Abrir
                           </button>
                           {sit?.podePescar && (
-                            <button type="button" className="st-btn" onClick={() => pescarDaPauta(t)} disabled={!!pescandoPauta} title="Pescar: a tarefa vai para Em andamento com você e ocupa uma das suas vagas"
+                            <button type="button" className="st-btn" onClick={e => pescarDaPauta(t, e.currentTarget)} disabled={!!pescandoPauta} title="Pescar: a tarefa vai para Em andamento com você e ocupa uma das suas vagas"
                               style={{ padding: '6px 12px', borderRadius: 999, fontSize: 11, fontWeight: 800, border: 'none', cursor: pescandoPauta ? 'wait' : 'pointer', fontFamily: 'inherit', background: 'var(--v2-amber-on)', color: '#17150E' }}>
                               {pescandoPauta === t.id ? 'Pescando...' : 'Pescar e começar'}
                             </button>
