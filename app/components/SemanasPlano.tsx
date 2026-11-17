@@ -7,7 +7,8 @@
 // Entrega ligada a tarefa conclui junto com a tarefa (o botão abre a tarefa). Entrega sem
 // tarefa (reunião, entrega do cliente) se marca aqui mesmo, com Ctrl+Z.
 import { useMemo, useState } from 'react'
-import { visaoDaSemana, textoRelogio, type EntregaNaTela, type MarcoSemana } from '@/lib/planoAcao'
+import { visaoDaSemana, visaoDoCliente, textoResumoSemana, textoRelogio, type EntregaNaTela, type MarcoSemana } from '@/lib/planoAcao'
+import { toast } from '@/lib/toast'
 import { hojeYmd, fmtDiaMes } from '@/lib/datas'
 
 type Props = {
@@ -16,12 +17,13 @@ type Props = {
   onAbrirTarefa: (id: string) => void
   onMarcar: (marcoId: string, entregaId: string, concluir: boolean) => void
   onEditarSemana: (marcoId: string) => void
+  clienteNome?: string
 }
 
 const COR_RELOGIO: Record<string, string> = { atrasada: 'var(--v2-hot)', vence_hoje: 'var(--v2-amber)', no_prazo: 'var(--v2-ink3)', concluida: 'var(--v2-ok)', recesso: 'var(--v2-ink3)', sem_prazo: 'var(--v2-ink3)' }
 const primeiroNome = (s?: string) => (s || '').trim().split(/\s+/)[0] || ''
 
-function Linha({ e, mostrarSemana = false, editavel, onAbrirTarefa, onMarcar, onEditarSemana }: { e: EntregaNaTela; mostrarSemana?: boolean } & Omit<Props, 'marcos'>) {
+function Linha({ e, mostrarSemana = false, editavel, onAbrirTarefa, onMarcar, onEditarSemana }: { e: EntregaNaTela; mostrarSemana?: boolean } & Omit<Props, 'marcos' | 'clienteNome'>) {
   const feita = e.status === 'concluido'
   const ligada = e.vinculo?.tipo === 'tarefa'
   const podeMarcar = editavel && !ligada
@@ -50,13 +52,20 @@ function Linha({ e, mostrarSemana = false, editavel, onAbrirTarefa, onMarcar, on
 }
 
 
-export default function SemanasPlano({ marcos, editavel, onAbrirTarefa, onMarcar, onEditarSemana }: Props) {
+export default function SemanasPlano({ marcos, editavel, onAbrirTarefa, onMarcar, onEditarSemana, clienteNome }: Props) {
   const hoje = hojeYmd()
   const [numero, setNumero] = useState<number | undefined>(undefined)
   const v = useMemo(() => visaoDaSemana(marcos, hoje, numero), [marcos, hoje, numero])
   const atual = useMemo(() => visaoDaSemana(marcos, hoje)?.numero, [marcos, hoje])
   if (!v) return null
   const acoes = { editavel, onAbrirTarefa, onMarcar, onEditarSemana }
+  // F3: o mesmo recorte que o cliente vê, em texto para colar no WhatsApp.
+  async function copiarResumo() {
+    const vc = visaoDoCliente(marcos, hoje, v!.numero)
+    if (!vc) return
+    try { await navigator.clipboard.writeText(textoResumoSemana(vc, clienteNome)); toast('Resumo copiado. Cole no WhatsApp do cliente.', 'sucesso') }
+    catch { toast('Não foi possível copiar.', 'erro') }
+  }
 
   const btnNav: React.CSSProperties = { width: 32, height: 32, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 16, fontFamily: 'inherit' }
   const destaques = [
@@ -73,6 +82,7 @@ export default function SemanasPlano({ marcos, editavel, onAbrirTarefa, onMarcar
           <h3 style={{ margin: '4px 0 0', fontSize: 22, lineHeight: 1.25, color: 'var(--v2-ink)', fontWeight: 800 }}>{v.foco}</h3>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button type="button" onClick={copiarResumo} title="Texto pronto com o que saiu, o que sai e o que depende do cliente" style={{ ...btnNav, width: 'auto', padding: '0 12px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink)' }}>Copiar resumo</button>
           <button type="button" style={btnNav} aria-label="Semana anterior" disabled={v.numero <= 1} onClick={() => setNumero(Math.max(1, v.numero - 1))}>&#8249;</button>
           {v.numero !== atual && <button type="button" onClick={() => setNumero(undefined)} style={{ ...btnNav, width: 'auto', padding: '0 12px', fontSize: 12, fontWeight: 700 }}>Semana atual</button>}
           <button type="button" style={btnNav} aria-label="Próxima semana" disabled={v.numero >= v.total} onClick={() => setNumero(v.numero + 1)}>&#8250;</button>

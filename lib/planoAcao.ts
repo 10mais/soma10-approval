@@ -466,3 +466,88 @@ export function textoRelogio(r: Relogio): string {
     default: return 'sem prazo'
   }
 }
+
+// ================================================================ F3: visão do cliente
+// Pergunta da tela: "como está meu projeto e o que depende de mim?". O cliente vê a semana,
+// o andamento real, o que ELE precisa fazer (com prazo) e o que a equipe entrega — com o
+// primeiro nome de quem faz (decisão do dono, 17/11). Tarefa interna não aparece aqui: só
+// as entregas do plano.
+
+export type EntregaCliente = { id: string; marcoId: string; titulo: string; semana: number; prazo?: string; quem: string; situacao: 'entregue' | 'em_andamento' | 'previsto' | 'atrasado'; relogio: Relogio }
+export type VisaoCliente = {
+  numero: number; total: number; segunda: string; domingo: string; foco: string; recesso: boolean
+  pct: number; pctNoPrazo: number | null; concluidas: number; previstas: number
+  dependeDeVoce: EntregaCliente[] // abertas do cliente, até a semana seguinte, mais urgente primeiro
+  nestaSemana: EntregaCliente[] // da equipe, na semana mostrada
+  semanaPassada: EntregaCliente[] // entregues na semana anterior
+  proxima?: { numero: number; foco: string; entregas: string[] }
+}
+
+const primeiro = (s?: string) => (s || '').trim().split(/\s+/)[0] || ''
+
+function paraCliente(e: SubEtapa, marcoId: string, semana: number, hoje: string, recesso: boolean): EntregaCliente {
+  const relogio = relogioDaEntrega(e.status, e.dataFim, hoje, recesso)
+  const situacao = e.status === 'concluido' ? 'entregue' : relogio.estado === 'atrasada' ? 'atrasado' : e.status === 'em_andamento' ? 'em_andamento' : 'previsto'
+  const quem = e.responsavelTipo === 'cliente' ? 'Você' : primeiro(e.responsavelNome) || 'Equipe'
+  return { id: e.id, marcoId, titulo: e.titulo, semana, prazo: e.dataFim, quem, situacao, relogio }
+}
+
+export function visaoDoCliente<T extends MarcoSemana>(marcos: T[], hoje: string, numero?: number): VisaoCliente | null {
+  const semanas = semanasDoPlano(marcos)
+  if (!semanas.length) return null
+  const alvo = (numero ? semanas.find(s => s.numero === numero) : undefined) || semanaAtual(semanas, hoje)!
+  const doCliente = (e: SubEtapa) => e.responsavelTipo === 'cliente'
+  const conv = (s: typeof semanas[number]) => (e: SubEtapa) => paraCliente(e, s.id, s.numero, hoje, !!s.recesso)
+
+  const dependeDeVoce = semanas
+    .filter(s => s.numero <= alvo.numero + 1)
+    .flatMap(s => (s.subetapas || []).filter(e => doCliente(e) && e.status !== 'concluido').map(conv(s)))
+    .sort((a, b) => ORDEM_RELOGIO[a.relogio.estado] - ORDEM_RELOGIO[b.relogio.estado] || (a.prazo || '9').localeCompare(b.prazo || '9'))
+
+  const ordemSituacao = { atrasado: 0, em_andamento: 1, previsto: 2, entregue: 3 } as const
+  const nestaSemana = (alvo.subetapas || []).filter(e => !doCliente(e)).map(conv(alvo))
+    .sort((a, b) => ordemSituacao[a.situacao] - ordemSituacao[b.situacao] || (a.prazo || '9').localeCompare(b.prazo || '9'))
+
+  const anterior = semanas.find(s => s.numero === alvo.numero - 1)
+  const semanaPassada = anterior ? (anterior.subetapas || []).filter(e => e.status === 'concluido').map(conv(anterior)) : []
+  const prox = semanas.find(s => s.numero === alvo.numero + 1)
+  const p = progressoDoPlano(semanas.map(s => ({ id: s.id, numero: s.numero, recesso: s.recesso, entregas: (s.subetapas || []).map(e => ({ status: e.status, prazo: e.dataFim, concluidaEm: e.concluidaEm })) })), hoje)
+
+  return {
+    numero: alvo.numero, total: semanas[semanas.length - 1].numero, segunda: alvo.segunda, domingo: domingoDaSemana(alvo.segunda),
+    foco: alvo.foco || alvo.titulo || `Semana ${alvo.numero}`, recesso: !!alvo.recesso,
+    pct: p.pct, pctNoPrazo: p.pctNoPrazo, concluidas: p.concluidas, previstas: p.previstas,
+    dependeDeVoce, nestaSemana, semanaPassada,
+    proxima: prox ? { numero: prox.numero, foco: prox.foco || prox.titulo || `Semana ${prox.numero}`, entregas: (prox.subetapas || []).map(e => e.titulo) } : undefined,
+  }
+}
+
+const ddmm = (ymd?: string) => (ymd && ehData(ymd) ? `${ymd.slice(8, 10)}/${ymd.slice(5, 7)}` : '')
+
+/**
+ * Resumo da semana pronto para colar no WhatsApp do cliente (F3). Texto simples, sem
+ * emoji, na ordem que o cliente lê: onde estamos, o que saiu, o que sai agora, o que
+ * depende dele. Seção vazia não aparece.
+ */
+export function textoResumoSemana(v: VisaoCliente, nomeCliente?: string): string {
+  const linhas: string[] = []
+  const nome = primeiro(nomeCliente)
+  linhas.push(`${nome ? `Olá, ${nome}! ` : 'Olá! '}Resumo da semana ${v.numero} de ${v.total} (${ddmm(v.segunda)} a ${ddmm(v.domingo)}).`)
+  linhas.push('')
+  linhas.push(`Foco da semana: ${v.foco}`)
+  linhas.push(`Andamento do plano: ${v.pct}% (${v.concluidas} de ${v.previstas} entregas)${v.pctNoPrazo !== null ? `, ${v.pctNoPrazo}% no prazo` : ''}.`)
+  if (v.semanaPassada.length) {
+    linhas.push('', 'Entregue na semana passada:')
+    for (const e of v.semanaPassada) linhas.push(`• ${e.titulo}`)
+  }
+  const daEquipe = v.nestaSemana.filter(e => e.situacao !== 'entregue')
+  if (daEquipe.length) {
+    linhas.push('', 'Nesta semana a equipe entrega:')
+    for (const e of daEquipe) linhas.push(`• ${e.titulo}${e.prazo ? ` (até ${ddmm(e.prazo)})` : ''}`)
+  }
+  if (v.dependeDeVoce.length) {
+    linhas.push('', 'Precisamos de você:')
+    for (const e of v.dependeDeVoce) linhas.push(`• ${e.titulo}${e.prazo ? ` (até ${ddmm(e.prazo)})` : ''}`)
+  }
+  return linhas.join('\n')
+}

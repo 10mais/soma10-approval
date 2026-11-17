@@ -31,6 +31,14 @@ export async function GET(req: NextRequest) {
   let marcos = (await Promise.all(ids.map(id => redis.get<Marco>(`marco:${id}`)))).filter(Boolean) as Marco[]
   if (clienteId) marcos = marcos.filter(m => m.clienteId === clienteId)
   marcos.sort((a, b) => new Date(a.dataInicio).getTime() - new Date(b.dataInicio).getTime())
+  // Plano de ação (F3): o cliente vê o primeiro nome de quem faz; e-mail da equipe e o id da
+  // tarefa interna não saem daqui.
+  if (role === 'cliente') {
+    marcos = marcos.map(m => !m.subetapas?.length ? m : {
+      ...m,
+      subetapas: m.subetapas.map(({ responsavelEmail, vinculo, ...e }) => ({ ...e, ...(e.responsavelNome ? { responsavelNome: e.responsavelTipo === 'cliente' ? e.responsavelNome : e.responsavelNome.trim().split(/\s+/)[0] } : {}) })),
+    })
+  }
   return NextResponse.json(marcos)
 }
 

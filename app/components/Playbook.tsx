@@ -9,6 +9,7 @@ import { fecharFora } from '@/lib/fecharModal'
 import AplicarModal, { type Template } from './AplicarModelo'
 import ImportarPlanoAcao from './ImportarPlanoAcao'
 import SemanasPlano from './SemanasPlano'
+import PlanoCliente from './PlanoCliente'
 import { hojeYmd } from '@/lib/datas'
 import { TarefaModal } from './GestaoTarefas'
 import { responsavelPorTipo } from '@/lib/responsavelPorTipo'
@@ -403,7 +404,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   // TERCEIRA visão (plano de ação por semanas, F2 de 17/11/2026): só aparece para cliente com semanas.
   const [view, setViewState] = useState<'gantt' | 'lista' | 'semanas'>('gantt')
   useEffect(() => { try { const v = localStorage.getItem('soma10-playbook-view'); if (v === 'lista' || v === 'semanas') setViewState(v) } catch {} }, [])
-  const setView = (v: 'gantt' | 'lista' | 'semanas') => { setViewState(v); try { localStorage.setItem('soma10-playbook-view', v) } catch {} }
+  const setView = (v: 'gantt' | 'lista' | 'semanas') => { escolheuVisao.current = true; setViewState(v); try { localStorage.setItem('soma10-playbook-view', v) } catch {} }
 
   // Modo cliente (portal): read-only — sem criar/editar/excluir; o clique no
   // marco abre um DETALHE, nunca o formulario de edicao da equipe.
@@ -414,8 +415,10 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   const clienteAtivo = clienteFixo || filtroCliente
   const temSemanas = !!clienteAtivo && marcos.some(m => m.clienteId === clienteAtivo && m.tipo === 'semana')
   // Cliente sem semanas que estava na visão Semanas cai no Gantt (a escolha fica guardada).
-  // No portal do cliente a visão Semanas ainda não existe (F3), então também cai no Gantt.
-  const verGantt = view === 'gantt' || (view === 'semanas' && (!temSemanas || somenteLeitura))
+  const verGantt = view === 'gantt' || (view === 'semanas' && !temSemanas)
+  // Portal do cliente (F3): com semanas, abre na visão Semanas, salvo se a pessoa já escolheu outra.
+  const escolheuVisao = useRef(false)
+  useEffect(() => { if (somenteLeitura && temSemanas && !escolheuVisao.current && view === 'gantt') setViewState('semanas') }, [somenteLeitura, temSemanas])
   // Declarado AQUI porque lê clienteAtivo: em cima do arquivo daria "Cannot access before initialization".
   const temOrdemManual = marcos.some(m => m.clienteId === clienteAtivo && (typeof m.ordem === 'number' || m.ordemEtapasManual))
 
@@ -769,7 +772,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
         <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{area('playbook')}</h2>
         <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }} role="tablist" aria-label={tr('plano.visualizacao')}>
-          {([['gantt', tr('plano.visao-gantt')], ['lista', tr('plano.visao-lista')], ...(temSemanas && !somenteLeitura ? [['semanas', tr('plano.visao-semanas')]] : [])] as ['gantt' | 'lista' | 'semanas', string][]).map(([k, l]) => (
+          {([['gantt', tr('plano.visao-gantt')], ['lista', tr('plano.visao-lista')], ...(temSemanas ? [['semanas', tr('plano.visao-semanas')]] : [])] as ['gantt' | 'lista' | 'semanas', string][]).map(([k, l]) => (
             <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)} style={{ padding: '6px 12px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700, background: view === k ? 'var(--v2-surface)' : 'transparent', color: view === k ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: view === k ? '0 1px 3px rgba(0,0,0,0.12)' : 'none', fontFamily: 'inherit' }}>{l}</button>
           ))}
         </div>
@@ -814,8 +817,11 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
 
       {clienteAtivo && view === 'lista' && renderLista()}
 
+      {clienteAtivo && view === 'semanas' && temSemanas && somenteLeitura && (
+        <PlanoCliente marcos={marcos.filter(m => m.clienteId === clienteAtivo)} corMarca={corMarca} corMarcaTexto={corMarcaTexto} onMudou={() => carregar()} />
+      )}
       {clienteAtivo && view === 'semanas' && temSemanas && !somenteLeitura && (
-        <SemanasPlano marcos={marcos.filter(m => m.clienteId === clienteAtivo)} editavel={editavel}
+        <SemanasPlano marcos={marcos.filter(m => m.clienteId === clienteAtivo)} editavel={editavel} clienteNome={clientes.find(c => c.id === clienteAtivo)?.nome}
           onAbrirTarefa={abrirTarefaPorId} onMarcar={marcarEntrega} onEditarSemana={id => { const m = marcos.find(x => x.id === id); if (m) setEditModal(m) }} />
       )}
       {clienteAtivo && verGantt && <>
