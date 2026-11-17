@@ -153,7 +153,8 @@ export function progressoDoPlano(semanas: SemanaConta[], hoje: string): Progress
     for (const e of s.entregas) {
       if (e.status === 'concluido') c++
       if (relogioDaEntrega(e.status, e.prazo, hoje, s.recesso).estado === 'atrasada') a++
-      if (!s.recesso && ehData(e.prazo) && e.prazo! <= hoje) {
+      // Prazo que vence HOJE só entra na conta se já foi entregue: o dia ainda não acabou.
+      if (!s.recesso && ehData(e.prazo) && (e.prazo! < hoje || (e.prazo === hoje && e.status === 'concluido'))) {
         vencidas++
         if (e.status === 'concluido' && (!ehData(e.concluidaEm) || e.concluidaEm! <= e.prazo!)) noPrazo++
       }
@@ -323,4 +324,145 @@ export function montarPlanoImportado(progresso: LinhaProgresso[], entregas: Linh
   const semFoco = semanas.filter(s => /^Semana \d+$/.test(s.foco)).map(s => `W${s.numero}`)
   if (semFoco.length) avisos.push(`Sem foco definido: ${semFoco.join(', ')}.`)
   return { inicio: seg1, semanas, avisos }
+}
+
+// ================================================================ F2: a entrega vira tarefa
+// Decisão do dono (17/11): "entrega da equipe nasce com a tarefa e conclui junto". A tarefa
+// guarda `marcoId` + `subetapaId` (o vínculo que o Gantt já entende) e a entrega guarda
+// `vinculo: { tipo: 'tarefa', id }`. Daí em diante o status da entrega SAI da tarefa.
+//
+// Só nasce tarefa para o que está perto: prazo até `janelaDias` à frente (ou já vencido).
+// Importar 15 semanas de uma vez não pode despejar 58 tarefas no quadro de ninguém, nem
+// ocupar as vagas do limitador com coisa de janeiro.
+// Reunião semanal fica de fora: ela mora na agenda, e a entrega é marcada à mão.
+
+export const JANELA_TAREFA_DIAS = 14
+export const ehReuniao = (titulo?: string): boolean => /^\s*reuni(a|ã)o(\s|$|\()/i.test(titulo || '')
+
+const TIPO_POR_FRENTE: Record<string, string> = {
+  trafego: 'campanha', social_media: 'post', videos: 'video', landing_page: 'landing_page',
+  consultoria: 'estrategia', onboarding: 'tarefa', google_meu_negocio: 'tarefa', indicadores: 'tarefa',
+}
+export const tipoTarefaDaFrente = (frente?: string): string => TIPO_POR_FRENTE[frente || ''] || 'tarefa'
+
+export type SemanaComEntregas = { id: string; recesso?: boolean; subetapas?: SubEtapa[] }
+
+/** Entregas que devem ganhar tarefa agora. */
+export function entregasParaCriarTarefa(semanas: SemanaComEntregas[], hoje: string, janelaDias = JANELA_TAREFA_DIAS): { marcoId: string; entrega: SubEtapa }[] {
+  const limite = somarDias(hoje, janelaDias)
+  const out: { marcoId: string; entrega: SubEtapa }[] = []
+  for (const s of semanas) {
+    if (s.recesso) continue
+    for (const e of s.subetapas || []) {
+      if (e.responsavelTipo !== 'equipe' || !e.responsavelEmail) continue
+      if (e.vinculo || e.status === 'concluido' || ehReuniao(e.titulo)) continue
+      if (!ehData(e.dataFim) || e.dataFim! > limite) continue
+      out.push({ marcoId: s.id, entrega: e })
+    }
+  }
+  return out
+}
+
+export type TarefaLigada = { id: string; status?: string; concluidoEm?: string; responsavelEmail?: string; responsavelNome?: string }
+
+/**
+ * Traz para a entrega o que a tarefa ligada diz: status, dia da conclusão e responsável
+ * (trocar o responsável na tarefa troca na entrega). Devolve as entregas e se alguma
+ * mudou (só grava quem mudou). Tarefa sumida não apaga nada.
+ */
+export function reconciliarEntregas(entregas: SubEtapa[], tarefas: Map<string, TarefaLigada>, diaDe: (iso?: string) => string): { entregas: SubEtapa[]; mudou: boolean } {
+  let mudou = false
+  const novas = entregas.map(e => {
+    if (e.vinculo?.tipo !== 'tarefa') return e
+    const t = tarefas.get(e.vinculo.id)
+    if (!t) return e
+    const status = statusPelaLigacao({ tipo: 'tarefa', status: t.status }) ?? e.status
+    const concluidaEm = status === 'concluido' ? (e.concluidaEm || (t.concluidoEm ? diaDe(t.concluidoEm) : undefined)) : undefined
+    const trocouDono = !!t.responsavelEmail && t.responsavelEmail !== e.responsavelEmail
+    if (status === e.status && concluidaEm === e.concluidaEm && !trocouDono) return e
+    mudou = true
+    const n: SubEtapa = { ...e, status }
+    if (trocouDono) { n.responsavelEmail = t.responsavelEmail; if (t.responsavelNome) n.responsavelNome = t.responsavelNome }
+    if (concluidaEm) n.concluidaEm = concluidaEm; else delete n.concluidaEm
+    return n
+  })
+  return { entregas: novas, mudou }
+}
+
+// ================================================================ F2: visão da equipe
+// Pergunta da tela: "o que sai esta semana e quem está atrasado?". Três destaques só:
+// atrasadas, sem responsável, esperando o cliente. O resto fica quieto.
+
+export type EntregaNaTela = SubEtapa & { marcoId: string; semana: number; relogio: Relogio; doCliente: boolean; semDono: boolean }
+export type GrupoFrente = { frente: string; rotulo: string; entregas: EntregaNaTela[] }
+export type VisaoSemana = {
+  numero: number; total: number; segunda: string; domingo: string; foco: string; recesso: boolean; marcoId: string
+  grupos: GrupoFrente[]
+  atrasadasAntes: EntregaNaTela[] // de semanas anteriores, ainda abertas
+  destaques: { atrasadas: number; semDono: number; doCliente: number }
+  proximas: { numero: number; segunda: string; foco: string; entregas: number }[]
+  progresso: ProgressoPlano
+}
+
+function naTela(e: SubEtapa, marcoId: string, numero: number, hoje: string, recesso: boolean): EntregaNaTela {
+  const doCliente = e.responsavelTipo === 'cliente'
+  return { ...e, marcoId, semana: numero, relogio: relogioDaEntrega(e.status, e.dataFim, hoje, recesso), doCliente, semDono: !doCliente && !e.responsavelNome && !e.responsavelEmail }
+}
+
+const ORDEM_RELOGIO: Record<EstadoRelogio, number> = { atrasada: 0, vence_hoje: 1, no_prazo: 2, sem_prazo: 3, recesso: 4, concluida: 5 }
+const porUrgencia = (a: EntregaNaTela, b: EntregaNaTela) =>
+  ORDEM_RELOGIO[a.relogio.estado] - ORDEM_RELOGIO[b.relogio.estado] || (a.dataFim || '9').localeCompare(b.dataFim || '9')
+
+/** Monta a semana pedida (`numero`) ou a atual. As entregas já devem vir reconciliadas. */
+export function visaoDaSemana<T extends MarcoSemana>(marcos: T[], hoje: string, numero?: number): VisaoSemana | null {
+  const semanas = semanasDoPlano(marcos)
+  if (!semanas.length) return null
+  const alvo = (numero ? semanas.find(s => s.numero === numero) : undefined) || semanaAtual(semanas, hoje)!
+  const recesso = !!alvo.recesso
+  const lista = (alvo.subetapas || []).map(e => naTela(e, alvo.id, alvo.numero, hoje, recesso)).sort(porUrgencia)
+
+  const grupos: GrupoFrente[] = []
+  for (const e of lista) {
+    const chave = e.frente || ''
+    let g = grupos.find(x => x.frente === chave)
+    if (!g) { g = { frente: chave, rotulo: rotuloFrente(chave) || 'Outras', entregas: [] }; grupos.push(g) }
+    g.entregas.push(e)
+  }
+  // Frente com algo atrasado sobe; depois a ordem fixa de FRENTES.
+  const ordemFrente = (k: string) => { const i = FRENTES.findIndex(f => f.key === k); return i < 0 ? 99 : i }
+  const temAtraso = (g: GrupoFrente) => (g.entregas[0].relogio.estado === 'atrasada' ? 0 : 1)
+  grupos.sort((a, b) => temAtraso(a) - temAtraso(b) || ordemFrente(a.frente) - ordemFrente(b.frente))
+
+  const atrasadasAntes = semanas
+    .filter(s => s.numero < alvo.numero && !s.recesso)
+    .flatMap(s => (s.subetapas || []).map(e => naTela(e, s.id, s.numero, hoje, false)))
+    .filter(e => e.relogio.estado === 'atrasada')
+    .sort(porUrgencia)
+
+  const abertas = [...lista, ...atrasadasAntes].filter(e => e.status !== 'concluido')
+  const progresso = progressoDoPlano(semanas.map(s => ({ id: s.id, numero: s.numero, recesso: s.recesso, entregas: (s.subetapas || []).map(e => ({ status: e.status, prazo: e.dataFim, concluidaEm: e.concluidaEm })) })), hoje)
+  return {
+    numero: alvo.numero, total: semanas[semanas.length - 1].numero, segunda: alvo.segunda, domingo: domingoDaSemana(alvo.segunda),
+    foco: alvo.foco || alvo.titulo || `Semana ${alvo.numero}`, recesso, marcoId: alvo.id,
+    grupos, atrasadasAntes,
+    destaques: {
+      atrasadas: abertas.filter(e => e.relogio.estado === 'atrasada').length,
+      semDono: abertas.filter(e => e.semDono).length,
+      doCliente: abertas.filter(e => e.doCliente).length,
+    },
+    proximas: semanas.filter(s => s.numero > alvo.numero).slice(0, 2).map(s => ({ numero: s.numero, segunda: s.segunda, foco: s.foco || s.titulo || `Semana ${s.numero}`, entregas: (s.subetapas || []).length })),
+    progresso,
+  }
+}
+
+/** Texto do relógio para a tela: "atrasada há 3 dias", "vence hoje", "faltam 2 dias". */
+export function textoRelogio(r: Relogio): string {
+  switch (r.estado) {
+    case 'atrasada': return r.dias === 1 ? 'atrasada há 1 dia' : `atrasada há ${r.dias} dias`
+    case 'vence_hoje': return 'vence hoje'
+    case 'no_prazo': return r.dias === 1 ? 'vence amanhã' : `faltam ${r.dias} dias`
+    case 'concluida': return 'entregue'
+    case 'recesso': return 'recesso'
+    default: return 'sem prazo'
+  }
 }

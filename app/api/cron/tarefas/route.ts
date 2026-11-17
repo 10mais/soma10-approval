@@ -15,9 +15,16 @@ export async function GET(req: NextRequest) {
     // Vencimentos da frota viram Tarefa ANTES de rodar os prazos — assim uma
     // tarefa criada agora já entra na varredura de avisos do mesmo ciclo.
     const frota = await gerarTarefasFrota()
+    // Plano de ação por semanas (F2): entrega que entrou na janela ganha tarefa, e o status
+    // da tarefa volta para a entrega. Antes dos prazos, pelo mesmo motivo da frota.
+    let planoAcao = 0
+    try {
+      const { clientesComPlanoAcao, sincronizarPlanoAcao } = await import('@/lib/planoAcaoSync')
+      for (const c of await clientesComPlanoAcao()) planoAcao += (await sincronizarPlanoAcao(c)).criadas
+    } catch (e) { await capturarErro('cron/tarefas:planoAcao', e) }
     const r = await rodarPrazos()
     const body = await r.json()
-    return NextResponse.json({ ...body, tarefasFrota: frota })
+    return NextResponse.json({ ...body, tarefasFrota: frota, tarefasPlanoAcao: planoAcao })
   } catch (e) {
     await capturarErro('cron/tarefas', e)
     return NextResponse.json({ error: 'falha nos prazos de tarefa' }, { status: 500 })

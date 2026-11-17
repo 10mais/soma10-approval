@@ -1361,6 +1361,7 @@ export const TEXTOS: Record<string, Entrada> = {
   'plano.sem-marcos': { pt: 'Nenhum marco ainda. Use "+ Novo marco" ou "Aplicar modelo".', en: 'No milestones yet. Use "+ New milestone" or "Apply template".', es: 'Ningún hito aún. Use "+ Nuevo hito" o "Aplicar plantilla".' },
   'plano.novo-marco': { pt: '+ Novo marco', en: '+ New milestone', es: '+ Nuevo hito' },
   'plano.aplicar-modelo': { pt: 'Aplicar modelo', en: 'Apply template', es: 'Aplicar plantilla' },
+  'plano.visao-semanas': { pt: 'Semanas', en: 'Weeks', es: 'Semanas' },
   'plano.importar-planilha': { pt: 'Importar planilha', en: 'Import spreadsheet', es: 'Importar hoja' },
   'plano.importar-planilha-dica': { pt: 'Cole o playbook por semanas do Google Sheets', en: 'Paste the weekly playbook from Google Sheets', es: 'Pegue el playbook semanal de Google Sheets' },
   'plano.carregando-modelos': { pt: 'Carregando modelos…', en: 'Loading templates…', es: 'Cargando plantillas…' },

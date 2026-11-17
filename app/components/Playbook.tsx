@@ -8,6 +8,8 @@ import { confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
 import AplicarModal, { type Template } from './AplicarModelo'
 import ImportarPlanoAcao from './ImportarPlanoAcao'
+import SemanasPlano from './SemanasPlano'
+import { hojeYmd } from '@/lib/datas'
 import { TarefaModal } from './GestaoTarefas'
 import { responsavelPorTipo } from '@/lib/responsavelPorTipo'
 import { aplicarArraste, pxParaDias, rotuloPeriodo, periodoDaEtapa, janelaParaCaber, rotulosMeses, type TipoArraste } from '@/lib/ganttArraste'
@@ -33,6 +35,7 @@ type Marco = {
   cor?: string
   ordem?: number // posição manual no Gantt (lib/ordemGantt); ausente = ordem automática
   ordemEtapasManual?: boolean // as etapas seguem o array, não a duração
+  tipo?: string; foco?: string; recesso?: boolean // semana do plano de ação (lib/planoAcao)
   id: string; clienteId: string; clienteNome: string; titulo: string; descricao?: string
   categoria: string; status: string; dataInicio: string; dataFim?: string; responsavelNome?: string
 }
@@ -397,9 +400,10 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   // DUAS VISÕES sobre os MESMOS dados (dono, 14/09: "lista e Gantt, 100% integrados"): as duas
   // leem `marcos`/`tarefas` e disparam as mesmas ações (modal, ordem, status, prazos). O nível
   // de abertura (etapas/tarefas) também é compartilhado. Lembrada por navegador.
-  const [view, setViewState] = useState<'gantt' | 'lista'>('gantt')
-  useEffect(() => { try { if (localStorage.getItem('soma10-playbook-view') === 'lista') setViewState('lista') } catch {} }, [])
-  const setView = (v: 'gantt' | 'lista') => { setViewState(v); try { localStorage.setItem('soma10-playbook-view', v) } catch {} }
+  // TERCEIRA visão (plano de ação por semanas, F2 de 17/11/2026): só aparece para cliente com semanas.
+  const [view, setViewState] = useState<'gantt' | 'lista' | 'semanas'>('gantt')
+  useEffect(() => { try { const v = localStorage.getItem('soma10-playbook-view'); if (v === 'lista' || v === 'semanas') setViewState(v) } catch {} }, [])
+  const setView = (v: 'gantt' | 'lista' | 'semanas') => { setViewState(v); try { localStorage.setItem('soma10-playbook-view', v) } catch {} }
 
   // Modo cliente (portal): read-only — sem criar/editar/excluir; o clique no
   // marco abre um DETALHE, nunca o formulario de edicao da equipe.
@@ -408,6 +412,10 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
 
   // Playbook e sempre escopado a UM cliente. No portal vem fixo; na agencia, escolhido.
   const clienteAtivo = clienteFixo || filtroCliente
+  const temSemanas = !!clienteAtivo && marcos.some(m => m.clienteId === clienteAtivo && m.tipo === 'semana')
+  // Cliente sem semanas que estava na visão Semanas cai no Gantt (a escolha fica guardada).
+  // No portal do cliente a visão Semanas ainda não existe (F3), então também cai no Gantt.
+  const verGantt = view === 'gantt' || (view === 'semanas' && (!temSemanas || somenteLeitura))
   // Declarado AQUI porque lê clienteAtivo: em cima do arquivo daria "Cannot access before initialization".
   const temOrdemManual = marcos.some(m => m.clienteId === clienteAtivo && (typeof m.ordem === 'number' || m.ordemEtapasManual))
 
@@ -431,7 +439,50 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       const lista: Marco[] = Array.isArray(d) ? d : []
       setMarcos(lista)
       if (opts?.enquadrar) enquadrarSeFora(lista.filter(m => m.clienteId === clienteAtivo))
+      sincronizarSemanas(lista)
     }).catch(() => {})
+  }
+  // PLANO DE AÇÃO (F2): ao abrir um cliente com semanas, as entregas da equipe que entraram na
+  // janela ganham tarefa e o status das tarefas volta para as entregas (lib/planoAcaoSync).
+  // Uma vez por cliente aberto; se mudou algo, recarrega marcos e tarefas.
+  const sincronizadoRef = useRef('')
+  function sincronizarSemanas(lista: Marco[]) {
+    if (somenteLeitura || !clienteAtivo || sincronizadoRef.current === clienteAtivo) return
+    if (!lista.some(m => m.clienteId === clienteAtivo && m.tipo === 'semana')) return
+    sincronizadoRef.current = clienteAtivo
+    const alvo = clienteAtivo
+    fetch('/api/plano-acao/sincronizar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clienteId: alvo }) })
+      .then(r => r.ok ? r.json() : null)
+      .then(res => {
+        if (!res || (!res.criadas && !res.atualizadas)) return
+        if (res.criadas) toast(res.criadas === 1 ? '1 entrega da semana virou tarefa.' : `${res.criadas} entregas das próximas semanas viraram tarefas.`, 'sucesso')
+        fetch(`/api/playbook?clienteId=${alvo}`).then(r => r.json()).then(d => { if (Array.isArray(d)) setMarcos(d) }).catch(() => {})
+        carregarTarefas()
+      }).catch(() => {})
+  }
+  async function abrirTarefaPorId(id: string) {
+    const t = tarefas.find(x => x.id === id)
+    if (t) { setTarefaAberta(t); return }
+    const d = await fetch('/api/tarefas').then(r => r.ok ? r.json() : []).catch(() => [])
+    if (Array.isArray(d)) { setTarefas(d); const achou = d.find((x: TarefaLeve) => x.id === id); if (achou) { setTarefaAberta(achou); return } }
+    toast('Tarefa não encontrada (pode ter ido para a lixeira).', 'erro')
+  }
+  // Entrega sem tarefa (reunião, entrega do cliente): marca aqui mesmo, com Ctrl+Z.
+  async function marcarEntrega(marcoId: string, entregaId: string, concluir: boolean) {
+    const m = marcos.find(x => x.id === marcoId)
+    if (!m) return
+    const antes = m.subetapas || []
+    const hoje = hojeYmd()
+    const depois = antes.map(e => e.id !== entregaId ? e : { ...e, status: (concluir ? 'concluido' : 'pendente') as SubEtapa['status'], ...(concluir ? { concluidaEm: hoje } : { concluidaEm: undefined }) })
+    setMarcos(ms => ms.map(x => x.id === marcoId ? { ...x, subetapas: depois } : x))
+    const ok = await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: marcoId, subetapas: depois }) }).then(r => r.ok).catch(() => false)
+    if (!ok) { setMarcos(ms => ms.map(x => x.id === marcoId ? { ...x, subetapas: antes } : x)); toast('Não foi possível salvar.', 'erro'); return }
+    const titulo = antes.find(e => e.id === entregaId)?.titulo || 'entrega'
+    registrarDesfazer(concluir ? `Entrega marcada: ${titulo}` : `Entrega reaberta: ${titulo}`, async () => {
+      const r = await fetch('/api/playbook', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: marcoId, subetapas: antes }) }).then(x => x.ok).catch(() => false)
+      if (r) setMarcos(ms => ms.map(x => x.id === marcoId ? { ...x, subetapas: antes } : x))
+      return r
+    })
   }
   function enquadrarSeFora(lista: Marco[]) {
     const ini0 = new Date(refDate); ini0.setHours(0, 0, 0, 0)
@@ -718,11 +769,11 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
         <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{area('playbook')}</h2>
         <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }} role="tablist" aria-label={tr('plano.visualizacao')}>
-          {([['gantt', tr('plano.visao-gantt')], ['lista', tr('plano.visao-lista')]] as const).map(([k, l]) => (
+          {([['gantt', tr('plano.visao-gantt')], ['lista', tr('plano.visao-lista')], ...(temSemanas && !somenteLeitura ? [['semanas', tr('plano.visao-semanas')]] : [])] as ['gantt' | 'lista' | 'semanas', string][]).map(([k, l]) => (
             <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)} style={{ padding: '6px 12px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700, background: view === k ? 'var(--v2-surface)' : 'transparent', color: view === k ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: view === k ? '0 1px 3px rgba(0,0,0,0.12)' : 'none', fontFamily: 'inherit' }}>{l}</button>
           ))}
         </div>
-        {view === 'gantt' && <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }}>
+        {verGantt && <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }}>
           {PERIODOS.map(p => (
             <button key={p.key} onClick={() => { setPeriodo(p.key); setDias(p.dias) }} style={{
               padding: '6px 12px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700,
@@ -738,7 +789,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
           </select>
         )}
         {clienteAtivo && <>
-          {view === 'gantt' && <div style={{ display: 'flex', gap: 6 }}>
+          {verGantt && <div style={{ display: 'flex', gap: 6 }}>
             <button onClick={() => setRefDate(d => new Date(d.getTime() - dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>&#8249;</button>
             <button onClick={() => setRefDate(new Date())} style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 11, fontWeight: 600 }}>{tr('plano.hoje')}</button>
             {editavel && temOrdemManual && <button onClick={voltarOrdemAutomatica} title={tr('plano.ordem-automatica-dica')} style={{ padding: '0 12px', height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', color: 'var(--v2-ink2)' }}>{tr('plano.ordem-automatica')}</button>}
@@ -763,7 +814,11 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
 
       {clienteAtivo && view === 'lista' && renderLista()}
 
-      {clienteAtivo && view === 'gantt' && <>
+      {clienteAtivo && view === 'semanas' && temSemanas && !somenteLeitura && (
+        <SemanasPlano marcos={marcos.filter(m => m.clienteId === clienteAtivo)} editavel={editavel}
+          onAbrirTarefa={abrirTarefaPorId} onMarcar={marcarEntrega} onEditarSemana={id => { const m = marcos.find(x => x.id === id); if (m) setEditModal(m) }} />
+      )}
+      {clienteAtivo && verGantt && <>
       {/* Legenda de categorias */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
         {CATEGORIAS.map(c => (
