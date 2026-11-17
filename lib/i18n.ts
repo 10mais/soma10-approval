@@ -1361,6 +1361,8 @@ export const TEXTOS: Record<string, Entrada> = {
   'plano.sem-marcos': { pt: 'Nenhum marco ainda. Use "+ Novo marco" ou "Aplicar modelo".', en: 'No milestones yet. Use "+ New milestone" or "Apply template".', es: 'Ningún hito aún. Use "+ Nuevo hito" o "Aplicar plantilla".' },
   'plano.novo-marco': { pt: '+ Novo marco', en: '+ New milestone', es: '+ Nuevo hito' },
   'plano.aplicar-modelo': { pt: 'Aplicar modelo', en: 'Apply template', es: 'Aplicar plantilla' },
+  'plano.importar-planilha': { pt: 'Importar planilha', en: 'Import spreadsheet', es: 'Importar hoja' },
+  'plano.importar-planilha-dica': { pt: 'Cole o playbook por semanas do Google Sheets', en: 'Paste the weekly playbook from Google Sheets', es: 'Pegue el playbook semanal de Google Sheets' },
   'plano.carregando-modelos': { pt: 'Carregando modelos…', en: 'Loading templates…', es: 'Cargando plantillas…' },
   'plano.sem-modelo': { pt: 'Nenhum modelo cadastrado. Crie um em Estratégia → Modelos.', en: 'No templates yet. Create one in Strategy → Templates.', es: 'Ninguna plantilla aún. Cree una en Estrategia → Plantillas.' },
   'plano.modelo-ajuda': { pt: 'Um modelo cria todos os marcos (e as tarefas) de uma vez, encadeados a partir da data de início. Você confere a prévia antes de gravar.', en: 'A template creates every milestone (and its tasks) at once, chained from the start date. You review the preview before saving.', es: 'Una plantilla crea todos los hitos (y las tareas) de una vez, encadenados desde la fecha de inicio. Usted revisa la vista previa antes de guardar.' },

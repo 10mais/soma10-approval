@@ -937,6 +937,11 @@ export type Marco = {
   // automática por duração. Ausentes = ordenação automática (mais longo em cima).
   ordem?: number
   ordemEtapasManual?: boolean
+  // Plano de ação por semanas (lib/planoAcao, 17/11/2026): o marco é uma SEMANA (segunda a
+  // domingo) com um foco; as sub-etapas são as entregas da semana. Recesso sai da conta de atraso.
+  tipo?: 'semana'
+  foco?: string
+  recesso?: boolean
   criadoPor: string
   criadoEm: string
   atualizadoEm: string

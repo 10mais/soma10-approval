@@ -7,6 +7,7 @@ import AvatarCliente from './AvatarCliente'
 import { confirmar } from '@/lib/toast'
 import { fecharFora } from '@/lib/fecharModal'
 import AplicarModal, { type Template } from './AplicarModelo'
+import ImportarPlanoAcao from './ImportarPlanoAcao'
 import { TarefaModal } from './GestaoTarefas'
 import { responsavelPorTipo } from '@/lib/responsavelPorTipo'
 import { aplicarArraste, pxParaDias, rotuloPeriodo, periodoDaEtapa, janelaParaCaber, rotulosMeses, type TipoArraste } from '@/lib/ganttArraste'
@@ -153,6 +154,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   const [editModal, setEditModal] = useState<Marco | null>(null)
   const [detalheModal, setDetalheModal] = useState<Marco | null>(null)
   const [novoModal, setNovoModal] = useState(false)
+  const [importando, setImportando] = useState(false) // plano de ação por semanas (lib/planoAcao)
   // Gantt: as sub-etapas aparecem como linhas ABAIXO do marco, cada uma no seu período
   // (dono, 07/09: "tudo acontece simultaneamente"). Abertas por padrão; o chevron recolhe.
   // NIVEL de cada marco no Gantt (dono, 07/09: "expandir/arrastar canto para baixo para
@@ -744,6 +746,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
             <button onClick={() => setRefDate(d => new Date(d.getTime() + dias * 24 * 60 * 60 * 1000))} style={{ width: 30, height: 30, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', borderRadius: 8, cursor: 'pointer', color: 'var(--v2-ink2)', fontSize: 14 }}>&#8250;</button>
           </div>}
           {editavel && <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {clienteAtivo && <button onClick={() => setImportando(true)} title={tr('plano.importar-planilha-dica')} style={{ padding: '9px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>{tr('plano.importar-planilha')}</button>}
             <button onClick={abrirModelos} style={{ padding: '9px 16px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>{tr('plano.aplicar-modelo')}</button>
             <button onClick={() => setNovoModal(true)} style={{ padding: '9px 16px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{tr('plano.novo-marco')}</button>
           </div>}
@@ -799,6 +802,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
             {editavel && (
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
                 <button onClick={abrirModelos} style={{ padding: '10px 18px', background: corMarca, color: corMarcaTexto, border: 'none', borderRadius: 10, fontWeight: 800, fontSize: 13, cursor: 'pointer' }}>{tr('plano.aplicar-modelo')}</button>
+                {clienteAtivo && <button onClick={() => setImportando(true)} title={tr('plano.importar-planilha-dica')} style={{ padding: '10px 18px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>{tr('plano.importar-planilha')}</button>}
                 <button onClick={() => setNovoModal(true)} style={{ padding: '10px 18px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1px solid var(--v2-rule)', borderRadius: 10, fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>{tr('plano.novo-marco')}</button>
               </div>
             )}
@@ -1052,6 +1056,11 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
             </div>
           </div>
         </div>
+      )}
+      {importando && clienteAtivo && (
+        <ImportarPlanoAcao clienteId={clienteAtivo} clienteNome={clientes.find(c => c.id === clienteAtivo)?.nome || ''}
+          semanasExistentes={marcos.filter(m => m.clienteId === clienteAtivo && (m as any).tipo === 'semana').length}
+          onClose={() => setImportando(false)} onImportado={() => carregar({ enquadrar: true })} />
       )}
       {templateSel && (
         <AplicarModal template={templateSel} clientes={clientes as any} equipe={equipe} preSelecionados={clienteAtivo ? [clienteAtivo] : []}

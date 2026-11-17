@@ -20,7 +20,14 @@ export type SubEtapa = {
   kpiAtual?: number
   responsavelNome?: string
   cor?: string // #rrggbb; ausente = cor do marco
+  // Plano de ação por semanas (lib/planoAcao, 17/11/2026): a etapa de uma semana é uma ENTREGA.
+  frente?: string // chave de FRENTES em lib/planoAcao
+  responsavelTipo?: 'equipe' | 'cliente' // entrega do cliente conta no SLA dele
+  responsavelEmail?: string
+  vinculo?: { tipo: 'tarefa' | 'post' | 'plano' | 'campanha' | 'reuniao'; id: string } // de onde vem o status
+  concluidaEm?: string // YYYY-MM-DD — para o "% no prazo"
 }
+const VINCULO_TIPOS = new Set(['tarefa', 'post', 'plano', 'campanha', 'reuniao'])
 
 export const SUBETAPA_STATUS: { key: SubEtapaStatus; label: string }[] = [
   { key: 'pendente', label: 'Pendente' },
@@ -64,6 +71,14 @@ export function normalizarSubetapas(bruto: unknown): SubEtapa[] {
     const resp = typeof e?.responsavelNome === 'string' ? e.responsavelNome.trim().slice(0, 80) : ''
     if (resp) s.responsavelNome = resp
     if (typeof e?.cor === 'string' && /^#[0-9a-fA-F]{6}$/.test(e.cor)) s.cor = e.cor.toLowerCase()
+    // Campos do plano de ação: passam por aqui, senão o salvar do Playbook os apagaria.
+    const frente = typeof e?.frente === 'string' ? e.frente.trim().slice(0, 40) : ''
+    if (frente) s.frente = frente
+    if (e?.responsavelTipo === 'equipe' || e?.responsavelTipo === 'cliente') s.responsavelTipo = e.responsavelTipo
+    const email = typeof e?.responsavelEmail === 'string' ? e.responsavelEmail.trim().toLowerCase().slice(0, 120) : ''
+    if (email.includes('@')) s.responsavelEmail = email
+    if (e?.vinculo && VINCULO_TIPOS.has(e.vinculo.tipo) && typeof e.vinculo.id === 'string' && e.vinculo.id.trim()) s.vinculo = { tipo: e.vinculo.tipo, id: e.vinculo.id.trim().slice(0, 64) }
+    const conc = data(e?.concluidaEm); if (conc) s.concluidaEm = conc
     saida.push(s)
   })
   return saida

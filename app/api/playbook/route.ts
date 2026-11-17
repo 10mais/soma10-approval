@@ -9,6 +9,13 @@ import { temModulo } from '@/lib/modulos'
 
 export const runtime = 'nodejs'
 
+// Campos da SEMANA do plano de ação (lib/planoAcao). Só a semana tem foco e recesso.
+function camposSemana(b: any): { tipo?: 'semana'; foco?: string; recesso?: boolean } {
+  if (b?.tipo !== 'semana') return {}
+  const foco = typeof b.foco === 'string' ? b.foco.trim().slice(0, 200) : ''
+  return { tipo: 'semana', ...(foco ? { foco } : {}), ...(b.recesso === true ? { recesso: true } : {}) }
+}
+
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'nao autorizado' }, { status: 401 })
@@ -57,6 +64,7 @@ export async function POST(req: NextRequest) {
     ...(typeof body.ordem === 'number' && Number.isFinite(body.ordem) ? { ordem: Math.max(0, Math.trunc(body.ordem)) } : {}),
     ...(body.ordemEtapasManual === true ? { ordemEtapasManual: true } : {}),
     ...(typeof body.cor === 'string' && /^#[0-9a-fA-F]{6}$/.test(body.cor) ? { cor: body.cor.toLowerCase() } : {}),
+    ...camposSemana(body),
     criadoPor: session.user?.name || '',
     criadoEm: agora,
     atualizadoEm: agora,
@@ -87,6 +95,11 @@ export async function PUT(req: NextRequest) {
   if ('ordem' in updates) { const n = typeof updates.ordem === 'number' ? updates.ordem : NaN; atualizado.ordem = Number.isFinite(n) ? Math.max(0, Math.trunc(n)) : undefined }
   if ('ordemEtapasManual' in updates) atualizado.ordemEtapasManual = updates.ordemEtapasManual === true ? true : undefined
   if ('cor' in updates) atualizado.cor = typeof updates.cor === 'string' && /^#[0-9a-fA-F]{6}$/.test(updates.cor) ? updates.cor.toLowerCase() : undefined
+  // Semana do plano de ação: tipo, foco e recesso (fora desta lista o salvar apagaria).
+  if ('tipo' in updates || 'foco' in updates || 'recesso' in updates) {
+    const s = camposSemana({ tipo: 'tipo' in updates ? updates.tipo : marco.tipo, foco: 'foco' in updates ? updates.foco : marco.foco, recesso: 'recesso' in updates ? updates.recesso : marco.recesso })
+    atualizado.tipo = s.tipo; atualizado.foco = s.foco; atualizado.recesso = s.recesso
+  }
   await redis.set(`marco:${id}`, atualizado)
 
   // Automação legada (toggle antigo): etapa concluída -> notifica a equipe
