@@ -7,6 +7,7 @@ import { useMemo, useState } from 'react'
 import { visaoDoCliente, textoRelogio, type EntregaCliente, type MarcoSemana } from '@/lib/planoAcao'
 import { hojeYmd, fmtDiaMes } from '@/lib/datas'
 import { toast } from '@/lib/toast'
+import CombinadosPlano from './CombinadosPlano'
 
 type Props = { marcos: MarcoSemana[]; corMarca?: string; corMarcaTexto?: string; onMudou: () => void }
 
@@ -116,6 +117,7 @@ export default function PlanoCliente({ marcos, corMarca = 'var(--v2-ink)', corMa
           {v.proxima.entregas.length > 0 && <span style={{ display: 'block', marginTop: 4, fontSize: 13, color: 'var(--v2-ink3)' }}>{v.proxima.entregas.slice(0, 4).join(' · ')}{v.proxima.entregas.length > 4 ? ` e mais ${v.proxima.entregas.length - 4}` : ''}</span>}
         </button>
       )}
+      <CombinadosPlano visao="cliente" />
     </div>
   )
 }

@@ -9,6 +9,7 @@
 import { useMemo, useState } from 'react'
 import { visaoDaSemana, visaoDoCliente, textoResumoSemana, textoRelogio, type EntregaNaTela, type MarcoSemana } from '@/lib/planoAcao'
 import { toast } from '@/lib/toast'
+import CombinadosPlano from './CombinadosPlano'
 import { hojeYmd, fmtDiaMes } from '@/lib/datas'
 
 type Props = {
@@ -121,6 +122,7 @@ export default function SemanasPlano({ marcos, editavel, onAbrirTarefa, onMarcar
           ))}
         </div>
       )}
+      <CombinadosPlano visao="equipe" />
     </div>
   )
 }

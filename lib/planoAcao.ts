@@ -551,3 +551,100 @@ export function textoResumoSemana(v: VisaoCliente, nomeCliente?: string): string
   }
   return linhas.join('\n')
 }
+
+// ================================================================ F4: SLAs (combinados) e avisos
+// "SLAs claros" (dono, 17/11) = (1) os combinados escritos, os mesmos para a equipe e para o
+// cliente, editáveis em Configurações; (2) aviso na véspera e no atraso para QUEM está com a
+// bola. Os valores sugeridos na tabela 4.3 do plano foram aprovados pelo dono.
+// A aprovação (24 h) já existia em config:operacional.slaAprovacaoHoras e segue morando lá;
+// o prazo do criativo (3 dias úteis antes da postagem) é regra da esteira (lib/esteiraFluxo).
+
+export type Sla = {
+  clienteMaterialDiasUteis: number // enviar material ou acesso pedido
+  clienteIndicadoresDiaUtil: number // informar os números do mês até o N-ésimo dia útil
+  equipeAjusteDiasUteis: number // devolver o ajuste pedido pelo cliente
+  relatorioDiaUtil: number // relatório do mês até o N-ésimo dia útil
+  ataReuniaoHoras: number // ata da reunião semanal
+  avisoVesperaDias: number // quantos dias antes do prazo o aviso sai
+}
+export const SLA_PADRAO: Sla = { clienteMaterialDiasUteis: 3, clienteIndicadoresDiaUtil: 5, equipeAjusteDiasUteis: 2, relatorioDiaUtil: 5, ataReuniaoHoras: 24, avisoVesperaDias: 1 }
+const LIMITES: Record<keyof Sla, [number, number]> = {
+  clienteMaterialDiasUteis: [1, 30], clienteIndicadoresDiaUtil: [1, 20], equipeAjusteDiasUteis: [1, 15],
+  relatorioDiaUtil: [1, 20], ataReuniaoHoras: [1, 168], avisoVesperaDias: [0, 7],
+}
+
+/** Aceita o que vier da tela/banco: número inteiro dentro do limite; o resto volta ao padrão. */
+export function normalizarSla(bruto: unknown): Sla {
+  const b = (bruto && typeof bruto === 'object' ? bruto : {}) as Record<string, unknown>
+  const out = { ...SLA_PADRAO }
+  for (const k of Object.keys(SLA_PADRAO) as (keyof Sla)[]) {
+    const n = Math.round(Number(b[k]))
+    if (Number.isFinite(n) && b[k] !== '' && b[k] !== null && b[k] !== undefined) out[k] = Math.min(LIMITES[k][1], Math.max(LIMITES[k][0], n))
+  }
+  return out
+}
+
+const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`
+
+/** Os combinados em frases, iguais para os dois lados. */
+export function combinados(sla: Sla, aprovacaoHoras: number): { cliente: string[]; equipe: string[] } {
+  return {
+    cliente: [
+      `Aprovar copy e criativo em até ${plural(aprovacaoHoras, 'hora', 'horas')}.`,
+      `Enviar material ou acesso pedido em até ${plural(sla.clienteMaterialDiasUteis, 'dia útil', 'dias úteis')}.`,
+      `Informar os números do mês até o ${sla.clienteIndicadoresDiaUtil}º dia útil.`,
+    ],
+    equipe: [
+      'Responder suas mensagens no mesmo dia útil.',
+      `Devolver o ajuste pedido em até ${plural(sla.equipeAjusteDiasUteis, 'dia útil', 'dias úteis')}.`,
+      'Entregar o criativo 3 dias úteis antes da postagem.',
+      `Enviar o relatório do mês até o ${sla.relatorioDiaUtil}º dia útil.`,
+      `Mandar a ata da reunião semanal em até ${plural(sla.ataReuniaoHoras, 'hora', 'horas')}.`,
+    ],
+  }
+}
+
+export type AvisoEntrega = {
+  marcoId: string; entregaId: string; titulo: string; semana: number
+  tipo: 'vespera' | 'atraso'
+  para: 'equipe' | 'cliente' | 'dono' // dono = quem montou o plano (entrega sem responsável)
+  responsavelEmail?: string
+  prazo: string; dias: number
+}
+
+/**
+ * Avisos de prazo das entregas do plano. Quem recebe é quem está com a bola: o responsável
+ * da equipe, o cliente, ou quem montou o plano quando ninguém foi escalado.
+ * Entrega ligada a tarefa fica de fora: o cron de tarefas já avisa véspera e atraso dela.
+ * A repetição é barrada por quem chama (uma chave por entrega e tipo).
+ */
+export function avisosDePrazo<T extends MarcoSemana>(marcos: T[], hoje: string, sla: Sla = SLA_PADRAO): AvisoEntrega[] {
+  const out: AvisoEntrega[] = []
+  for (const s of semanasDoPlano(marcos)) {
+    if (s.recesso) continue
+    for (const e of s.subetapas || []) {
+      if (e.status === 'concluido' || e.vinculo?.tipo === 'tarefa' || !ehData(e.dataFim)) continue
+      const d = diasEntre(hoje, e.dataFim!)
+      // Atraso antigo (mais de 14 dias) não vira aviso: importar um plano em andamento
+      // despejaria o histórico na caixa de alguém. Ele continua em "Ficou para trás".
+      const tipo = d < 0 && d >= -14 ? 'atraso' : d > 0 && d <= sla.avisoVesperaDias ? 'vespera' : null
+      if (!tipo) continue
+      const para = e.responsavelTipo === 'cliente' ? 'cliente' : e.responsavelEmail ? 'equipe' : 'dono'
+      out.push({ marcoId: s.id, entregaId: e.id, titulo: e.titulo, semana: s.numero, tipo, para, ...(para === 'equipe' ? { responsavelEmail: e.responsavelEmail } : {}), prazo: e.dataFim!, dias: Math.abs(d) })
+    }
+  }
+  return out
+}
+
+/** Texto do aviso (título + mensagem), no tom de quem recebe. */
+export function textoAviso(a: AvisoEntrega, clienteNome = ''): { titulo: string; mensagem: string } {
+  const quando = a.tipo === 'atraso' ? (a.dias === 1 ? 'atrasada há 1 dia' : `atrasada há ${a.dias} dias`) : a.dias === 1 ? 'vence amanhã' : `vence em ${a.dias} dias`
+  if (a.para === 'cliente') {
+    return a.tipo === 'atraso'
+      ? { titulo: 'Uma entrega sua está atrasada', mensagem: `${a.titulo}: o prazo era ${ddmm(a.prazo)}. Assim que fizer, toque em "Já fiz" no Plano de entregas.` }
+      : { titulo: 'Lembrete do plano de ação', mensagem: `${a.titulo}: o prazo é ${ddmm(a.prazo)}. Quando fizer, toque em "Já fiz" no Plano de entregas.` }
+  }
+  const cli = clienteNome ? ` (${clienteNome})` : ''
+  if (a.para === 'dono') return { titulo: `Entrega sem responsável ${quando}`, mensagem: `${a.titulo}${cli}, semana W${a.semana}. Escolha quem faz no Plano de entregas.` }
+  return { titulo: a.tipo === 'atraso' ? 'Entrega do plano atrasada' : 'Entrega do plano vence em breve', mensagem: `${a.titulo}${cli}: ${quando} (prazo ${ddmm(a.prazo)}).` }
+}

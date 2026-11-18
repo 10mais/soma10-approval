@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redis } from '@/lib/redis'
 import { getOperacional, OPERACIONAL_PADRAO } from '@/lib/operacional'
+import { normalizarSla } from '@/lib/planoAcao'
 
 export const runtime = 'nodejs'
 
@@ -22,6 +23,7 @@ export async function PUT(req: NextRequest) {
     lixeiraDias: Math.max(1, Number(b.lixeiraDias) || OPERACIONAL_PADRAO.lixeiraDias),
     saudeDias: Math.max(1, Number(b.saudeDias) || OPERACIONAL_PADRAO.saudeDias),
     prioridadePadrao: ['baixa', 'media', 'alta'].includes(b.prioridadePadrao) ? b.prioridadePadrao : OPERACIONAL_PADRAO.prioridadePadrao,
+    sla: normalizarSla(b.sla),
   }
   await redis.set('config:operacional', novo)
   return NextResponse.json({ ok: true, operacional: novo })

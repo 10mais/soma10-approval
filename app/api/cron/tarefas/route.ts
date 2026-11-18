@@ -17,14 +17,15 @@ export async function GET(req: NextRequest) {
     const frota = await gerarTarefasFrota()
     // Plano de ação por semanas (F2): entrega que entrou na janela ganha tarefa, e o status
     // da tarefa volta para a entrega. Antes dos prazos, pelo mesmo motivo da frota.
-    let planoAcao = 0
+    let planoAcao = 0, avisosPlano = 0
     try {
-      const { clientesComPlanoAcao, sincronizarPlanoAcao } = await import('@/lib/planoAcaoSync')
+      const { clientesComPlanoAcao, sincronizarPlanoAcao, avisarPrazosPlano } = await import('@/lib/planoAcaoSync')
       for (const c of await clientesComPlanoAcao()) planoAcao += (await sincronizarPlanoAcao(c)).criadas
+      avisosPlano = await avisarPrazosPlano() // F4: véspera e atraso das entregas sem tarefa
     } catch (e) { await capturarErro('cron/tarefas:planoAcao', e) }
     const r = await rodarPrazos()
     const body = await r.json()
-    return NextResponse.json({ ...body, tarefasFrota: frota, tarefasPlanoAcao: planoAcao })
+    return NextResponse.json({ ...body, tarefasFrota: frota, tarefasPlanoAcao: planoAcao, avisosPlanoAcao: avisosPlano })
   } catch (e) {
     await capturarErro('cron/tarefas', e)
     return NextResponse.json({ error: 'falha nos prazos de tarefa' }, { status: 500 })

@@ -1,8 +1,8 @@
 import { v4 as uuid } from 'uuid'
-import { redis, Marco, Tarefa } from './redis'
-import { diaDoInstante, fimDoDiaBR, inicioDoDiaBR } from './datas'
-import { semanasDoPlano, entregasParaCriarTarefa, reconciliarEntregas, tipoTarefaDaFrente, type TarefaLigada } from './planoAcao'
-import { notificar } from './notificacoes'
+import { redis, Marco, Tarefa, Usuario } from './redis'
+import { diaDoInstante, fimDoDiaBR, inicioDoDiaBR, horaBR } from './datas'
+import { semanasDoPlano, entregasParaCriarTarefa, reconciliarEntregas, tipoTarefaDaFrente, avisosDePrazo, textoAviso, type TarefaLigada } from './planoAcao'
+import { notificar, notificarDono } from './notificacoes'
 import { dispararEvento } from './automacoesEngine'
 
 // PLANO DE AÇÃO, F2 (17/11/2026): deixa as semanas de um cliente em dia com as tarefas.
@@ -97,4 +97,53 @@ export async function clientesComPlanoAcao(): Promise<string[]> {
   if (!ids.length) return []
   const marcos = (await redis.mget<(Marco | null)[]>(...ids.map(id => `marco:${id}`))).filter(Boolean) as Marco[]
   return Array.from(new Set(marcos.filter(m => m.tipo === 'semana' && m.clienteId).map(m => m.clienteId)))
+}
+
+// F4: avisos de véspera e de atraso das entregas do plano para quem está com a bola
+// (lib/planoAcao.avisosDePrazo). Uma vez por entrega, tipo e prazo (mudar o prazo rearma).
+// Só em horário comercial de Brasília: o cron roda de hora em hora e aviso de madrugada
+// não ajuda ninguém.
+export async function avisarPrazosPlano(agoraMs = Date.now()): Promise<number> {
+  const h = horaBR(agoraMs)
+  if (h < 8 || h >= 20) return 0
+  const ids = await redis.smembers('marcos')
+  if (!ids.length) return 0
+  const semanas = ((await redis.mget<(Marco | null)[]>(...ids.map(id => `marco:${id}`))).filter(Boolean) as Marco[]).filter(m => m.tipo === 'semana' && m.clienteId)
+  if (!semanas.length) return 0
+  const { getOperacional } = await import('./operacional')
+  const sla = (await getOperacional()).sla
+  const hoje = diaDoInstante(new Date(agoraMs).toISOString())
+
+  let usuariosCliente: Usuario[] | null = null
+  const doCliente = async (clienteId: string) => {
+    if (!usuariosCliente) {
+      const emails = await redis.smembers('usuarios')
+      const us = emails.length ? ((await redis.mget<(Usuario | null)[]>(...emails.map(e => `usuario:${e}`))).filter(Boolean) as Usuario[]) : []
+      usuariosCliente = us.filter(u => u.role === 'cliente')
+    }
+    return usuariosCliente.filter(u => (u as any).clienteId === clienteId)
+  }
+
+  let enviados = 0
+  const porCliente = new Map<string, Marco[]>()
+  for (const m of semanas) porCliente.set(m.clienteId, [...(porCliente.get(m.clienteId) || []), m])
+  for (const [clienteId, marcos] of Array.from(porCliente)) {
+    for (const a of avisosDePrazo(marcos, hoje, sla)) {
+      const ganhou = await redis.set(`planoAcao:aviso:${a.marcoId}:${a.entregaId}:${a.tipo}:${a.prazo}`, '1', { nx: true, ex: 60 * 24 * 60 * 60 })
+      if (!ganhou) continue
+      const marco = marcos.find(m => m.id === a.marcoId)!
+      const t = textoAviso(a, marco.clienteNome)
+      if (a.para === 'equipe' && a.responsavelEmail) {
+        await notificar(a.responsavelEmail, a.tipo === 'atraso' ? 'tarefa_vencida' : 'tarefa_prazo_proximo', t.titulo, t.mensagem).catch(() => {})
+      } else if (a.para === 'cliente') {
+        for (const u of await doCliente(clienteId)) await notificar(u.email, 'geral', t.titulo, t.mensagem).catch(() => {})
+        // Atraso do cliente também chega a quem montou o plano: é a equipe que cobra.
+        if (a.tipo === 'atraso') { const e = textoAviso({ ...a, para: 'equipe' }, marco.clienteNome); await notificarDono(marco.criadoPor, 'geral', `Cliente atrasou: ${a.titulo}`, e.mensagem).catch(() => {}) }
+      } else {
+        await notificarDono(marco.criadoPor, 'geral', t.titulo, t.mensagem).catch(() => {})
+      }
+      enviados++
+    }
+  }
+  return enviados
 }
