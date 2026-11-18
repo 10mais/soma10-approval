@@ -84,10 +84,33 @@ export function ferramentasEscrita(): any[] {
         required: ['postagens'],
       },
     },
+    {
+      name: 'atualizar_postagens',
+      description: `Edita postagens já criadas (até ${MAX_POSTS_LOTE}): data/hora prevista e/ou legenda, pelo id devolvido em criar_postagens. Só altera posts em "rascunho" ou "aguardando_aprovacao" — agendados, publicados e da lixeira ficam de fora. Se algum item for inválido, nada é alterado e a resposta lista o erro de cada um.`,
+      input_schema: {
+        type: 'object',
+        properties: {
+          postagens: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', description: 'id do post (devolvido por criar_postagens)' },
+                data: { type: 'string', description: 'nova data prevista AAAA-MM-DDTHH:mm ou AAAA-MM-DD (vira 09:00)' },
+                legenda: { type: 'string', description: `nova legenda (até ${MAX_LEGENDA} caracteres)` },
+              },
+              required: ['id'],
+            },
+          },
+        },
+        required: ['postagens'],
+      },
+    },
   ]
 }
 
-export const ehFerramentaEscrita = (nome: string) => nome === 'preparar_upload_midia' || nome === 'criar_postagens'
+const NOMES_ESCRITA = ['preparar_upload_midia', 'criar_postagens', 'atualizar_postagens']
+export const ehFerramentaEscrita = (nome: string) => NOMES_ESCRITA.includes(nome)
 
 // ---------- Regras puras ----------
 
@@ -166,6 +189,32 @@ export function validarPostagem(item: any, storeId: string): { ok: true; valor: 
   return { ok: true, valor: { cliente, imagens, legenda, formato, dataAgendada: dataAgendada as string, status, colaboradores: limparColaboradores(i.colaboradores) } }
 }
 
+export type AtualizacaoValida = { id: string; dataAgendada?: string; legenda?: string }
+
+/** Valida um item de edição: id obrigatório e ao menos data ou legenda. Data vazia não apaga a data. */
+export function validarAtualizacao(item: any): { ok: true; valor: AtualizacaoValida } | { ok: false; erros: string[] } {
+  const erros: string[] = []
+  const i = item && typeof item === 'object' ? item : {}
+  const id = String(i.id ?? '').trim()
+  if (!id) erros.push('id obrigatório')
+  const temData = i.data !== undefined && i.data !== null
+  const temLegenda = i.legenda !== undefined && i.legenda !== null
+  if (!temData && !temLegenda) erros.push('informe data e/ou legenda')
+
+  const valor: AtualizacaoValida = { id }
+  if (temData) {
+    const d = normalizarData(i.data)
+    if (!d) erros.push(`data inválida: ${i.data} (use AAAA-MM-DDTHH:mm)`)
+    else valor.dataAgendada = d
+  }
+  if (temLegenda) {
+    const legenda = String(i.legenda)
+    if (legenda.length > MAX_LEGENDA) erros.push(`legenda com ${legenda.length} caracteres (máx. ${MAX_LEGENDA})`)
+    else valor.legenda = legenda
+  }
+  return erros.length ? { ok: false, erros } : { ok: true, valor }
+}
+
 /** Acha o cliente pelo nome: exato, depois contém. Mais de um "contém" = ambíguo. */
 export function acharCliente<C extends { nome: string }>(clientes: C[], nome: string): { cliente: C } | { erro: string } {
   const norm = (s: string) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
@@ -184,6 +233,7 @@ export async function executarEscrita(nome: string, input: any): Promise<string>
   try {
     if (nome === 'preparar_upload_midia') return await prepararUpload(input || {})
     if (nome === 'criar_postagens') return await criarPostagens(input || {})
+    if (nome === 'atualizar_postagens') return await atualizarPostagens(input || {})
     return JSON.stringify({ erro: `ferramenta desconhecida: ${nome}` })
   } catch (e: any) {
     return JSON.stringify({ erro: e?.message || 'falha na escrita' })
@@ -258,4 +308,60 @@ async function criarPostagens(input: any): Promise<string> {
     criados.push({ id: post.id, cliente: post.clienteNome, formato: post.formato, status: post.status, data: post.dataAgendada || null, link: `${process.env.APPROVAL_BASE_URL || ''}/aprovar/${post.id}` })
   }
   return JSON.stringify({ criados: criados.length, postagens: criados })
+}
+
+async function atualizarPostagens(input: any): Promise<string> {
+  const itens: any[] = Array.isArray(input.postagens) ? input.postagens : []
+  if (!itens.length) return JSON.stringify({ erro: 'informe ao menos uma postagem' })
+  if (itens.length > MAX_POSTS_LOTE) return JSON.stringify({ erro: `no máximo ${MAX_POSTS_LOTE} postagens por chamada` })
+
+  const validos: (AtualizacaoValida | null)[] = []
+  const erros: { item: number; erros: string[] }[] = []
+  const vistos = new Set<string>()
+  itens.forEach((item, n) => {
+    const v = validarAtualizacao(item)
+    if ('erros' in v) { erros.push({ item: n + 1, erros: v.erros }); validos.push(null); return }
+    if (vistos.has(v.valor.id)) { erros.push({ item: n + 1, erros: [`id repetido no lote: ${v.valor.id}`] }); validos.push(null); return }
+    vistos.add(v.valor.id)
+    validos.push(v.valor)
+  })
+
+  const { redis } = await import('./redis')
+  const ids = validos.map(v => v?.id).filter(Boolean) as string[]
+  const encontrados = ids.length ? await redis.mget<(Post | null)[]>(...ids.map(id => `post:${id}`)) : []
+  const porId = new Map<string, Post>()
+  ids.forEach((id, k) => { if (encontrados[k]) porId.set(id, encontrados[k] as Post) })
+
+  validos.forEach((v, n) => {
+    if (!v) return
+    const post = porId.get(v.id)
+    if (!post) { erros.push({ item: n + 1, erros: [`post não encontrado: ${v.id}`] }); return }
+    if ((post as any).excluidoEm) { erros.push({ item: n + 1, erros: ['post está na lixeira'] }); return }
+    if (!(STATUS_PERMITIDOS as readonly string[]).includes(post.status)) {
+      erros.push({ item: n + 1, erros: [`status "${post.status}" não pode ser editado pelo conector (só rascunho ou aguardando_aprovacao)`] })
+    }
+  })
+  if (erros.length) {
+    erros.sort((a, b) => a.item - b.item)
+    return JSON.stringify({ erro: 'nenhuma postagem alterada — corrija os itens abaixo', erros })
+  }
+
+  const agora = new Date().toISOString()
+  const atualizados = []
+  for (const v of validos as AtualizacaoValida[]) {
+    const post = porId.get(v.id) as Post
+    const atualizado: Post = {
+      ...post,
+      ...(v.dataAgendada ? { dataAgendada: v.dataAgendada } : {}),
+      ...(v.legenda !== undefined ? { legenda: v.legenda } : {}),
+      atualizadoEm: agora,
+    }
+    await redis.set(`post:${post.id}`, atualizado)
+    // A pauta mudou de data: a tarefa da unidade acompanha (mesmo caminho do PUT /api/posts).
+    if (post.tarefaId && v.dataAgendada && v.dataAgendada !== post.dataAgendada) {
+      try { const { sincronizarTarefaComPauta } = await import('./tarefasDaPauta'); await sincronizarTarefaComPauta(post, atualizado, AUTOR_CONECTOR) } catch { /* segue */ }
+    }
+    atualizados.push({ id: atualizado.id, cliente: atualizado.clienteNome, formato: atualizado.formato, status: atualizado.status, data: atualizado.dataAgendada || null, link: `${process.env.APPROVAL_BASE_URL || ''}/aprovar/${atualizado.id}` })
+  }
+  return JSON.stringify({ atualizados: atualizados.length, postagens: atualizados })
 }

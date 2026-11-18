@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { storeIdDoToken, urlDoBlob, nomeSeguro, normalizarData, validarPostagem, acharCliente, ferramentasEscrita, ehFerramentaEscrita } from '@/lib/mcpEscrita'
+import { storeIdDoToken, urlDoBlob, nomeSeguro, normalizarData, validarPostagem, validarAtualizacao, acharCliente, ferramentasEscrita, ehFerramentaEscrita } from '@/lib/mcpEscrita'
 
 const STORE = 'AbC123xyz'
 const URL_OK = 'https://abc123xyz.public.blob.vercel-storage.com/midia/mcp-1-Feed_01-k3j2.png'
@@ -67,9 +67,21 @@ describe('mcpEscrita — postagens em massa pelo conector', () => {
     expect('erro' in acharCliente(clientes, 'Fulano')).toBe(true)
   })
 
-  it('catálogo: duas ferramentas, reconhecidas pelo nome', () => {
-    expect(ferramentasEscrita().map(t => t.name)).toEqual(['preparar_upload_midia', 'criar_postagens'])
+  it('edição: id obrigatório, data ou legenda, data vazia não apaga', () => {
+    expect(validarAtualizacao({ data: '2026-11-20T07:30' }).ok).toBe(false)
+    expect(validarAtualizacao({ id: 'p1' }).ok).toBe(false)
+    expect(validarAtualizacao({ id: 'p1', data: '' }).ok).toBe(false)
+    expect(validarAtualizacao({ id: 'p1', data: '2026-02-30T07:30' }).ok).toBe(false)
+    expect(validarAtualizacao({ id: 'p1', legenda: 'a'.repeat(2201) }).ok).toBe(false)
+    expect(validarAtualizacao({ id: ' p1 ', data: '2026-11-20T07:30' })).toEqual({ ok: true, valor: { id: 'p1', dataAgendada: '2026-11-20T07:30' } })
+    expect(validarAtualizacao({ id: 'p1', data: '2026-11-20' })).toEqual({ ok: true, valor: { id: 'p1', dataAgendada: '2026-11-20T09:00' } })
+    expect(validarAtualizacao({ id: 'p1', legenda: '' })).toEqual({ ok: true, valor: { id: 'p1', legenda: '' } })
+  })
+
+  it('catálogo: três ferramentas, reconhecidas pelo nome', () => {
+    expect(ferramentasEscrita().map(t => t.name)).toEqual(['preparar_upload_midia', 'criar_postagens', 'atualizar_postagens'])
     expect(ehFerramentaEscrita('criar_postagens')).toBe(true)
+    expect(ehFerramentaEscrita('atualizar_postagens')).toBe(true)
     expect(ehFerramentaEscrita('consultar_tarefas')).toBe(false)
   })
 })
