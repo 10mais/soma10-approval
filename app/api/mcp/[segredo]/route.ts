@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ferramentasPara, executarFerramenta } from '@/lib/assistenteTools'
+import { ferramentasEscrita, ehFerramentaEscrita, executarEscrita } from '@/lib/mcpEscrita'
 import { checarRate } from '@/lib/rateLimit'
 
 export const runtime = 'nodejs'
@@ -12,7 +13,9 @@ export const runtime = 'nodejs'
 // os clientes MCP caem no modo requisição/resposta normalmente.
 //
 // Ferramentas: as MESMAS do assistente interno (lib/assistenteTools) — consultas
-// de tarefas, clientes, CRM, brandboard e financeiro. Só LEITURA por enquanto.
+// de tarefas, clientes, CRM, brandboard e financeiro — mais as de ESCRITA de
+// lib/mcpEscrita (subir mídia ao Blob e criar postagens em massa, só como
+// rascunho ou aguardando aprovação; nunca agenda publicação).
 //
 // Autorização: o SEGREDO na própria URL (o claude.ai não manda header custom sem
 // OAuth). A rota só existe se a env MCP_CONNECTOR_SECRET estiver setada na
@@ -58,7 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: { segredo: st
             { src: 'https://approval.soma10.com.br/icon-512.png', mimeType: 'image/png', sizes: ['512x512'] },
           ],
         },
-        instructions: 'Soma10 — sistema de gestão da agência Grupo 10+. Ferramentas de consulta: tarefas da equipe, carteira de clientes, funil de vendas (CRM), Brand Board/Playbook por cliente e resultado financeiro do mês. Responda em português.',
+        instructions: 'Soma10 — sistema de gestão da agência Grupo 10+. Ferramentas de consulta: tarefas da equipe, carteira de clientes, funil de vendas (CRM), Brand Board/Playbook por cliente e resultado financeiro do mês. Para subir postagens em massa: preparar_upload_midia (envia as imagens ao Blob) e depois criar_postagens (cria como rascunho ou aguardando aprovação). Responda em português.',
       },
     })
   }
@@ -67,7 +70,7 @@ export async function POST(req: NextRequest, { params }: { params: { segredo: st
 
   if (msg.method === 'tools/list') {
     // Mesmo catálogo do assistente interno, com role admin (o segredo é do dono).
-    const tools = ferramentasPara('admin').map((t: any) => ({
+    const tools = [...ferramentasPara('admin'), ...ferramentasEscrita()].map((t: any) => ({
       name: t.name, description: t.description, inputSchema: t.input_schema,
     }))
     return json({ jsonrpc: '2.0', id: msg.id, result: { tools } })
@@ -76,7 +79,9 @@ export async function POST(req: NextRequest, { params }: { params: { segredo: st
   if (msg.method === 'tools/call') {
     const nome = msg.params?.name
     if (typeof nome !== 'string' || !nome) return rpcErro(msg.id, -32602, 'params.name obrigatório')
-    const texto = await executarFerramenta(nome, msg.params?.arguments || {}, { role: 'admin' })
+    const texto = ehFerramentaEscrita(nome)
+      ? await executarEscrita(nome, msg.params?.arguments || {})
+      : await executarFerramenta(nome, msg.params?.arguments || {}, { role: 'admin' })
     let comErro = false
     try { comErro = !!JSON.parse(texto)?.erro } catch { /* texto livre = ok */ }
     return json({ jsonrpc: '2.0', id: msg.id, result: { content: [{ type: 'text', text: texto }], isError: comErro } })
