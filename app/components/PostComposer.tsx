@@ -10,6 +10,7 @@ import { v4 as uuid } from 'uuid'
 import { confirmar } from '@/lib/toast'
 import DriveButton from './DriveButton'
 import AvatarCliente from './AvatarCliente'
+import SeletorDataAgenda from './SeletorDataAgenda'
 import { useIsMobile } from '@/lib/useIsMobile'
 import { type ContaPublica } from '@/lib/contasSociais'
 import { MAX_COLAB } from '@/lib/colab'
@@ -186,6 +187,7 @@ export default function PostComposer({
     setContaIds(atual => atual.includes(id) ? atual.filter(c => c !== id) : [...atual, id])
   }
   const [dataAgendada, setDataAgendada] = useState(valorInicial?.dataAgendada || '')
+  const [vendoCalendario, setVendoCalendario] = useState(false) // Mudança 1 (21/11): o mês do cliente com o que já está programado
   const [formato, setFormato] = useState<ComposerValue['formato']>(valorInicial?.formato || 'feed')
   const [previewIdx, setPreviewIdx] = useState(0) // lamina atual no preview (estilo Instagram)
   const [colaboradores, setColaboradores] = useState<string[]>(valorInicial?.colaboradores || [])
@@ -919,6 +921,11 @@ export default function PostComposer({
               <input type="datetime-local" value={dataAgendada} onChange={e => setDataAgendada(e.target.value)} min={minimoDatetimeLocal()}
                 style={{ flex: 1, padding: '14px 0', border: 'none', outline: 'none', fontSize: 15, fontFamily: 'inherit', background: 'transparent', minWidth: 0 }} />
             </div>
+            <button type="button" onClick={() => setVendoCalendario(true)} disabled={!clienteId} title={clienteId ? 'Ver o que já está programado e escolher o dia' : 'Escolha o cliente primeiro'}
+              style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 13, fontFamily: 'inherit', cursor: clienteId ? 'pointer' : 'not-allowed', opacity: clienteId ? 1 : 0.5, whiteSpace: 'nowrap' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" /></svg>
+              {mobile ? 'Calendário' : 'Ver calendário'}
+            </button>
             {dataAgendada && (
               <button type="button" onClick={() => setDataAgendada('')} title={tr('composer.data-remover')}
                 style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', width: 34, background: 'transparent', color: 'var(--v2-ink3)', border: 'none', cursor: 'pointer' }}>
@@ -926,6 +933,7 @@ export default function PostComposer({
               </button>
             )}
           </div>
+          {vendoCalendario && clienteId && <SeletorDataAgenda clienteId={clienteId} valor={dataAgendada} onEscolher={setDataAgendada} onClose={() => setVendoCalendario(false)} />}
           <p style={{ margin: '6px 0 0', fontSize: 11, color: dataAgendada ? 'var(--v2-info)' : 'var(--v2-ink3)' }}>
             {tr(dataAgendada ? 'composer.data-com' : 'composer.data-sem')}
           </p>

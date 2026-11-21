@@ -28,6 +28,7 @@ import { ordenarPorDataDePostagem } from '@/lib/ordemAprovacao'
 import { esperandoCliente } from '@/lib/bolaDaVez'
 import { PAPEIS_SQUAD } from '@/lib/squadPapeis'
 import Calendar from '../components/Calendar'
+import SeletorDataAgenda from '@/app/components/SeletorDataAgenda'
 import PostComposer from '../components/PostComposer'
 import ConectarRedesModal from '../components/ConectarRedesModal'
 import BarraProximasTarefas from '../components/BarraProximasTarefas'
@@ -1486,6 +1487,7 @@ function Dashboard() {
   const [focoStudio, setFocoStudio] = useState<{ pautaId: string; clienteId?: string; planoId?: string; em: number } | null>(null)
   const [reprogramandoId, setReprogramandoId] = useState<string | null>(null)
   const [novaDataReprog, setNovaDataReprog] = useState('')
+  const [calendarioReprog, setCalendarioReprog] = useState(false) // Mudança 1 (21/11): o mês do cliente ao remarcar
   const [salvandoReprog, setSalvandoReprog] = useState(false)
   async function republicarPost(post: Post) {
     setRepublicandoId(post.id)
@@ -2892,8 +2894,18 @@ function Dashboard() {
                       reprogramandoId === postPreview.id ? (
                         <div style={{ margin: '0 0 10px', background: 'var(--v2-surface1)', border: '1px solid var(--v2-rule2)', borderRadius: 10, padding: '10px 12px' }}>
                           <label style={{ display: 'block', fontSize: 11, fontWeight: 800, color: 'var(--v2-ink2)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 5 }}>{tr('dash.nova-data-hora')}</label>
-                          <input type="datetime-local" value={novaDataReprog} onChange={ev => setNovaDataReprog(ev.target.value)} autoFocus
-                            style={{ width: '100%', boxSizing: 'border-box', padding: '9px 10px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }} />
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <input type="datetime-local" value={novaDataReprog} onChange={ev => setNovaDataReprog(ev.target.value)} autoFocus
+                              style={{ flex: 1, minWidth: 0, boxSizing: 'border-box', padding: '9px 10px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', fontSize: 13, fontFamily: 'inherit', background: 'var(--v2-surface)' }} />
+                            {postPreview.clienteId && (
+                              <button type="button" onClick={() => setCalendarioReprog(true)} title="Ver o que já está programado e escolher o dia"
+                                style={{ flexShrink: 0, padding: '0 12px', borderRadius: 9, border: '1.5px solid var(--v2-rule)', background: 'var(--v2-surface)', color: 'var(--v2-ink)', fontWeight: 700, fontSize: 12.5, fontFamily: 'inherit', cursor: 'pointer' }}>Calendário</button>
+                            )}
+                          </div>
+                          {calendarioReprog && postPreview.clienteId && (
+                            <SeletorDataAgenda clienteId={postPreview.clienteId} valor={novaDataReprog} ignorarPostId={postPreview.id}
+                              onEscolher={setNovaDataReprog} onClose={() => setCalendarioReprog(false)} />
+                          )}
                           <p style={{ margin: '6px 0 0', fontSize: 11.5, color: 'var(--v2-ink2)', lineHeight: 1.45 }}>
                             {postPreview.status === 'aprovado'
                               ? tr('dash.material-aprovado-fila')
