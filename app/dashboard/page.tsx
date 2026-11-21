@@ -2404,7 +2404,7 @@ function Dashboard() {
             mobile o cluster fica em (12px + safe-area) + ~46px de altura; em
             aparelho com notch a safe-area cresce e o título passava POR BAIXO do
             cluster. Por isso o topo acompanha a mesma safe-area (não é 64px fixo). */}
-        <div ref={abaAnimRef} className="anim-aba" style={{ flex: 1, minWidth: 0, padding: mobile ? 'calc(68px + env(safe-area-inset-top)) 14px calc(var(--barra-inferior) + 14px + var(--safe-bottom))' : '70px 28px 28px', ...(mobile ? {} : { height: '100vh', overflowY: 'auto', boxSizing: 'border-box' }) }}>
+        <div ref={abaAnimRef} className="anim-aba" style={{ flex: 1, minWidth: 0, ...(mobile ? { ['--folga-inferior' as any]: 'calc(var(--barra-inferior) + var(--safe-bottom))', ['--folga-superior' as any]: 'calc(60px + var(--safe-top))' } : {}), padding: mobile ? 'calc(68px + env(safe-area-inset-top)) 14px calc(var(--barra-inferior) + 14px + var(--safe-bottom))' : '70px 28px 28px', ...(mobile ? {} : { height: '100vh', overflowY: 'auto', boxSizing: 'border-box' }) }}>
 
         {/* Faixa: admin visualizando como um papel (colaborador) */}
         {previewPapel && (
@@ -2582,13 +2582,13 @@ function Dashboard() {
         {aba === 'planner' && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
             <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{area('planner')}{clienteEmVisualizacao ? ` — ${clienteEmVisualizacao.nome}` : ''}</h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', width: mobile ? '100%' : undefined }}>
+              <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3, overflowX: 'auto', maxWidth: '100%', flex: mobile ? '1 1 100%' : undefined }}>
                 {(['lista', 'calendario', 'fila'] as const).map(v => {
                   const naFila = v === 'fila' ? postsView.filter(p => estadoNaFila(p as any)).length : 0
                   return (
                   <button key={v} onClick={() => setPlannerView(v)} style={{
-                    padding: '7px 14px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                    padding: '7px 14px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0, minHeight: mobile ? 40 : undefined, flex: mobile ? '1 0 auto' : undefined,
                     background: plannerView === v ? 'var(--v2-surface)' : 'transparent', color: plannerView === v ? 'var(--v2-ink)' : 'var(--v2-ink3)',
                     boxShadow: plannerView === v ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
                   }}>{v === 'fila' ? `Fila de programação${naFila ? ` (${naFila})` : ''}` : tr(v === 'lista' ? 'dash.lista' : 'dash.calendario')}</button>
@@ -3570,7 +3570,7 @@ function Dashboard() {
 
         {/* NOVO POST */}
         {aba === 'novo-post' && (
-          <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: 28, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <div style={{ background: 'var(--v2-surface)', borderRadius: 16, padding: mobile ? 14 : 28, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <button onClick={fecharComposer} title={tr('dash.volta-salvando-que-ja-foi-pree')} style={{ background: 'none', border: 'none', color: 'var(--v2-ink3)', fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, marginBottom: 14, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
               <IconBack size={14} /> {tr('comum.voltar')}
             </button>

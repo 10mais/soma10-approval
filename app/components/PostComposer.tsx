@@ -187,6 +187,7 @@ export default function PostComposer({
     setContaIds(atual => atual.includes(id) ? atual.filter(c => c !== id) : [...atual, id])
   }
   const [dataAgendada, setDataAgendada] = useState(valorInicial?.dataAgendada || '')
+  const [abaMobile, setAbaMobile] = useState<'editar' | 'previa'>('editar') // celular: o formulário e a prévia em abas
   const [vendoCalendario, setVendoCalendario] = useState(false) // Mudança 1 (21/11): o mês do cliente com o que já está programado
   const [formato, setFormato] = useState<ComposerValue['formato']>(valorInicial?.formato || 'feed')
   const [previewIdx, setPreviewIdx] = useState(0) // lamina atual no preview (estilo Instagram)
@@ -446,10 +447,59 @@ export default function PostComposer({
     : pendAprovacao.length ? frasePendencias(textoPend(pendAprovacao), tr('pend.prefixo-cliente'), tr('comum.e')) : ''
   const podeRascunho = !!clienteId && marcoOk && !enviando && !enviandoArquivo
 
+  // Ações (Rascunho · Aprovação · Agendar/Publicar). No celular ficam numa barra FIXA embaixo,
+  // visível nas duas abas (Editar e Prévia) — Mudança 2b, 21/11/2026.
+  const acoes = (
+    <div style={mobile ? { position: 'sticky', bottom: 'var(--folga-inferior, 0px)', zIndex: 6, background: 'var(--v2-surface)', borderTop: '1px solid var(--v2-rule)', margin: '0 -14px', padding: '10px 14px 12px', boxShadow: '0 -6px 16px rgba(0,0,0,0.06)' } : undefined}>
+        {/* Acoes: Rascunho · Enviar para aprovacao · Publicar/Agendar */}
+        <div style={{ display: 'flex', gap: mobile ? 6 : 10, flexWrap: mobile ? 'nowrap' : 'wrap' }}>
+          <button onClick={() => submeter(modoEdicao ? 'salvar' : 'rascunho')} disabled={modoEdicao ? !podeSalvarEdicao : !podeRascunho} type="button"
+            style={{ flex: mobile ? '1 1 0' : '1 1 110px', minWidth: 0, lineHeight: 1.2, padding: mobile ? '11px 4px' : '14px 0', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-rule)', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: (modoEdicao ? podeSalvarEdicao : podeRascunho) ? 'pointer' : 'not-allowed', opacity: (modoEdicao ? podeSalvarEdicao : podeRascunho) ? 1 : 0.5 }}>
+            {modoEdicao ? tr(enviando ? 'comum.salvando' : 'composer.salvar-alteracoes') : tr(salvandoRascunho ? 'comum.salvando' : 'composer.rascunho')}
+          </button>
+          <button onClick={() => submeter('aprovacao')} disabled={!podeAprovacao} type="button"
+            style={{ flex: mobile ? '1 1 0' : '1 1 150px', minWidth: 0, lineHeight: 1.2, padding: mobile ? '11px 4px' : '14px 0', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: podeAprovacao ? 'pointer' : 'not-allowed', opacity: podeAprovacao ? 1 : 0.5 }}>
+            {tr(enviando ? 'comum.enviando' : 'composer.enviar-aprovacao')}
+          </button>
+          <button onClick={() => submeter(dataAgendada ? 'agendar' : 'publicar')} disabled={!podePrincipal} type="button"
+            style={{ flex: mobile ? '1 1 0' : '1.3 1 150px', minWidth: 0, lineHeight: 1.2, padding: mobile ? '11px 4px' : '14px 0', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: podePrincipal ? 'pointer' : 'not-allowed', opacity: podePrincipal ? 1 : 0.5 }}>
+            {enviando
+              ? tr(dataAgendada ? 'composer.agendando' : 'composer.publicando')
+              : tr(dataAgendada ? 'composer.agendar' : 'composer.publicar-agora')}
+          </button>
+        </div>
+        {avisoPendencia && (
+          <p role="status" style={{ margin: '10px 0 0', fontSize: 12.5, fontWeight: 600, color: '#ea580c', lineHeight: 1.45 }}>
+            {avisoPendencia}
+            {faltaEtapa && (
+              <button type="button" onClick={() => { etapaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); etapaRef.current?.focus() }}
+                style={{ marginLeft: 6, padding: 0, background: 'none', border: 0, color: 'var(--v2-info)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
+                {tr('pend.ir-etapa')}
+              </button>
+            )}
+          </p>
+        )}
+        {!mobile && <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>
+          {tr(dataAgendada ? 'composer.rodape-agendar' : 'composer.rodape-publicar')}
+        </p>}
+    </div>
+  )
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: mobile ? '1fr' : 'minmax(0, 1.3fr) minmax(280px, 1fr)', gap: mobile ? 16 : 24, alignItems: 'start' }}>
+    <>
+    {mobile && (
+      <div role="tablist" aria-label="Editar ou ver a prévia" style={{ position: 'sticky', top: 'var(--folga-superior, 0px)', zIndex: 6, display: 'flex', gap: 4, padding: 4, marginBottom: 12, background: 'var(--v2-surface2)', borderRadius: 12 }}>
+        {(['editar', 'previa'] as const).map(k => (
+          <button key={k} type="button" role="tab" aria-selected={abaMobile === k} onClick={() => setAbaMobile(k)}
+            style={{ flex: 1, minHeight: 40, border: 0, borderRadius: 9, fontWeight: 700, fontSize: 14, fontFamily: 'inherit', cursor: 'pointer', background: abaMobile === k ? 'var(--v2-surface)' : 'transparent', color: abaMobile === k ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: abaMobile === k ? '0 1px 3px rgba(0,0,0,0.12)' : 'none' }}>
+            {k === 'editar' ? 'Editar' : tr('composer.previa')}
+          </button>
+        ))}
+      </div>
+    )}
+    <div style={{ display: 'grid', gridTemplateColumns: mobile ? 'minmax(0, 1fr)' : 'minmax(0, 1.3fr) minmax(280px, 1fr)', gap: mobile ? 16 : 24, alignItems: 'start' }}>
       {/* Coluna esquerda: formulário/editor */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: mobile && abaMobile !== 'editar' ? 'none' : 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
         {/* Cliente — dropdown na agência; travado na visão de cliente */}
         {!travarCliente && (
           <div>
@@ -516,7 +566,7 @@ export default function PostComposer({
         {/* Redes onde publicar */}
         <div>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--v2-ink2)', marginBottom: 6 }}>{tr('composer.publicar-em')}</label>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: mobile ? 6 : 10, flexWrap: mobile ? 'wrap' : undefined }}>
             {([
               { key: 'instagram' as const, nome: 'Instagram', cor: '#dc2743' },
               { key: 'facebook' as const, nome: 'Facebook', cor: '#1877f2' },
@@ -527,7 +577,7 @@ export default function PostComposer({
               return (
                 <button key={r.key} type="button" onClick={() => alternarRede(r.key)}
                   style={{
-                    flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
+                    flex: mobile ? '1 1 140px' : 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: mobile ? 8 : 10, padding: mobile ? '10px 12px' : '12px 14px', borderRadius: 10, cursor: 'pointer',
                     border: `1.5px solid ${ativo ? sel : 'var(--v2-rule)'}`, background: ativo ? `${sel}10` : 'var(--v2-surface)', fontFamily: 'inherit',
                   }}>
                   <span style={{
@@ -921,10 +971,10 @@ export default function PostComposer({
               <input type="datetime-local" value={dataAgendada} onChange={e => setDataAgendada(e.target.value)} min={minimoDatetimeLocal()}
                 style={{ flex: 1, padding: '14px 0', border: 'none', outline: 'none', fontSize: 15, fontFamily: 'inherit', background: 'transparent', minWidth: 0 }} />
             </div>
-            <button type="button" onClick={() => setVendoCalendario(true)} disabled={!clienteId} title={clienteId ? 'Ver o que já está programado e escolher o dia' : 'Escolha o cliente primeiro'}
-              style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '0 14px', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 13, fontFamily: 'inherit', cursor: clienteId ? 'pointer' : 'not-allowed', opacity: clienteId ? 1 : 0.5, whiteSpace: 'nowrap' }}>
+            <button type="button" onClick={() => setVendoCalendario(true)} disabled={!clienteId} title={clienteId ? 'Ver o que já está programado e escolher o dia' : 'Escolha o cliente primeiro'} aria-label="Ver calendário"
+              style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: mobile ? 0 : '0 14px', width: mobile ? 48 : undefined, background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-rule)', borderRadius: 10, fontWeight: 700, fontSize: 13, fontFamily: 'inherit', cursor: clienteId ? 'pointer' : 'not-allowed', opacity: clienteId ? 1 : 0.5, whiteSpace: 'nowrap' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" /></svg>
-              {mobile ? 'Calendário' : 'Ver calendário'}
+              {!mobile && 'Ver calendário'}
             </button>
             {dataAgendada && (
               <button type="button" onClick={() => setDataAgendada('')} title={tr('composer.data-remover')}
@@ -939,41 +989,11 @@ export default function PostComposer({
           </p>
         </div>
 
-        {/* Acoes: Rascunho · Enviar para aprovacao · Publicar/Agendar */}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button onClick={() => submeter(modoEdicao ? 'salvar' : 'rascunho')} disabled={modoEdicao ? !podeSalvarEdicao : !podeRascunho} type="button"
-            style={{ flex: '1 1 110px', padding: '14px 0', background: 'var(--v2-surface)', color: 'var(--v2-ink)', border: '1.5px solid var(--v2-rule)', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: (modoEdicao ? podeSalvarEdicao : podeRascunho) ? 'pointer' : 'not-allowed', opacity: (modoEdicao ? podeSalvarEdicao : podeRascunho) ? 1 : 0.5 }}>
-            {modoEdicao ? tr(enviando ? 'comum.salvando' : 'composer.salvar-alteracoes') : tr(salvandoRascunho ? 'comum.salvando' : 'composer.rascunho')}
-          </button>
-          <button onClick={() => submeter('aprovacao')} disabled={!podeAprovacao} type="button"
-            style={{ flex: '1 1 150px', padding: '14px 0', background: 'var(--v2-ink)', color: 'var(--v2-surface)', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 14, cursor: podeAprovacao ? 'pointer' : 'not-allowed', opacity: podeAprovacao ? 1 : 0.5 }}>
-            {tr(enviando ? 'comum.enviando' : 'composer.enviar-aprovacao')}
-          </button>
-          <button onClick={() => submeter(dataAgendada ? 'agendar' : 'publicar')} disabled={!podePrincipal} type="button"
-            style={{ flex: '1.3 1 150px', padding: '14px 0', background: 'var(--marca, var(--v2-amber-on))', color: 'var(--marca-texto, var(--v2-ink))', border: 'none', borderRadius: 12, fontWeight: 800, fontSize: 15, cursor: podePrincipal ? 'pointer' : 'not-allowed', opacity: podePrincipal ? 1 : 0.5 }}>
-            {enviando
-              ? tr(dataAgendada ? 'composer.agendando' : 'composer.publicando')
-              : tr(dataAgendada ? 'composer.agendar' : 'composer.publicar-agora')}
-          </button>
-        </div>
-        {avisoPendencia && (
-          <p role="status" style={{ margin: '10px 0 0', fontSize: 12.5, fontWeight: 600, color: '#ea580c', lineHeight: 1.45 }}>
-            {avisoPendencia}
-            {faltaEtapa && (
-              <button type="button" onClick={() => { etapaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); etapaRef.current?.focus() }}
-                style={{ marginLeft: 6, padding: 0, background: 'none', border: 0, color: 'var(--v2-info)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit' }}>
-                {tr('pend.ir-etapa')}
-              </button>
-            )}
-          </p>
-        )}
-        <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--v2-ink3)' }}>
-          {tr(dataAgendada ? 'composer.rodape-agendar' : 'composer.rodape-publicar')}
-        </p>
+        {!mobile && acoes}
       </div>
 
       {/* Coluna direita: preview ao vivo */}
-      <div style={{ position: 'sticky', top: 16 }}>
+      <div style={mobile ? { display: abaMobile === 'previa' ? 'block' : 'none' } : { position: 'sticky', top: 16 }}>
         <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {tr('composer.previa')}
         </p>
@@ -1096,5 +1116,7 @@ export default function PostComposer({
         </div>
       )}
     </div>
+    {mobile && acoes}
+    </>
   )
 }

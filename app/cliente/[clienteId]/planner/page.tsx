@@ -1,4 +1,5 @@
 'use client'
+import { useIsMobile } from '@/lib/useIsMobile'
 import { useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
@@ -57,6 +58,7 @@ function paraDatetimeLocal(iso?: string): string {
 const SubirEmMassa = dynamic(() => import('@/app/components/SubirEmMassa'), { ssr: false })
 
 export default function PlannerPage() {
+  const mobile = useIsMobile()
   const area = useArea()
   const { clienteId } = useParams()
   const [posts, setPosts] = useState<any[]>([])
@@ -265,11 +267,14 @@ export default function PlannerPage() {
 
       {/* Modal novo post / editar */}
       {(novoPost || editPost) && (
-        <div onClick={() => { setNovoPost(false); setEditPost(null) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 700, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+        <div onClick={fecharFora(() => { setNovoPost(false); setEditPost(null) })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: mobile ? 'stretch' : 'center', justifyContent: 'center', zIndex: 1000, padding: mobile ? 0 : 20 }}>
+          {/* No celular o editor ocupa a tela inteira (Mudança 2b, 21/11/2026). */}
+          <div onClick={e => e.stopPropagation()} style={mobile
+            ? { background: 'var(--v2-surface)', width: '100%', height: '100%', overflowY: 'auto', padding: 'calc(10px + var(--safe-top)) 14px 0', boxSizing: 'border-box' }
+            : { background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 700, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)' }}>{editPost ? 'Editar postagem' : 'Nova postagem'}</h3>
-              <button onClick={() => { setNovoPost(false); setEditPost(null) }} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink3)' }}>x</button>
+              <button onClick={() => { setNovoPost(false); setEditPost(null) }} aria-label="Fechar" style={{ width: mobile ? 40 : 28, height: mobile ? 40 : 28, borderRadius: 6, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink3)' }}>x</button>
             </div>
             <PostComposer
               clientes={clientes}
