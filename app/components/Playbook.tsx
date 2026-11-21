@@ -10,6 +10,8 @@ import AplicarModal, { type Template } from './AplicarModelo'
 import ImportarPlanoAcao from './ImportarPlanoAcao'
 import SemanasPlano from './SemanasPlano'
 import PlanoCliente from './PlanoCliente'
+import RoadmapEntregas from './RoadmapEntregas'
+import RoadmapConsolidado from './RoadmapConsolidado'
 import { hojeYmd } from '@/lib/datas'
 import { TarefaModal } from './GestaoTarefas'
 import { responsavelPorTipo } from '@/lib/responsavelPorTipo'
@@ -402,9 +404,13 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   // leem `marcos`/`tarefas` e disparam as mesmas ações (modal, ordem, status, prazos). O nível
   // de abertura (etapas/tarefas) também é compartilhado. Lembrada por navegador.
   // TERCEIRA visão (plano de ação por semanas, F2 de 17/11/2026): só aparece para cliente com semanas.
-  const [view, setViewState] = useState<'gantt' | 'lista' | 'semanas'>('gantt')
-  useEffect(() => { try { const v = localStorage.getItem('soma10-playbook-view'); if (v === 'lista' || v === 'semanas') setViewState(v) } catch {} }, [])
-  const setView = (v: 'gantt' | 'lista' | 'semanas') => { escolheuVisao.current = true; setViewState(v); try { localStorage.setItem('soma10-playbook-view', v) } catch {} }
+  // LINHA DO TEMPO é a visão padrão (Mudança 3, dono 21/11/2026: "o Gantt pode permanecer como
+  // visão opcional, não como padrão"). Chave nova no navegador para todo mundo começar na Linha
+  // do tempo; quem escolher outra visão a partir de agora fica com ela.
+  type Visao = 'linha' | 'gantt' | 'lista' | 'semanas'
+  const [view, setViewState] = useState<Visao>('linha')
+  useEffect(() => { try { const v = localStorage.getItem('soma10-plano-visao'); if (v === 'gantt' || v === 'lista' || v === 'semanas') { escolheuVisao.current = true; setViewState(v) } } catch {} }, [])
+  const setView = (v: Visao) => { escolheuVisao.current = true; setViewState(v); try { localStorage.setItem('soma10-plano-visao', v) } catch {} }
 
   // Modo cliente (portal): read-only — sem criar/editar/excluir; o clique no
   // marco abre um DETALHE, nunca o formulario de edicao da equipe.
@@ -418,7 +424,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   const verGantt = view === 'gantt' || (view === 'semanas' && !temSemanas)
   // Portal do cliente (F3): com semanas, abre na visão Semanas, salvo se a pessoa já escolheu outra.
   const escolheuVisao = useRef(false)
-  useEffect(() => { if (somenteLeitura && temSemanas && !escolheuVisao.current && view === 'gantt') setViewState('semanas') }, [somenteLeitura, temSemanas])
+  useEffect(() => { if (somenteLeitura && temSemanas && !escolheuVisao.current && view === 'linha') setViewState('semanas') }, [somenteLeitura, temSemanas])
   // Declarado AQUI porque lê clienteAtivo: em cima do arquivo daria "Cannot access before initialization".
   const temOrdemManual = marcos.some(m => m.clienteId === clienteAtivo && (typeof m.ordem === 'number' || m.ordemEtapasManual))
 
@@ -436,6 +442,13 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
   // `enquadrar`: depois de criar/editar/aplicar modelo, se algum marco do cliente ficou FORA da
   // janela do Gantt, a janela se ajusta para ele aparecer (dono, 14/09: "quando lanço, não
   // aparece" — o marco existia, mas caía fora dos 30 dias visíveis).
+  // Todos os clientes (visão consolidada da Linha do tempo): só a equipe, sem cliente escolhido.
+  const [todosMarcos, setTodosMarcos] = useState<Marco[] | null>(null)
+  useEffect(() => {
+    if (clienteAtivo || clienteFixo) return
+    setTodosMarcos(null)
+    fetch('/api/playbook').then(r => r.json()).then(d => setTodosMarcos(Array.isArray(d) ? d : [])).catch(() => setTodosMarcos([]))
+  }, [clienteAtivo, clienteFixo])
   function carregar(opts?: { enquadrar?: boolean }) {
     if (!clienteAtivo) { setMarcos([]); return }
     fetch(`/api/playbook?clienteId=${clienteAtivo}`).then(r => r.json()).then(d => {
@@ -772,7 +785,7 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
         <h2 style={{ margin: 0, fontSize: 18, color: 'var(--v2-ink)' }}>{area('playbook')}</h2>
         <div style={{ display: 'flex', background: 'var(--v2-surface2)', borderRadius: 10, padding: 3 }} role="tablist" aria-label={tr('plano.visualizacao')}>
-          {([['gantt', tr('plano.visao-gantt')], ['lista', tr('plano.visao-lista')], ...(temSemanas ? [['semanas', tr('plano.visao-semanas')]] : [])] as ['gantt' | 'lista' | 'semanas', string][]).map(([k, l]) => (
+          {([['linha', tr('plano.visao-linha')], ['gantt', tr('plano.visao-gantt')], ['lista', tr('plano.visao-lista')], ...(temSemanas ? [['semanas', tr('plano.visao-semanas')]] : [])] as [Visao, string][]).map(([k, l]) => (
             <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)} style={{ padding: '6px 12px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12, fontWeight: 700, background: view === k ? 'var(--v2-surface)' : 'transparent', color: view === k ? 'var(--v2-ink)' : 'var(--v2-ink3)', boxShadow: view === k ? '0 1px 3px rgba(0,0,0,0.12)' : 'none', fontFamily: 'inherit' }}>{l}</button>
           ))}
         </div>
@@ -807,12 +820,14 @@ export default function Playbook({ clientes, clienteFixo, podeEditar = true, pod
         </>}
       </div>
 
-      {/* Sem cliente selecionado (agencia): exige escolher um cliente */}
+      {/* Sem cliente escolhido (agência): todos os clientes na Linha do tempo (Mudança 3). */}
       {!clienteAtivo && (
-        <div style={{ background: 'var(--v2-surface)', borderRadius: 14, padding: '50px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-          <p style={{ margin: 0, fontSize: 14, color: 'var(--v2-ink3)' }}>{tr('plano.escolha-cliente')}</p>
-          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--v2-ink3)' }}>{tr('plano.cada-cliente')}</p>
-        </div>
+        <RoadmapConsolidado marcos={todosMarcos || []} carregando={todosMarcos === null} nomes={Object.fromEntries(clientes.map(c => [c.id, c.nome]))} onAbrirCliente={id => setFiltroCliente(id)} />
+      )}
+
+      {clienteAtivo && view === 'linha' && (
+        <RoadmapEntregas marcos={marcos.filter(m => m.clienteId === clienteAtivo) as any} somenteLeitura={somenteLeitura}
+          onAbrirMarco={id => { const m = marcos.find(x => x.id === id); if (m) { if (somenteLeitura) setDetalheModal(m); else setEditModal(m) } }} />
       )}
 
       {clienteAtivo && view === 'lista' && renderLista()}
