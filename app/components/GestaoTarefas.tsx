@@ -1,4 +1,6 @@
 'use client'
+import KanbanCelular from './KanbanCelular'
+import { useIsMobile } from '@/lib/useIsMobile'
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { upload } from '@vercel/blob/client'
@@ -350,6 +352,7 @@ function ehAtrasado(prazo?: string, status?: string) {
 export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, clienteFixo, responsavelFixo, abrirTarefaId, onAbriuTarefa, podeEditar = true, podeExcluir = true, perfilClinica = false, perfilTurismo = false, perfilCidadania = false, perfilTelefonia = false }: { clientes: Cliente[]; usuarios: Usuario[]; clienteFixo?: string; responsavelFixo?: string; abrirTarefaId?: string | null; onAbriuTarefa?: () => void; podeEditar?: boolean; podeExcluir?: boolean; perfilClinica?: boolean; perfilTurismo?: boolean; perfilCidadania?: boolean; perfilTelefonia?: boolean }) {
   const { rotuloTipo, rotuloStatus, rotuloPrioridade } = useRotulos()
   const tr = useT()
+  const mobileQuadro = useIsMobile()
   // Pessoas em ORDEM ALFABÉTICA em todo seletor desta tela — filtro, atribuição em massa e o
   // modal (dono, 29/09: "Ana em primeiro da lista, Willian por último"). lib/ordenarNomes.
   const usuarios = useMemo(() => ordenarPorNome(usuariosEntrada), [usuariosEntrada])
@@ -723,8 +726,23 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
         )
       })()}
 
+      {/* CELULAR (Mudança 2c, 21/11/2026): quadro de uma coluna por vez e lista em cartões, com
+          gestos de toque; o arrastar do desktop não funciona no toque. Desktop segue igual abaixo. */}
+      {mobileQuadro && (view === 'kanban' || view === 'lista') && (() => {
+        const colunasVisiveis = COLUNAS.filter(col => mostrarConcluidas || col.key !== 'descartado').map(c => ({ key: c.key, label: rotuloStatus(c.key, c.label) }))
+        const infoCartao = (t: any) => { const tp = tipoInfo(t.tipo); return { tipo: { label: rotuloTipo(tp.key, tp.label), cor: tp.cor }, periodo: (t.prazo || t.dataInicio) ? periodoFormatado(t, data => tr('tarefa.inicio-em', { data })) : '', atrasado: ehAtrasado(t.prazo, t.status), mae: t.tarefaPaiId ? tituloDaMae(t) : undefined, anexos: (t.anexos || []).length } }
+        return (
+          <KanbanCelular colunas={colunasVisiveis} modo={view === 'lista' ? 'lista' : 'colunas'}
+            cartoesDe={st => filtradas.filter(t => t.status === st && !maeNaTela(t)) as any}
+            todas={[...filtradas].sort((a, b) => (a.prazo || '9').localeCompare(b.prazo || '9')) as any}
+            rotuloStatus={k => rotuloStatus(k, COLUNAS.find(c => c.key === k)?.label || k)}
+            info={infoCartao} onAbrir={t => setEditModal(t as any)} onMover={(id, st) => moverStatus(id, st)}
+            onAtualizar={() => fetch('/api/tarefas').then(r => r.json()).then(d => setTarefas(Array.isArray(d) ? d : [])).catch(() => {})} />
+        )
+      })()}
+
       {/* KANBAN */}
-      {view === 'kanban' && (
+      {view === 'kanban' && !mobileQuadro && (
         <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, height: 'calc(100vh - 200px)', alignItems: 'stretch' }}>
           {COLUNAS.filter(col => mostrarConcluidas || col.key !== 'descartado').map(col => {
             const cards = filtradas.filter(t => t.status === col.key && !maeNaTela(t))
@@ -865,7 +883,7 @@ export default function GestaoTarefas({ clientes, usuarios: usuariosEntrada, cli
         </div>
       , document.body)}
 
-      {view === 'lista' && (
+      {view === 'lista' && !mobileQuadro && (
         <div style={{ background: 'var(--v2-surface)', borderRadius: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflowX: 'auto' }}>
           {/* Arrastando uma subtarefa: soltar aqui devolve o primeiro nível */}
           {dragId && tarefas.find(t => t.id === dragId)?.tarefaPaiId && (
@@ -1034,6 +1052,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
   onClose: () => void; onSalvo: () => void; onExcluir?: () => void; onRecarregar?: (tarefaAtualizada: Tarefa) => void
   viewMode?: 'modal' | 'fullscreen' | 'sidebar'; onChangeViewMode?: (m: 'modal' | 'fullscreen' | 'sidebar') => void
 }) {
+  const mobileTarefa = useIsMobile()
   const { rotuloTipo, rotuloStatus, rotuloPrioridade } = useRotulos()
   const tr = useT()
   // Responsável, squad e menções em ORDEM ALFABÉTICA (dono, 29/09) — o modal também é aberto
@@ -1421,17 +1440,23 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
     onSalvo()
   }
 
-  const showActivitySide = tarefa && viewMode !== 'sidebar'
+  // CELULAR (Mudança 2c, 21/11/2026): a tarefa abre em tela cheia, com Detalhes e Activity em
+  // abas (o painel de 320px ao lado espremia os detalhes a quase nada). Por dentro funciona como
+  // o modo "sidebar", que já tem as abas; por fora ocupa a tela toda, com safe area.
+  const modoInterno = mobileTarefa ? 'sidebar' : viewMode
+  const showActivitySide = tarefa && modoInterno !== 'sidebar'
 
   const wrapperStyle: Record<string, any> = {
     modal: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 },
     fullscreen: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 },
     sidebar: { position: 'fixed', top: 0, right: 0, bottom: 0, width: 480, background: 'var(--v2-surface)', boxShadow: '-4px 0 24px rgba(0,0,0,0.12)', zIndex: 1000, overflow: 'auto' },
+    celular: { position: 'fixed', inset: 0, background: 'var(--v2-surface)', zIndex: 1000, overflow: 'auto', paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)' },
   }
   const outerPanelStyle: Record<string, any> = {
     modal: { background: 'var(--v2-surface)', borderRadius: 16, maxWidth: showActivitySide ? 960 : 640, width: '100%', maxHeight: '90vh', display: 'flex', overflow: 'hidden' },
     fullscreen: { background: 'var(--v2-surface)', borderRadius: 16, maxWidth: 1100, width: '100%', maxHeight: '94vh', display: 'flex', overflow: 'hidden' },
     sidebar: { display: 'flex', flexDirection: 'column' as const },
+    celular: { display: 'flex', flexDirection: 'column' as const, minHeight: '100%' },
   }
 
   const anexosComAnotacoes = anexos.filter(a => (a.anotacoes || []).length > 0)
@@ -1586,10 +1611,10 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
   // contexto de empilhamento das telas animadas. Tokens vivem em :root, então o tema vale.
   if (typeof document === 'undefined') return null
   return createPortal(
-    <div onClick={viewMode !== 'sidebar' ? fechar : undefined} style={wrapperStyle[viewMode]}>
-      <div onClick={e => e.stopPropagation()} style={outerPanelStyle[viewMode]}>
+    <div onClick={modoInterno !== 'sidebar' ? fechar : undefined} style={wrapperStyle[mobileTarefa ? 'celular' : viewMode]}>
+      <div onClick={e => e.stopPropagation()} style={outerPanelStyle[mobileTarefa ? 'celular' : viewMode]}>
         {/* Lado esquerdo — Detalhes */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: viewMode === 'sidebar' ? 22 : 24, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: mobileTarefa ? '12px 14px 18px' : modoInterno === 'sidebar' ? 22 : 24, display: 'flex', flexDirection: 'column' }}>
           {/* Cabecalho com titulo + botoes de modo */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
             <h3 style={{ margin: 0, fontSize: 16, color: 'var(--v2-ink)', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1599,7 +1624,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
               </>) : 'Nova tarefa'}
             </h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {tarefa && onChangeViewMode && (['modal', 'fullscreen', 'sidebar'] as const).map(m => (
+              {tarefa && onChangeViewMode && !mobileTarefa && (['modal', 'fullscreen', 'sidebar'] as const).map(m => (
                 <button key={m} onClick={() => onChangeViewMode(m)} title={m === 'modal' ? 'Modal' : m === 'fullscreen' ? 'Tela cheia' : 'Sidebar'}
                   style={{ width: 28, height: 28, borderRadius: 6, border: viewMode === m ? '1.5px solid var(--v2-amber-on)' : '1px solid var(--v2-rule)', background: viewMode === m ? 'var(--v2-amber-bg)' : 'var(--v2-surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {m === 'modal' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === m ? 'var(--v2-ink)' : 'var(--v2-ink3)'} strokeWidth="2"><rect x="3" y="5" width="18" height="14" rx="2" /></svg>}
@@ -1607,7 +1632,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
                   {m === 'sidebar' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={viewMode === m ? 'var(--v2-ink)' : 'var(--v2-ink3)'} strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="2" /><path d="M14 2v20" /></svg>}
                 </button>
               ))}
-              <button onClick={fechar} style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 16, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink3)' }}>x</button>
+              <button onClick={fechar} aria-label="Fechar" style={{ width: mobileTarefa ? 40 : 28, height: mobileTarefa ? 40 : 28, borderRadius: mobileTarefa ? 10 : 6, border: '1px solid var(--v2-rule)', background: 'var(--v2-surface)', cursor: 'pointer', fontSize: 16, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--v2-ink3)' }}>x</button>
             </div>
           </div>
 
@@ -1629,11 +1654,11 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
           })()}
 
           {/* Abas internas — so no sidebar (sem espaco lateral pra activity) */}
-          {tarefa && viewMode === 'sidebar' && (
-            <div style={{ display: 'flex', gap: 0, marginBottom: 16, borderBottom: '1px solid var(--v2-rule)' }}>
+          {tarefa && modoInterno === 'sidebar' && (
+            <div style={{ display: 'flex', gap: 0, marginBottom: 16, borderBottom: '1px solid var(--v2-rule)', ...(mobileTarefa ? { position: 'sticky', top: -12, zIndex: 3, background: 'var(--v2-surface)' } : {}) }}>
               {(['detalhes', 'activity'] as const).map(a => (
                 <button key={a} onClick={() => setAbaInterna(a)} style={{
-                  padding: '8px 18px', border: 'none', borderBottom: abaInterna === a ? '2px solid var(--v2-amber-on)' : '2px solid transparent',
+                  padding: mobileTarefa ? '12px 18px' : '8px 18px', flex: mobileTarefa ? 1 : undefined, border: 'none', borderBottom: abaInterna === a ? '2px solid var(--v2-amber-on)' : '2px solid transparent',
                   background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: abaInterna === a ? 700 : 500, color: abaInterna === a ? 'var(--v2-ink)' : 'var(--v2-ink3)',
                 }}>{a === 'detalhes' ? 'Detalhes' : 'Activity'}</button>
               ))}
@@ -1641,7 +1666,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
           )}
 
           {/* DETALHES */}
-          {(!tarefa || viewMode !== 'sidebar' || abaInterna === 'detalhes') && (<>
+          {(!tarefa || modoInterno !== 'sidebar' || abaInterna === 'detalhes') && (<>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
               <div style={{ flex: 1 }}>
@@ -1684,7 +1709,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
                 </div>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: PERFIL_CLINICA_TAREFAS ? '1fr' : '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: PERFIL_CLINICA_TAREFAS || mobileTarefa ? 'minmax(0, 1fr)' : '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('comum.responsavel')}</label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1782,7 +1807,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
                 )}
             </div>
             )}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: mobileTarefa ? 'minmax(0, 1fr)' : '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('tarefa.data-inicio')}</label>
                 <input type="date" value={form.dataInicio} max={form.prazo || undefined} onChange={e => setForm(f => ({ ...f, dataInicio: e.target.value }))}
@@ -1795,7 +1820,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
               </div>
               {form.dataInicio && form.prazo && form.dataInicio > form.prazo && <p style={{ gridColumn: '1 / -1', margin: '-4px 0 0', fontSize: 11.5, color: 'var(--v2-hot)', fontWeight: 600 }}>{tr('tarefa.inicio-depois-prazo')}</p>}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: mobileTarefa ? 'minmax(0, 1fr)' : '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--v2-ink3)', marginBottom: 6 }}>{tr('comum.prioridade')}</label>
                 <select value={form.prioridade} onChange={e => setForm(f => ({ ...f, prioridade: e.target.value }))}
@@ -2135,7 +2160,7 @@ function TarefaModalInterno({ tarefa: tarefaEntrada, clientes, usuarios: usuario
           </>)}
 
           {/* Activity em aba — so no sidebar */}
-          {tarefa && viewMode === 'sidebar' && abaInterna === 'activity' && (
+          {tarefa && modoInterno === 'sidebar' && abaInterna === 'activity' && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>{activityPanel}</div>
           )}
         </div>
