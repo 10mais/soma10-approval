@@ -29,6 +29,7 @@ import { esperandoCliente } from '@/lib/bolaDaVez'
 import { PAPEIS_SQUAD } from '@/lib/squadPapeis'
 import Calendar from '../components/Calendar'
 import SeletorDataAgenda from '@/app/components/SeletorDataAgenda'
+import BarraInferior, { ICONE_MENU, type ItemBarra } from '@/app/components/BarraInferior'
 import PostComposer from '../components/PostComposer'
 import ConectarRedesModal from '../components/ConectarRedesModal'
 import BarraProximasTarefas from '../components/BarraProximasTarefas'
@@ -2387,30 +2388,23 @@ function Dashboard() {
           </button>
         )}
 
-        {/* Barra de navegacao inferior (mobile / cara de app) — equipe */}
-        {mobile && !ehCliente && (
-          <nav className="soma10-no-invert" style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 140, background: 'var(--v2-surface)', borderTop: '1px solid var(--v2-rule)', display: 'flex', justifyContent: 'space-around', paddingBottom: 'env(safe-area-inset-bottom)', boxShadow: '0 -2px 12px rgba(0,0,0,0.06)' }}>
-            {[{ k: 'home', label: tr('dash.inicio') }, { k: 'meu-card', label: tr('dash.meu-perfil') }, { k: 'mensagens', label: tr('dash.chat') }].map(it => {
-              const ativo = aba === it.k && !menuMobile
-              return (
-                <button key={it.k} onClick={() => { if (it.k === 'meu-card') { router.push('/equipe/me'); return } setAba(it.k as any); setInboxAberto(false) }} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0 5px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: ativo ? 'var(--v2-ink)' : '#9aa0a6' }}>
-                  <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={ICONE_ABA[it.k] || ICONE_ABA.default} /></svg>
-                  <span style={{ fontSize: 10.5, fontWeight: ativo ? 700 : 500 }}>{it.label}</span>
-                </button>
-              )
-            })}
-            <button onClick={() => setMenuMobile(true)} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0 5px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, color: menuMobile ? 'var(--v2-ink)' : '#9aa0a6' }}>
-              <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
-              <span style={{ fontSize: 10.5, fontWeight: menuMobile ? 700 : 500 }}>{tr('dash.menu')}</span>
-            </button>
-          </nav>
-        )}
+        {/* Barra inferior do celular (Mudança 2, 21/11/2026): Início · Programador · Tarefas ·
+            Chat · Menu, cada aba só se a pessoa pode vê-la (mesma regra do NavBtn). "Meu perfil"
+            foi para o Menu. Componente compartilhado com o hub do cliente (BarraInferior). */}
+        {mobile && !ehCliente && (() => {
+          const visivel = (k: string) => !(ABAS_PERM.some(a => a.key === k) && !podeAbaDash(k)) && !ocultas.includes(k)
+          const itens: ItemBarra[] = ([['home', tr('dash.inicio')], ['planner', tr('dash.barra-programador')], ['tarefas', tr('dash.barra-tarefas')], ['mensagens', tr('dash.chat')]] as const)
+            .filter(([k]) => visivel(k))
+            .map(([k, rotulo]) => ({ chave: k, rotulo, icone: ICONE_ABA[k] || ICONE_ABA.default, ativo: aba === k && !menuMobile, onClick: () => { setAba(k as any); setInboxAberto(false); setMenuMobile(false) } }))
+          itens.push({ chave: 'menu', rotulo: tr('dash.menu'), icone: ICONE_MENU, ativo: menuMobile, onClick: () => setMenuMobile(v => !v) })
+          return <BarraInferior itens={itens} />
+        })()}
 
         {/* Conteúdo principal — o topo reserva a faixa do cluster flutuante. No
             mobile o cluster fica em (12px + safe-area) + ~46px de altura; em
             aparelho com notch a safe-area cresce e o título passava POR BAIXO do
             cluster. Por isso o topo acompanha a mesma safe-area (não é 64px fixo). */}
-        <div ref={abaAnimRef} className="anim-aba" style={{ flex: 1, minWidth: 0, padding: mobile ? 'calc(68px + env(safe-area-inset-top)) 14px calc(76px + env(safe-area-inset-bottom))' : '70px 28px 28px', ...(mobile ? {} : { height: '100vh', overflowY: 'auto', boxSizing: 'border-box' }) }}>
+        <div ref={abaAnimRef} className="anim-aba" style={{ flex: 1, minWidth: 0, padding: mobile ? 'calc(68px + env(safe-area-inset-top)) 14px calc(var(--barra-inferior) + 14px + var(--safe-bottom))' : '70px 28px 28px', ...(mobile ? {} : { height: '100vh', overflowY: 'auto', boxSizing: 'border-box' }) }}>
 
         {/* Faixa: admin visualizando como um papel (colaborador) */}
         {previewPapel && (

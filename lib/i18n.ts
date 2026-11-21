@@ -2114,6 +2114,8 @@ export const TEXTOS: Record<string, Entrada> = {
   'dash.logomarca-use-oficial-10': { pt: 'Logomarca (use a oficial do 10+)', en: 'Logo (use the official 10+ one)', es: 'Logotipo (use el oficial del 10+)' },
   'dash.marque-cada-item-ao-resolver-a': { pt: 'Marque cada item ao resolver. Ao concluir tudo, libera o reenvio para aprovação.', en: 'Tick each item as you solve it. Once everything is done, resending for approval unlocks.', es: 'Marque cada ítem al resolverlo. Al completar todo, se libera el reenvío para aprobación.' },
   'dash.mensal': { pt: 'Mensal', en: 'Monthly', es: 'Mensual' },
+  'dash.barra-programador': { pt: 'Programador', en: 'Scheduler', es: 'Programador' },
+  'dash.barra-tarefas': { pt: 'Tarefas', en: 'Tasks', es: 'Tareas' },
   'dash.menu': { pt: 'Menu', en: 'Menu', es: 'Menú' },
   'dash.minhas-aprovacoes': { pt: 'Minhas aprovações', en: 'My approvals', es: 'Mis aprobaciones' },
   'dash.motivo-falha': { pt: 'Motivo da falha:', en: 'Reason for the failure:', es: 'Motivo de la falla:' },

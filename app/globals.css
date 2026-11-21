@@ -269,3 +269,29 @@ aside,
   /* Nenhum cartão parte no meio entre uma página e outra. */
   .metricas-tela > div > div { break-inside: avoid; page-break-inside: avoid; }
 }
+
+/* ===================================================================== CELULAR COM CARA DE APP
+   Mudança 2 (dono, 21/11/2026): no celular o sistema se comporta como aplicativo. Tudo aqui
+   vive dentro do breakpoint do celular (768px, o mesmo de lib/useIsMobile), então o desktop
+   não muda. Base comum para todas as telas: */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --barra-inferior: 62px; /* altura da BarraInferior sem a safe area */
+}
+@media (max-width: 768px) {
+  /* O iOS dá zoom em todo campo com fonte menor que 16px. O !important vence o estilo
+     inline das telas (é o único jeito de corrigir o sistema inteiro de uma vez). */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  /* Área de toque mínima de 44px para quem precisar (Apple HIG). */
+  .toque { min-width: 44px; min-height: 44px; }
+}
+
+/* Folha (bottom sheet): sobe de baixo no celular. */
+@keyframes soma-folha-sobe { from { transform: translateY(100%) } to { transform: none } }
+.anim-folha { animation: soma-folha-sobe var(--dur-slow, 360ms) var(--ease-out, cubic-bezier(.2,.8,.2,1)) both; }
+@media (prefers-reduced-motion: reduce) { .anim-folha { animation: none; } }

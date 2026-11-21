@@ -1,5 +1,6 @@
 'use client'
 import BarraProximasTarefas from '@/app/components/BarraProximasTarefas'
+import BarraInferior, { ICONE_MENU, type ItemBarra } from '@/app/components/BarraInferior'
 import { useParams, usePathname, useRouter } from 'next/navigation'
 import { useSession, signOut } from 'next-auth/react'
 import { useEffect, useState } from 'react'
@@ -203,7 +204,7 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
       `}</style>
 
       {/* Topo: volta ao painel, troca de cliente, tema, quem está logado */}
-      <header className="hub-topo" style={{ position: 'sticky', top: 0, zIndex: 100, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: mobile ? '0 14px' : '0 22px', background: 'var(--v2-surface)', borderBottom: '1px solid var(--v2-rule)' }}>
+      <header className="hub-topo" style={{ position: 'sticky', top: 0, zIndex: 100, height: mobile ? 'calc(56px + var(--safe-top))' : 56, paddingTop: mobile ? 'var(--safe-top)' : undefined, boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: mobile ? '0 14px' : '0 22px', background: 'var(--v2-surface)', borderBottom: '1px solid var(--v2-rule)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
           {mobile && <button className="hub-topo-btn" aria-label="Menu" onClick={() => setMenuAberto(v => !v)} style={{ padding: 8 }}><Ico d={IC.menu} /></button>}
           {ehEquipe
@@ -224,12 +225,12 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
         </div>
       </header>
 
-      {mobile && menuAberto && <div className="hub-fundo" onClick={fecharFora(() => setMenuAberto(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, top: 56, background: 'rgba(0,0,0,0.45)', zIndex: 150 }} />}
+      {mobile && menuAberto && <div className="hub-fundo" onClick={fecharFora(() => setMenuAberto(false), { perguntar: false })} style={{ position: 'fixed', inset: 0, top: 'calc(56px + var(--safe-top))', background: 'rgba(0,0,0,0.45)', zIndex: 150 }} />}
 
       <div style={{ display: 'flex', alignItems: 'flex-start' }}>
         {/* Trilho do cliente */}
         <aside className="hub-rail" style={mobile
-          ? { position: 'fixed', top: 56, left: 0, bottom: 0, width: 268, overflowY: 'auto', zIndex: 200, transform: menuAberto ? 'translateX(0)' : 'translateX(-105%)', transition: 'transform 200ms ease', background: 'var(--v2-surface)', borderRight: '1px solid var(--v2-rule)', padding: '16px 12px', boxSizing: 'border-box' }
+          ? { position: 'fixed', top: 'calc(56px + var(--safe-top))', left: 0, bottom: 0, width: 268, overflowY: 'auto', zIndex: 200, transform: menuAberto ? 'translateX(0)' : 'translateX(-105%)', transition: 'transform 200ms ease', background: 'var(--v2-surface)', borderRight: '1px solid var(--v2-rule)', padding: '16px 12px', boxSizing: 'border-box' }
           : { position: 'sticky', top: 56, width: 240, flexShrink: 0, height: 'calc(100vh - 56px)', overflowY: 'auto', background: 'var(--v2-surface)', borderRight: '1px solid var(--v2-rule)', padding: '18px 12px', boxSizing: 'border-box' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '4px 8px 16px', borderBottom: '1px solid var(--v2-rule)', marginBottom: 6 }}>
             <div style={{ width: 40, height: 40, borderRadius: 12, overflow: 'hidden', background: 'var(--v2-surface2)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>
@@ -257,10 +258,25 @@ export default function ClienteLayout({ children }: { children: React.ReactNode 
           </nav>
         </aside>
 
-        <main className="hub-main" style={{ padding: mobile ? '16px 14px 40px' : '26px 32px 48px' }}>
+        <main className="hub-main" style={{ padding: mobile ? '16px 14px calc(var(--barra-inferior) + 24px + var(--safe-bottom))' : '26px 32px 48px' }}>
           {children}
         </main>
       </div>
+
+      {/* Barra inferior do celular (Mudança 2, 21/11/2026): as áreas principais deste cliente,
+          só as que a pessoa pode abrir (as mesmas do trilho), e o Menu com o resto. */}
+      {mobile && (() => {
+        const disponiveis = grupos.flatMap(g => g.itens)
+        const preferidas: [string, string][] = ehEquipe
+          ? [['', 'Início'], ['/planner', 'Programador'], ['/tarefas', 'Tarefas'], ['/aprovacoes', 'Aprovações']]
+          : [['', 'Início'], ['/aprovacoes', 'Aprovações'], ['/entregas', 'Entregas'], ['/playbook', 'Plano']]
+        const itens: ItemBarra[] = preferidas
+          .map(([k, rotulo]) => ({ k, rotulo, item: disponiveis.find(i => i.key === k) }))
+          .filter(x => x.item)
+          .map(({ k, rotulo, item }) => ({ chave: k || 'inicio', rotulo, icone: IC[item!.icone] || IC.inicio, ativo: ativo(k) && !menuAberto, badge: item!.badge === 'aprovacoes' ? pendentes : undefined, onClick: () => { setMenuAberto(false); router.push(`${basePath}${k}`) } }))
+        itens.push({ chave: 'menu', rotulo: 'Menu', icone: ICONE_MENU, ativo: menuAberto, onClick: () => setMenuAberto(v => !v) })
+        return <BarraInferior itens={itens} />
+      })()}
     </div>
   )
 }
